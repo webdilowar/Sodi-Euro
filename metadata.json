@@ -1,0 +1,6 @@
+{
+  "name": "Sodi Euro",
+  "description": "Premium student visa tracking and documentation agency portal styled in luxurious Gold and Sky Blue.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
