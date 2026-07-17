@@ -1,3 +1,10 @@
+export interface ChatMessage {
+  id: string;
+  sender: 'student' | 'admin';
+  text: string;
+  sentAt: string;
+}
+
 export type ApplicationStatus =
   | 'Submitted'
   | 'Document Verification'
@@ -24,7 +31,7 @@ export interface Application {
   phone: string;
   desiredCourse: string;
   status: ApplicationStatus;
-  paymentStatus: 'Unpaid' | 'Paid';
+  paymentStatus: 'Unpaid' | 'Partially Paid' | 'Paid';
   paymentAmount: number;
   paymentMethod?: string;
   paymentTxnId?: string;
@@ -32,6 +39,19 @@ export interface Application {
   documents: UploadedDocument[];
   createdAt: string;
   notificationHistory: NotificationLog[];
+  selectedServices?: string[];
+  totalAmount?: number;
+  paidAmount?: number;
+  installments?: {
+    installmentNumber: number;
+    amount: number;
+    status: 'Unpaid' | 'Paid';
+    paymentMethod?: string;
+    paymentTxnId?: string;
+    paymentDate?: string;
+  }[];
+  messages?: ChatMessage[];
+  profilePhoto?: string;
 }
 
 export interface NotificationLog {

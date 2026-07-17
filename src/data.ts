@@ -271,3 +271,45 @@ export const initialApplications: Application[] = [
     ]
   }
 ];
+
+export interface ServiceOption {
+  id: string;
+  name: string;
+  nameEn: string;
+  price: number;
+  description: string;
+  isMandatory?: boolean;
+}
+
+export const serviceOptions: ServiceOption[] = [
+  {
+    id: 'admission_processing',
+    name: 'বিশ্ববিদ্যালয় ভর্তি ও ফাইল প্রসেসিং (University Admission & File Assessment)',
+    nameEn: 'University Admission & File Assessment',
+    price: 10000,
+    description: 'বুলগেরিয়া বিশ্ববিদ্যালয়ে ভর্তি অফার লেটার সংগ্রহ এবং ভিসা ফাইলিং গাইডলাইন।',
+    isMandatory: true
+  },
+  {
+    id: 'indian_visa_delhi',
+    name: 'ভারতীয় ডাবল এন্ট্রি ভিসা ও দিল্লী দূতাবাস সাপোর্ট (Indian Visa & Delhi Support)',
+    nameEn: 'Indian Visa & Delhi Support',
+    price: 5000,
+    description: 'ভারতীয় ডাবল এন্ট্রি ট্যুরিস্ট ভিসা প্রসেসিং, ই-টোকেন বুকিং এবং দিল্লীতে ক্যুরিয়ার গাইড।'
+  },
+  {
+    id: 'mofa_attestation',
+    name: 'শিক্ষা ও পররাষ্ট্র মন্ত্রণালয় সত্যায়ন সহায়তা (MoFA & Ministry Attestation)',
+    nameEn: 'Education Board, Ministry & MoFA Attestation Support',
+    price: 4000,
+    description: 'আপনার শিক্ষাগত সার্টিফিকেটসমূহ শিক্ষাবোর্ড, শিক্ষা মন্ত্রণালয় ও পররাষ্ট্র মন্ত্রণালয় থেকে দ্রুত সত্যায়ন।'
+  },
+  {
+    id: 'police_clearance',
+    name: 'পুলিশ ক্লিয়ারেন্স ও এটেস্টেশন সহায়তা (Police Clearance Attestation)',
+    nameEn: 'Police Clearance & Ministry Attestation Support',
+    price: 2000,
+    description: 'অনলাইন পুলিশ ক্লিয়ারেন্স আবেদন এবং পররাষ্ট্র মন্ত্রণালয় থেকে সত্যায়ন সহায়তা।'
+  }
+];
+

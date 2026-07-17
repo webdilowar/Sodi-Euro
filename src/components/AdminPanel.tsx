@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Application, ApplicationStatus, UploadedDocument, NotificationLog } from '../types';
 import { documentRequirements } from '../data';
 import { 
   Users, 
+  User,
   Search, 
   CheckCircle, 
   Clock, 
@@ -19,7 +21,11 @@ import {
   ChevronDown,
   RefreshCw,
   Send,
-  ExternalLink
+  ExternalLink,
+  Lock,
+  ShieldCheck,
+  Activity,
+  Sparkles
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -28,6 +34,14 @@ interface AdminPanelProps {
 }
 
 export default function AdminPanel({ applications, onUpdateApplication }: AdminPanelProps) {
+  // Admin Authentication States
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
+    return localStorage.getItem('sodieuro_admin_logged_in') === 'true';
+  });
+  const [adminUsername, setAdminUsername] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   // Filtering states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -45,7 +59,52 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   const [notifBody, setNotifBody] = useState('');
   const [notifType, setNotifType] = useState<'sms' | 'email'>('sms');
 
+  // Direct Student Messaging state
+  const [adminMessageText, setAdminMessageText] = useState('');
+
+  // Communications Modals toggles
+  const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+
   const selectedApp = applications.find(a => a.id === selectedAppId);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminUsername.trim() === 'sodieuro' && adminPassword.trim() === 'sodieuro') {
+      setIsAdminLoggedIn(true);
+      localStorage.setItem('sodieuro_admin_logged_in', 'true');
+      setLoginError('');
+    } else {
+      setLoginError('ভুল আইডি অথবা পাসওয়ার্ড! শুধুমাত্র অথরাইজড এডমিন প্রবেশ করতে পারবেন।');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    setIsAdminLoggedIn(false);
+    localStorage.removeItem('sodieuro_admin_logged_in');
+  };
+
+  const handleSendAdminMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedApp || !adminMessageText.trim()) return;
+
+    const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+    const newMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'admin' as const,
+      text: adminMessageText.trim(),
+      sentAt: currentTimestamp
+    };
+
+    const updatedApp: Application = {
+      ...selectedApp,
+      messages: [...(selectedApp.messages || []), newMessage]
+    };
+
+    onUpdateApplication(updatedApp);
+    setAdminMessageText('');
+  };
 
   // Handle application status updates (This triggers automatic email/sms log generation)
   const handleUpdateStatus = (newStatus: ApplicationStatus) => {
@@ -233,48 +292,152 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
+  if (!isAdminLoggedIn) {
+    return (
+      <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 rounded-3xl relative overflow-hidden" id="admin-auth-container">
+        {/* Decorative elements */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-sky/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-gold/10 rounded-full blur-3xl"></div>
+        
+        <div className="max-w-md w-full space-y-8 bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-gold to-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-brand-gold/10">
+              <Lock className="h-7 w-7" />
+            </div>
+            <div>
+              <span className="font-sans font-black text-brand-gold bg-slate-950/80 border border-brand-gold/25 px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest inline-block">
+                Sodi Euro Admin Portal
+              </span>
+              <h2 className="mt-3 text-2xl font-black text-white font-sans tracking-tight">অ্যাডমিন গেটওয়ে (Secure Login)</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                শুধুমাত্র অনুমোদিত কর্মকর্তাদের প্রবেশাধিকার সংরক্ষিত
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleAdminLogin} className="space-y-4" id="admin-login-form">
+            <div className="space-y-4">
+              <div className="space-y-1.5 text-left">
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-400">অ্যাডমিন আইডি (Username)</label>
+                <input
+                  required
+                  id="admin-username-input"
+                  type="text"
+                  placeholder="যেমন: sodieuro"
+                  value={adminUsername}
+                  onChange={(e) => setAdminUsername(e.target.value)}
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950/80 py-3.5 px-4 text-xs text-white focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold placeholder:text-slate-600 transition-all"
+                />
+              </div>
+
+              <div className="space-y-1.5 text-left">
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-400">নিরাপত্তা পাসওয়ার্ড (Password)</label>
+                <input
+                  required
+                  id="admin-password-input"
+                  type="password"
+                  placeholder="••••••••"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full rounded-xl border border-slate-800 bg-slate-950/80 py-3.5 px-4 text-xs text-white focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold placeholder:text-slate-600 transition-all"
+                />
+              </div>
+            </div>
+
+            {loginError && (
+              <p className="text-[11px] text-red-400 font-bold bg-red-950/40 border border-red-900/50 p-3 rounded-xl flex items-center space-x-1.5 text-left" id="admin-login-error">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                <span>{loginError}</span>
+              </p>
+            )}
+
+            <button
+              id="admin-submit-login-btn"
+              type="submit"
+              className="w-full flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-brand-gold to-amber-500 py-3.5 text-xs font-black text-slate-950 shadow-lg shadow-brand-gold/10 hover:opacity-95 active:scale-95 transition-all"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              <span>ড্যাশবোর্ডে প্রবেশ করুন</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 py-6" id="admin-panel-root">
+      {/* Admin Panel Sticky Header with Logout */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-slate-900 to-slate-950 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-2xl"></div>
+        <div className="z-10 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 text-left">
+          <div className="w-12 h-12 rounded-2xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center text-brand-gold shrink-0">
+            <Activity className="h-6 w-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h2 className="font-sans font-black text-sm sm:text-base tracking-wider text-brand-gold">SODI EURO CONTROL PANEL</h2>
+              <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-[8px] font-bold text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>LIVE CORE ENGINE</span>
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium">বুলগেরিয়া স্টুডেন্ট ভিসা রিয়েল-টাইম ডাটাবেজ কন্ট্রোল ড্যাশবোর্ড</p>
+          </div>
+        </div>
+        <button
+          onClick={handleAdminLogout}
+          className="z-10 rounded-xl bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 px-5 py-2.5 text-xs font-black transition-all border border-slate-700 hover:border-slate-600 active:scale-95"
+        >
+          লগআউট করুন (Logout)
+        </button>
+      </div>
+
       {/* 1. Admin Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" id="admin-stats-row">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+          <div className="space-y-1 text-left">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">মোট আবেদনকারী</span>
-            <span className="text-xl font-bold font-display text-slate-800">{stats.total} জন</span>
+            <span className="text-xl font-black font-sans text-slate-800">{stats.total} জন</span>
           </div>
-          <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600"><Users className="h-5 w-5" /></div>
+          <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600 group-hover:bg-blue-100 transition-colors"><Users className="h-5 w-5" /></div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-amber-500 to-orange-500"></div>
+          <div className="space-y-1 text-left">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">ডকুমেন্ট ভেরিফিকেশন</span>
-            <span className="text-xl font-bold font-display text-amber-600">{stats.verification} জন</span>
+            <span className="text-xl font-black font-sans text-amber-600">{stats.verification} জন</span>
           </div>
-          <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600"><Clock className="h-5 w-5" /></div>
+          <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600 group-hover:bg-amber-100 transition-colors"><Clock className="h-5 w-5" /></div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-purple-500 to-fuchsia-500"></div>
+          <div className="space-y-1 text-left">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">দিল্লী প্রসেসিং</span>
-            <span className="text-xl font-bold font-display text-purple-600">{stats.embassy} জন</span>
+            <span className="text-xl font-black font-sans text-purple-600">{stats.embassy} জন</span>
           </div>
-          <div className="rounded-xl bg-purple-50 p-2.5 text-purple-600"><TrendingUp className="h-5 w-5" /></div>
+          <div className="rounded-xl bg-purple-50 p-2.5 text-purple-600 group-hover:bg-purple-100 transition-colors"><TrendingUp className="h-5 w-5" /></div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+          <div className="space-y-1 text-left">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">ভিসা ইস্যু হয়েছে</span>
-            <span className="text-xl font-bold font-display text-emerald-600">{stats.issued} জন</span>
+            <span className="text-xl font-black font-sans text-emerald-600">{stats.issued} জন</span>
           </div>
-          <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600"><Award className="h-5 w-5" /></div>
+          <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 group-hover:bg-emerald-100 transition-colors"><Award className="h-5 w-5" /></div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-rose-500 to-red-500"></div>
+          <div className="space-y-1 text-left">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">অপরিশোধিত বিল</span>
-            <span className="text-xl font-bold font-display text-rose-600">{stats.unpaid} জন</span>
+            <span className="text-xl font-black font-sans text-rose-600">{stats.unpaid} জন</span>
           </div>
-          <div className="rounded-xl bg-rose-50 p-2.5 text-brand-red"><CreditCard className="h-5 w-5" /></div>
+          <div className="rounded-xl bg-rose-50 p-2.5 text-brand-red group-hover:bg-rose-100 transition-colors"><CreditCard className="h-5 w-5" /></div>
         </div>
       </div>
 
@@ -343,23 +506,39 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                       selectedAppId === app.id ? 'bg-brand-sky-light/50 border-r-4 border-brand-sky' : 'hover:bg-slate-50'
                     }`}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-xs font-bold text-slate-800">{app.fullName}</h4>
-                        <span className="font-mono text-[9px] text-slate-400 font-semibold">{app.id}</span>
+                    <div className="flex items-center space-x-3 text-left">
+                      {/* Student Profile Thumbnail */}
+                      <div className="h-9 w-9 rounded-full bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                        {app.profilePhoto ? (
+                          <img 
+                            src={app.profilePhoto} 
+                            alt={app.fullName} 
+                            className="h-full w-full object-cover" 
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <User className="h-5 w-5 text-slate-400" />
+                        )}
                       </div>
-                      <p className="text-[10px] text-slate-500 line-clamp-1">{app.desiredCourse}</p>
-                      <div className="flex items-center space-x-2 text-[9px] text-slate-400 font-mono">
-                        <span>P: {app.passportNumber}</span>
-                        <span>·</span>
-                        <span className={app.paymentStatus === 'Paid' ? 'text-emerald-600 font-bold' : 'text-brand-red font-bold'}>
-                          {app.paymentStatus === 'Paid' ? 'Paid' : 'Unpaid'}
-                        </span>
+                      
+                      <div className="space-y-0.5">
+                        <div className="flex items-center space-x-1.5">
+                          <h4 className="text-xs font-bold text-slate-800">{app.fullName}</h4>
+                          <span className="font-mono text-[9px] text-slate-400 font-semibold">{app.id}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{app.desiredCourse}</p>
+                        <div className="flex items-center space-x-2 text-[9px] text-slate-400 font-mono">
+                          <span>P: {app.passportNumber}</span>
+                          <span>·</span>
+                          <span className={app.paymentStatus === 'Paid' ? 'text-emerald-600 font-bold' : 'text-brand-red font-bold'}>
+                            {app.paymentStatus === 'Paid' ? 'Paid' : 'Unpaid'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="shrink-0 pl-2">
-                      <span className={`rounded px-1.5 py-0.2 text-[8px] font-bold ${
+                      <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${
                         app.status === 'Visa Issued' ? 'bg-emerald-100 text-emerald-800' :
                         app.status === 'Submitted' ? 'bg-blue-100 text-blue-800' :
                         app.status === 'Document Verification' ? 'bg-amber-100 text-amber-800' : 'bg-purple-100 text-purple-800'
@@ -384,24 +563,43 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
             <div className="space-y-6">
               {/* Profile Card Summary */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-100 pb-4 gap-3">
-                  <div>
-                    <span className="text-[9px] font-extrabold uppercase bg-slate-100 px-2.5 py-1 rounded text-slate-600 font-mono">
-                      {selectedApp.id}
-                    </span>
-                    <h3 className="mt-2.5 font-display text-xl font-bold text-slate-800">{selectedApp.fullName}</h3>
-                    <p className="text-xs text-slate-500">{selectedApp.desiredCourse}</p>
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between border-b border-slate-100 pb-4 gap-4">
+                  <div className="flex items-center space-x-4">
+                    {/* Large Student Profile Photo inside admin details panel */}
+                    <div className="h-16 w-16 rounded-2xl bg-slate-50 border-2 border-slate-200 overflow-hidden flex items-center justify-center shrink-0 shadow-sm relative group">
+                      {selectedApp.profilePhoto ? (
+                        <img 
+                          src={selectedApp.profilePhoto} 
+                          alt={selectedApp.fullName} 
+                          className="h-full w-full object-cover" 
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <User className="h-8 w-8 text-slate-300" />
+                      )}
+                    </div>
+                    
+                    <div className="text-left">
+                      <span className="text-[9px] font-extrabold uppercase bg-slate-100 px-2.5 py-1 rounded text-slate-600 font-mono">
+                        {selectedApp.id}
+                      </span>
+                      <h3 className="mt-1.5 font-display text-xl font-black text-slate-800 flex items-center gap-1.5">
+                        {selectedApp.fullName}
+                        <Sparkles className="h-4 w-4 text-brand-gold shrink-0" />
+                      </h3>
+                      <p className="text-xs text-slate-500 font-semibold">{selectedApp.desiredCourse}</p>
+                    </div>
                   </div>
 
                   {/* Status pipeline update triggers */}
-                  <div className="space-y-1 shrink-0">
-                    <label className="text-[10px] font-bold text-slate-400 block uppercase">আবেদন স্ট্যাটাস পরিবর্তন:</label>
+                  <div className="space-y-1.5 shrink-0 text-left">
+                    <label className="text-[10px] font-black text-slate-400 block uppercase">আবেদন স্ট্যাটাস পরিবর্তন:</label>
                     <div className="relative">
                       <select
                         id="admin-change-status-select"
                         value={selectedApp.status}
                         onChange={(e) => handleUpdateStatus(e.target.value as ApplicationStatus)}
-                        className="rounded-lg border border-slate-200 p-2 text-xs font-bold bg-white focus:outline-none text-slate-700"
+                        className="rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-black bg-slate-50 focus:border-brand-sky focus:outline-none text-slate-700 transition-all shadow-sm"
                       >
                         <option value="Submitted">Submitted (আবেদন জমা)</option>
                         <option value="Document Verification">Document Verification (যাচাইকরণ)</option>
@@ -435,6 +633,33 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                       {selectedApp.paymentStatus}
                     </span>
                   </div>
+                </div>
+
+                {/* Quick Communications Actions Toolbar (Highly Premium & Modern Button System) */}
+                <div className="pt-5 border-t border-slate-100 flex flex-col sm:flex-row gap-3 text-left">
+                  <button
+                    type="button"
+                    onClick={() => setIsChatModalOpen(true)}
+                    className="flex-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white p-3.5 text-xs font-black flex items-center justify-center space-x-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-slate-900/10 border border-slate-950 group"
+                  >
+                    <MessageSquare className="h-4 w-4 text-brand-gold animate-bounce shrink-0" />
+                    <span>শিক্ষার্থীর সাথে চ্যাট করুন</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    {(selectedApp.messages && selectedApp.messages.length > 0) && (
+                      <span className="px-2 py-0.5 rounded-full bg-brand-sky text-[8px] text-white font-mono font-black shadow-inner">
+                        {selectedApp.messages.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsNotificationModalOpen(true)}
+                    className="flex-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 p-3.5 text-xs font-black flex items-center justify-center space-x-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] border border-slate-200/80 shadow-sm"
+                  >
+                    <Mail className="h-4 w-4 text-brand-sky shrink-0 animate-pulse" />
+                    <span>কাস্টম নোটিফিকেশন (Email/SMS)</span>
+                  </button>
                 </div>
               </div>
 
@@ -515,62 +740,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                 )}
               </div>
 
-              {/* Custom Notifications Dispatcher */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                <h4 className="font-display font-bold text-slate-800 text-sm border-b border-slate-50 pb-3">
-                  কাস্টম নোটিফিকেশন পাঠান (Send Custom Email/SMS Alert)
-                </h4>
-
-                <form onSubmit={handleSendCustomNotification} className="space-y-3">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="space-y-1 sm:col-span-2">
-                      <label className="text-[10px] font-bold text-slate-500">নোটিফিকেশনের শিরোনাম (Subject/Title):</label>
-                      <input
-                        required
-                        type="text"
-                        value={notifTitle}
-                        onChange={(e) => setNotifTitle(e.target.value)}
-                        placeholder="যেমন: পুলিশ ক্লিয়ারেন্স অ্যাটেস্টেশন সম্পন্ন হয়েছে"
-                        className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:outline-none focus:border-brand-sky"
-                      />
-                    </div>
-                    <div className="space-y-1 sm:col-span-1">
-                      <label className="text-[10px] font-bold text-slate-500">মাধ্যমে (Channel):</label>
-                      <select
-                        value={notifType}
-                        onChange={(e) => setNotifType(e.target.value as 'sms' | 'email')}
-                        className="w-full rounded-lg border border-slate-200 p-2 text-xs bg-white focus:outline-none focus:border-brand-sky font-semibold"
-                      >
-                        <option value="sms">💬 SMS Alert</option>
-                        <option value="email">📧 Email Notification</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500">বার্তা (Message Body):</label>
-                    <textarea
-                      required
-                      rows={2}
-                      value={notifBody}
-                      onChange={(e) => setNotifBody(e.target.value)}
-                      placeholder="এখানে বার্তার মূল অংশ লিখুন..."
-                      className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:outline-none focus:border-brand-sky"
-                    />
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      id="admin-btn-send-notif"
-                      type="submit"
-                      className="flex items-center space-x-1.5 rounded-lg bg-brand-sky text-white px-4 py-2 text-xs font-bold hover:bg-brand-sky-dark border-b border-brand-gold"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                      <span>নোটিফিকেশন পাঠান</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
+              {/* No more inline communication panels - they are now beautiful modals! */}
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-400 text-xs">
@@ -579,6 +749,283 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
           )}
         </div>
       </div>
+
+      {/* Modern Popups & Modals (AnimatePresence) */}
+      <AnimatePresence>
+        {/* 1. Live Chat Modal Popup */}
+        {isChatModalOpen && selectedApp && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" id="chat-modal-overlay">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="max-w-2xl w-full bg-white rounded-none sm:rounded-3xl border border-slate-200/80 shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[85vh] relative text-left"
+              id="admin-chat-modal-box"
+            >
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-slate-900 to-slate-800 p-4 sm:p-5 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center space-x-3.5">
+                  <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-slate-700 border-2 border-slate-600 overflow-hidden flex items-center justify-center shrink-0">
+                    {selectedApp.profilePhoto ? (
+                      <img 
+                        src={selectedApp.profilePhoto} 
+                        alt={selectedApp.fullName} 
+                        className="h-full w-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <User className="h-5 w-5 sm:h-6 sm:w-6 text-slate-300" />
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-black tracking-tight">{selectedApp.fullName}</h4>
+                    <p className="text-[9px] sm:text-[10px] text-slate-300 font-semibold font-mono flex items-center gap-1 sm:gap-1.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      ID: {selectedApp.id} <span className="hidden sm:inline">· Passport: {selectedApp.passportNumber}</span>
+                    </p>
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setIsChatModalOpen(false)}
+                  className="rounded-xl p-1 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <XCircle className="h-5.5 w-5.5 sm:h-6 sm:w-6" />
+                </button>
+              </div>
+
+              {/* Chat window box with gorgeous scrolling message speech bubbles */}
+              <div className="p-4 sm:p-5 overflow-y-auto space-y-3 bg-slate-50 flex-1 min-h-[200px] flex flex-col">
+                {(!selectedApp.messages || selectedApp.messages.length === 0) ? (
+                  <div className="my-auto text-center space-y-2">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto">
+                      <MessageSquare className="h-6 w-6 text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-slate-500 text-xs font-black">কোনো বার্তালাপ নেই।</p>
+                      <p className="text-[10px] text-slate-400 max-w-[280px] mx-auto leading-relaxed">শিক্ষার্থীর সাথে চ্যাট শুরু করতে নিচের কুইক টেমপ্লেট ব্যবহার করতে পারেন অথবা মেসেজ টাইপ করুন।</p>
+                    </div>
+                  </div>
+                ) : (
+                  selectedApp.messages.map((msg) => {
+                    const isAdmin = msg.sender === 'admin';
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col max-w-[85%] ${
+                          isAdmin ? 'align-end self-end items-end' : 'align-start self-start items-start'
+                        }`}
+                      >
+                        <div
+                          className={`rounded-2xl px-4 py-2.5 text-xs shadow-sm ${
+                            isAdmin
+                              ? 'bg-slate-900 text-white rounded-tr-none border-b border-slate-950'
+                              : 'bg-white text-slate-800 rounded-tl-none border border-slate-200/70'
+                          }`}
+                        >
+                          <p className="leading-relaxed font-semibold">{msg.text}</p>
+                        </div>
+                        <span className="text-[9px] text-slate-400 mt-1 px-1 font-mono font-semibold">
+                          {isAdmin ? 'অ্যাডমিন (আপনি)' : 'শিক্ষার্থী'} · {msg.sentAt}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Quick Template Presets selector inside the chat popup */}
+              <div className="px-4 sm:px-5 py-3 border-t border-slate-100 bg-white space-y-1.5 text-left shrink-0">
+                <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">কুইক টেমপ্লেট (Quick Send Presets):</span>
+                <div className="flex flex-wrap gap-1.5 max-h-[75px] sm:max-h-[none] overflow-y-auto pr-1">
+                  {[
+                    "আপনার আপলোডকৃত ডকুমেন্টস সফলভাবে ভেরিফিকেশন করা হয়েছে। ধন্যবাদ।",
+                    "আপনার পাসপোর্টের স্ক্যান কপিটি অস্পষ্ট। দয়া করে ড্যাশবোর্ড থেকে পুনরায় আপলোড করুন।",
+                    "অভিনন্দন! আপনার বয়স ও রেজাল্ট অনুযায়ী বিজ্ঞান ও প্রযুক্তি বিশ্ববিদ্যালয় নির্বাচন সফল হয়েছে।",
+                    "অভিনন্দন! আপনার বুলগেরিয়া স্টুডেন্ট ভিসা অনুমোদিত ও পাসপোর্ট স্ট্যাম্পড হয়েছে।",
+                    "আপনার দিল্লী প্রসেসিং এর ১ম কিস্তি ফি বকেয়া আছে। অনুগ্রহ করে পরিশোধ করুন।"
+                  ].map((presetText, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setAdminMessageText(presetText)}
+                      className="text-[9px] font-bold bg-slate-100 text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark border border-slate-200/50 px-2 py-1 rounded-lg transition-all truncate max-w-[190px]"
+                      title={presetText}
+                    >
+                      {presetText}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Message input area */}
+              <form onSubmit={handleSendAdminMessage} className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 flex gap-2 sm:gap-2.5 items-center shrink-0">
+                <input
+                  required
+                  type="text"
+                  value={adminMessageText}
+                  onChange={(e) => setAdminMessageText(e.target.value)}
+                  placeholder="মেসেজ লিখুন..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all shadow-inner"
+                />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-slate-900 text-white px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-black hover:bg-slate-800 transition-all border-b border-brand-gold shrink-0 flex items-center space-x-1.5"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">পাঠান</span>
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 2. Custom Notifications (Email/SMS) Modal Popup */}
+        {isNotificationModalOpen && selectedApp && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" id="notification-modal-overlay">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="max-w-xl w-full bg-white rounded-none sm:rounded-3xl border border-slate-200/80 shadow-2xl p-5 sm:p-6 relative text-left space-y-4 h-full sm:h-auto overflow-y-auto flex flex-col sm:block"
+              id="admin-notification-modal-box"
+            >
+              {/* Modal Close */}
+              <button
+                type="button"
+                onClick={() => setIsNotificationModalOpen(false)}
+                className="absolute top-4 right-4 sm:top-5 sm:right-5 rounded-xl p-1 text-slate-400 hover:text-slate-600 transition-colors z-10"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+
+              <div className="flex items-center space-x-3 border-b border-slate-100 pb-4 pr-8 shrink-0">
+                <div className="h-10 w-10 rounded-xl bg-brand-sky-light text-brand-sky flex items-center justify-center shrink-0">
+                  <Mail className="h-5.5 w-5.5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-800">স্মার্ট নোটিফিকেশন হাব (Custom Dispatcher)</h4>
+                  <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold truncate max-w-[200px] sm:max-w-none">শিক্ষার্থী: {selectedApp.fullName} ({selectedApp.phone})</p>
+                </div>
+              </div>
+
+              {/* Direct Template Quick Presets to ease work */}
+              <div className="space-y-1.5 shrink-0">
+                <label className="text-[10px] font-black text-slate-500 block">কুইক প্রিসেটস (Auto-Fill Presets):</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-left max-h-[110px] sm:max-h-none overflow-y-auto pr-1">
+                  {[
+                    {
+                      label: "✅ বোর্ড ডকুমেন্টস এপ্রুভড",
+                      title: "আপনার বোর্ড ডকুমেন্টস ভেরিফিকেশন সম্পন্ন হয়েছে!",
+                      body: `প্রিয় ${selectedApp.fullName}, আপনার বোর্ড আপলোডকৃত কাগজপত্র সফলভাবে যাচাই করা হয়েছে। পরবর্তী প্রসেসিং এর জন্য অপেক্ষা করুন।`
+                    },
+                    {
+                      label: "❌ ইনকমপ্লিট ডকুমেন্টস এলার্ট",
+                      title: "কাগজপত্র অসম্পূর্ণ বা ক্রুটিপূর্ণ এলার্ট",
+                      body: `প্রিয় ${selectedApp.fullName}, আপনার আপলোডকৃত ডকুমেন্টস এর মধ্যে কিছু ত্রুটি পাওয়া গেছে। দয়া করে প্রোফাইল থেকে রিজেকশন ফিডব্যাক পড়ে পুনরায় সঠিক ফাইল আপলোড করুন।`
+                    },
+                    {
+                      label: "🛂 দিল্লী এম্বাসি বুকিং স্লট",
+                      title: "দিল্লী এম্বাসি বুকিং এবং ভারতীয় ভাষা শিডিউল সম্পন্ন",
+                      body: `প্রিয় ${selectedApp.fullName}, আপনার বুলগেরিয়ান ফাইল ভারতীয় দিল্লী হাই কমিশন এম্বাসি ইন্টারভিউ স্লটের জন্য শিডিউল বুকড করা হয়েছে। বিস্তারিত দেখতে ইনবক্স চেক করুন।`
+                    },
+                    {
+                      label: "✈️ visa issue alert",
+                      title: "অভিনন্দন! বুলগেরিয়া ভিসা ইস্যু সম্পন্ন",
+                      body: `অভিনন্দন ${selectedApp.fullName}! আপনার দেশীয় পাসপোর্ট দিল্লীস্থ বুলগেরিয়া এম্বাসি থেকে স্টুডেন্ট ভিসা স্ট্যাম্পড হয়ে ফেরত এসেছে। টিকিট বুকিং সংক্রান্ত তথ্যের জন্য যোগাযোগ করুন।`
+                    }
+                  ].map((preset, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setNotifTitle(preset.title);
+                        setNotifBody(preset.body);
+                      }}
+                      className="text-[10px] font-bold bg-slate-50 hover:bg-brand-sky-light/50 border border-slate-200 p-2 rounded-xl text-slate-700 transition-all text-left truncate"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={(e) => {
+                handleSendCustomNotification(e);
+                setIsNotificationModalOpen(false);
+              }} className="space-y-4 flex-1 sm:flex-none flex flex-col sm:block justify-between">
+                <div className="space-y-4">
+                  <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-[10px] font-black text-slate-500">নোটিফিকেশনের শিরোনাম (Subject/Title):</label>
+                      <input
+                        required
+                        type="text"
+                        value={notifTitle}
+                        onChange={(e) => setNotifTitle(e.target.value)}
+                        placeholder="যেমন: পাসপোর্ট অ্যাটেস্টেশন সম্পন্ন হয়েছে"
+                        className="w-full rounded-xl border border-slate-200 p-2.5 sm:p-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1 sm:col-span-1">
+                      <label className="text-[10px] font-black text-slate-500">মাধ্যমে (Channel):</label>
+                      <select
+                        value={notifType}
+                        onChange={(e) => setNotifType(e.target.value as 'sms' | 'email')}
+                        className="w-full rounded-xl border border-slate-200 p-2.5 sm:p-3 text-xs bg-slate-50 focus:outline-none focus:border-brand-sky font-bold text-slate-700 cursor-pointer"
+                      >
+                        <option value="sms">💬 SMS Alert</option>
+                        <option value="email">📧 Email Notification</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500">বার্তা (Message Body):</label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={notifBody}
+                      onChange={(e) => setNotifBody(e.target.value)}
+                      placeholder="এখানে বার্তার মূল অংশ লিখুন..."
+                      className="w-full rounded-xl border border-slate-200 p-2.5 sm:p-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between text-[10px] font-bold text-slate-500 bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></span>
+                      প্রাপক: {notifType === 'sms' ? selectedApp.phone : selectedApp.email}
+                    </span>
+                    <span className="shrink-0">{notifBody.length} অক্ষর</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-2 pt-3 border-t border-slate-100 mt-4 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsNotificationModalOpen(false)}
+                    className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                  >
+                    বাতিল করুন
+                  </button>
+                  <button
+                    id="admin-btn-send-notif"
+                    type="submit"
+                    className="flex items-center space-x-1.5 rounded-xl bg-brand-sky text-white px-5 py-2.5 text-xs font-black hover:bg-brand-sky-dark shadow-md transition-all active:scale-95"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    <span>পাঠান</span>
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

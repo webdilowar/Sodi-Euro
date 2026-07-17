@@ -1,0 +1,37 @@
+{
+  "entities": {
+    "application": {
+      "title": "Application",
+      "description": "Represents a student visa application for Sodi Euro",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "passportNumber": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "desiredCourse": { "type": "string" },
+        "status": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "paymentAmount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "paymentTxnId": { "type": "string" },
+        "paymentDate": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "documents": {
+          "type": "array"
+        },
+        "notificationHistory": {
+          "type": "array"
+        }
+      },
+      "required": ["id", "fullName", "passportNumber", "email", "phone", "desiredCourse", "status", "paymentStatus", "paymentAmount", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/applications/{applicationId}": {
+      "schema": "application",
+      "description": "Student visa applications and tracking logs"
+    }
+  }
+}

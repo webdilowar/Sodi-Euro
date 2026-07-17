@@ -18,23 +18,16 @@ import {
   Clock,
   HelpCircle
 } from 'lucide-react';
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from './firebase';
 
 export default function App() {
   // Navigation view state
   const [view, setView] = useState<'lobby' | 'student' | 'admin'>('lobby');
   
-  // Applications local state, loaded from localStorage or fallback
-  const [applications, setApplications] = useState<Application[]>(() => {
-    const saved = localStorage.getItem('bulgaria_applications_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Error parsing saved applications', e);
-      }
-    }
-    return initialApplications;
-  });
+  // Applications state loaded and synced with Firestore
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Track the logged in/selected student application ID in the dashboard
   const [activeAppId, setActiveAppId] = useState<string | null>(() => {
@@ -50,10 +43,36 @@ export default function App() {
     recipient: string;
   } | null>(null);
 
-  // Synchronize state with localStorage
+  // Synchronize applications with Firestore real-time onSnapshot listener
   useEffect(() => {
-    localStorage.setItem('bulgaria_applications_v1', JSON.stringify(applications));
-  }, [applications]);
+    const q = collection(db, 'applications');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: Application[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as Application);
+      });
+      
+      // If there are no applications in the DB, seed with initialApplications
+      if (snapshot.empty) {
+        initialApplications.forEach(async (app) => {
+          try {
+            await setDoc(doc(db, 'applications', app.id), app);
+          } catch (err) {
+            handleFirestoreError(err, OperationType.WRITE, `applications/${app.id}`);
+          }
+        });
+      } else {
+        // Sort by createdAt desc or ID
+        list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        setApplications(list);
+        setIsLoading(false);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'applications');
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (activeAppId) {
@@ -64,41 +83,49 @@ export default function App() {
   }, [activeAppId]);
 
   // Callback to add a new application
-  const handleAddApplication = (newApp: Application) => {
-    setApplications(prev => [...prev, newApp]);
-    
-    // Trigger live notification alert
-    const firstNotif = newApp.notificationHistory[0];
-    if (firstNotif) {
-      setLiveNotification({
-        id: firstNotif.id,
-        title: firstNotif.title,
-        body: firstNotif.body,
-        type: firstNotif.type,
-        recipient: firstNotif.recipient
-      });
+  const handleAddApplication = async (newApp: Application) => {
+    try {
+      await setDoc(doc(db, 'applications', newApp.id), newApp);
+      
+      // Trigger live notification alert
+      const firstNotif = newApp.notificationHistory[0];
+      if (firstNotif) {
+        setLiveNotification({
+          id: firstNotif.id,
+          title: firstNotif.title,
+          body: firstNotif.body,
+          type: firstNotif.type,
+          recipient: firstNotif.recipient
+        });
+      }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, `applications/${newApp.id}`);
     }
   };
 
   // Callback to update an application
-  const handleUpdateApplication = (updatedApp: Application) => {
-    setApplications(prev => prev.map(app => app.id === updatedApp.id ? updatedApp : app));
-    
-    // Detect if a new notification has been appended to trigger the floating simulated phone notification
-    const oldApp = applications.find(a => a.id === updatedApp.id);
-    if (oldApp) {
-      const oldLen = oldApp.notificationHistory.length;
-      const newLen = updatedApp.notificationHistory.length;
-      if (newLen > oldLen) {
-        const latestNotif = updatedApp.notificationHistory[newLen - 1];
-        setLiveNotification({
-          id: latestNotif.id,
-          title: latestNotif.title,
-          body: latestNotif.body,
-          type: latestNotif.type,
-          recipient: latestNotif.recipient
-        });
+  const handleUpdateApplication = async (updatedApp: Application) => {
+    try {
+      await setDoc(doc(db, 'applications', updatedApp.id), updatedApp);
+      
+      // Detect if a new notification has been appended to trigger the floating simulated phone notification
+      const oldApp = applications.find(a => a.id === updatedApp.id);
+      if (oldApp) {
+        const oldLen = oldApp.notificationHistory.length;
+        const newLen = updatedApp.notificationHistory.length;
+        if (newLen > oldLen) {
+          const latestNotif = updatedApp.notificationHistory[newLen - 1];
+          setLiveNotification({
+            id: latestNotif.id,
+            title: latestNotif.title,
+            body: latestNotif.body,
+            type: latestNotif.type,
+            recipient: latestNotif.recipient
+          });
+        }
       }
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `applications/${updatedApp.id}`);
     }
   };
 
@@ -124,63 +151,79 @@ export default function App() {
       {/* 2. Main Page Render */}
       <main className="flex-grow mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-6">
         <AnimatePresence mode="wait">
-          {view === 'lobby' && (
+          {isLoading ? (
             <motion.div
-              key="lobby"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center py-20 space-y-4"
+              id="app-loading-screen"
             >
-              <Lobby onGoToApply={() => {
-                setView('student');
-                // If they don't have an active app, reset ID to let them search/apply
-                if (!activeAppId) {
-                  setActiveAppId(null);
-                }
-              }} />
+              <div className="h-10 w-10 border-4 border-brand-sky border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-bold text-slate-500 animate-pulse">Sodi Euro ডাটাবেস লোড হচ্ছে...</p>
             </motion.div>
-          )}
+          ) : (
+            <>
+              {view === 'lobby' && (
+                <motion.div
+                  key="lobby"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <Lobby onGoToApply={() => {
+                    setView('student');
+                    // If they don't have an active app, reset ID to let them search/apply
+                    if (!activeAppId) {
+                      setActiveAppId(null);
+                    }
+                  }} />
+                </motion.div>
+              )}
 
-          {view === 'student' && (
-            <motion.div
-              key="student"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <StudentDashboard 
-                applications={applications}
-                onAddApplication={handleAddApplication}
-                onUpdateApplication={handleUpdateApplication}
-                activeAppId={activeAppId}
-                setActiveAppId={setActiveAppId}
-              />
-            </motion.div>
-          )}
+              {view === 'student' && (
+                <motion.div
+                  key="student"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <StudentDashboard 
+                    applications={applications}
+                    onAddApplication={handleAddApplication}
+                    onUpdateApplication={handleUpdateApplication}
+                    activeAppId={activeAppId}
+                    setActiveAppId={setActiveAppId}
+                  />
+                </motion.div>
+              )}
 
-          {view === 'admin' && (
-            <motion.div
-              key="admin"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="space-y-2 mb-4" id="admin-header-note">
-                <span className="text-[10px] bg-slate-800 text-white font-bold uppercase tracking-wider px-2.5 py-1 rounded">
-                  প্রশাসনিক ড্যাশবোর্ড (Agency Management Console)
-                </span>
-                <p className="text-xs text-slate-500">
-                  এখান থেকে শিক্ষার্থীদের ডকুমেন্ট স্ট্যাটাস অনুমোদন/প্রত্যাখ্যান করুন, অ্যাপ্লিকেশনের লাইভ পজিশন পরিবর্তন করুন এবং কাস্টম নোটিফিকেশন অ্যালার্ট ট্রিগার করুন।
-                </p>
-              </div>
-              <AdminPanel 
-                applications={applications}
-                onUpdateApplication={handleUpdateApplication}
-              />
-            </motion.div>
+              {view === 'admin' && (
+                <motion.div
+                  key="admin"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div className="space-y-2 mb-4" id="admin-header-note">
+                    <span className="text-[10px] bg-slate-800 text-white font-bold uppercase tracking-wider px-2.5 py-1 rounded">
+                      প্রশাসনিক ড্যাশবোর্ড (Agency Management Console)
+                    </span>
+                    <p className="text-xs text-slate-500">
+                      এখান থেকে শিক্ষার্থীদের ডকুমেন্ট স্ট্যাটাস অনুমোদন/প্রত্যাখ্যান করুন, অ্যাপ্লিকেশনের লাইভ পজিশন পরিবর্তন করুন এবং কাস্টম নোটিফিকেশন অ্যালার্ট ট্রিগার করুন।
+                    </p>
+                  </div>
+                  <AdminPanel 
+                    applications={applications}
+                    onUpdateApplication={handleUpdateApplication}
+                  />
+                </motion.div>
+              )}
+            </>
           )}
         </AnimatePresence>
       </main>
