@@ -22,6 +22,26 @@ import {
 import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
 
+const triggerRealEmailSend = async (to: string, subject: string, body: string) => {
+  try {
+    const response = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ to, subject, body }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('Failed to send real email via API:', result);
+    } else {
+      console.log('Real email send result:', result);
+    }
+  } catch (error) {
+    console.error('Error sending real email:', error);
+  }
+};
+
 export default function App() {
   // Navigation view state
   const [view, setView] = useState<'lobby' | 'student' | 'admin' | 'support'>(() => {
@@ -105,6 +125,12 @@ export default function App() {
           recipient: firstNotif.recipient
         });
       }
+
+      // Send real email updates for any email notifications
+      const emailNotifs = newApp.notificationHistory.filter(n => n.type === 'email');
+      for (const notif of emailNotifs) {
+        triggerRealEmailSend(notif.recipient, notif.title, notif.body);
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, `applications/${newApp.id}`);
     }
@@ -129,6 +155,13 @@ export default function App() {
             type: latestNotif.type,
             recipient: latestNotif.recipient
           });
+        }
+
+        // Send real email updates for newly appended email notifications
+        const oldIds = new Set(oldApp.notificationHistory.map(n => n.id));
+        const newEmails = updatedApp.notificationHistory.filter(n => n.type === 'email' && !oldIds.has(n.id));
+        for (const notif of newEmails) {
+          triggerRealEmailSend(notif.recipient, notif.title, notif.body);
         }
       }
     } catch (err) {
