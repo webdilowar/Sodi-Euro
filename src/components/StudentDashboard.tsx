@@ -35,7 +35,8 @@ import {
   BookOpen,
   Compass,
   Flame,
-  RotateCcw
+  RotateCcw,
+  Eye
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -44,6 +45,34 @@ interface StudentDashboardProps {
   onUpdateApplication: (app: Application) => void;
   activeAppId: string | null;
   setActiveAppId: (id: string | null) => void;
+}
+
+/**
+ * Converts a base64 Data URI to a local Blob URL for reliable browser rendering (avoiding iframe sandbox data: URI blocks).
+ */
+function getSafePreviewUrl(dataUrl: string): string {
+  if (!dataUrl) return '';
+  if (!dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+  try {
+    const parts = dataUrl.split(',');
+    if (parts.length < 2) return dataUrl;
+    
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    
+    const binary = atob(parts[1]);
+    const array = [];
+    for (let i = 0; i < binary.length; i++) {
+      array.push(binary.charCodeAt(i));
+    }
+    const blob = new Blob([new Uint8Array(array)], { type: mime });
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error('Error generating preview URL:', error);
+    return dataUrl;
+  }
 }
 
 const universityCoursesMap: Record<string, { courses: string[]; logoColor: string; tuitionFee: string; location: string }> = {
@@ -136,10 +165,21 @@ export default function StudentDashboard({
 
   // New Step-by-Step wizard states
   const [wizardStep, setWizardStep] = useState(1);
+  const [maxStepReached, setMaxStepReached] = useState(1);
   const [selectedApplyUni, setSelectedApplyUni] = useState('');
   const [selectedApplyCourse, setSelectedApplyCourse] = useState('');
   const [isUniDropdownOpen, setIsUniDropdownOpen] = useState(false);
   const [isEditingUniCourse, setIsEditingUniCourse] = useState(false);
+
+  // Profile editing states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editProfileData, setEditProfileData] = useState({
+    fullName: '',
+    passportNumber: '',
+    email: '',
+    phone: ''
+  });
+  const [editProfileError, setEditProfileError] = useState('');
 
   // Payment states
   const [paymentMethod, setPaymentMethod] = useState<'bkash' | 'nagad' | 'card'>('bkash');
@@ -160,6 +200,9 @@ export default function StudentDashboard({
   const [uploadingDocCategory, setUploadingDocCategory] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [currentUploadingCategory, setCurrentUploadingCategory] = useState<string>('');
+  const [previewDoc, setPreviewDoc] = useState<UploadedDocument | null>(null);
 
   // List Verification states
   const [selectedVerifyApp, setSelectedVerifyApp] = useState<Application | null>(null);
@@ -171,6 +214,43 @@ export default function StudentDashboard({
 
   // Active Application object
   const activeApp = applications.find(a => a.id === activeAppId);
+
+  // Dynamic step-by-step validation helpers
+  const isStep1Valid = (): boolean => {
+    if (!formData.fullName.trim() || !formData.passportNumber.trim() || !formData.email.trim() || !formData.phone.trim()) {
+      return false;
+    }
+    const cleanPhone = formData.phone.replace(/[\s-]/g, '');
+    let localPhone = cleanPhone;
+    if (cleanPhone.startsWith('+880')) {
+      localPhone = cleanPhone.slice(3);
+    } else if (cleanPhone.startsWith('880')) {
+      localPhone = cleanPhone.slice(3);
+    }
+    if (!/^01[3-9]\d{8}$/.test(localPhone)) {
+      return false;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      return false;
+    }
+    return true;
+  };
+
+  const isStep2Valid = (): boolean => {
+    return isStep1Valid() && !!selectedApplyUni && !!selectedApplyCourse;
+  };
+
+  const isStep3Valid = (): boolean => {
+    return isStep2Valid() && selectedServices.length > 0;
+  };
+
+  const isStepAllowed = (stepNum: number): boolean => {
+    if (stepNum === 1) return true;
+    if (stepNum === 2) return isStep1Valid();
+    if (stepNum === 3) return isStep2Valid();
+    if (stepNum === 4) return isStep3Valid();
+    return false;
+  };
 
   // Handle Student Login (using Passport Number as both Username and Password)
   const handleStudentLogin = (e: React.FormEvent) => {
@@ -318,6 +398,7 @@ export default function StudentDashboard({
     setShowApplyForm(false);
     // Reset wizard
     setWizardStep(1);
+    setMaxStepReached(1);
     setSelectedApplyUni('Technical University of Sofia');
     setSelectedApplyCourse('BSc in Computer Science (কম্পিউটার সায়েন্স)');
     setIsUniDropdownOpen(false);
@@ -331,49 +412,74 @@ export default function StudentDashboard({
     setActiveTab('documents'); // Direct them to document upload
   };
 
-  // Simulating File Upload
-  const handleFileUpload = (category: string) => {
-    if (!activeApp) return;
-    setUploadingDocCategory(category);
-    
+  // Real File Upload Handlers
+  const triggerFileUpload = (category: string) => {
+    setCurrentUploadingCategory(category);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''; // Reset
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeApp) return;
+
+    setUploadingDocCategory(currentUploadingCategory);
     let progress = 10;
     setUploadProgress(progress);
 
     const interval = setInterval(() => {
-      progress += 30;
+      progress += 25;
       if (progress >= 100) {
         clearInterval(interval);
         setUploadProgress(100);
-        
-        // Complete upload and update state
-        const matchedReq = documentRequirements.find(r => r.id === category);
+
+        const matchedReq = documentRequirements.find(r => r.id === currentUploadingCategory);
         const newDoc: UploadedDocument = {
           id: `doc-${Date.now()}`,
           name: matchedReq?.title.split('(')[0].trim() || 'Uploaded Document',
-          category,
-          fileName: `${category}_uploaded_${activeApp.id.toLowerCase()}.pdf`,
-          fileSize: `${(Math.random() * 3 + 1).toFixed(1)} MB`,
+          category: currentUploadingCategory,
+          fileName: file.name,
+          fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
           status: 'Pending',
           uploadedAt: new Date().toISOString().replace('T', ' ').substring(0, 16)
         };
 
-        // Check if document already uploaded, if so, replace it
-        const filteredDocs = activeApp.documents.filter(d => d.category !== category);
-        const updatedApp: Application = {
-          ...activeApp,
-          documents: [...filteredDocs, newDoc]
-        };
+        // If file is an image and under 1MB, let's keep a dataurl reference
+        if (file.size < 1024 * 1024) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            newDoc.fileUrl = reader.result as string;
+            const filteredDocs = activeApp.documents.filter(d => d.category !== currentUploadingCategory);
+            const updatedApp: Application = {
+              ...activeApp,
+              documents: [...filteredDocs, newDoc]
+            };
+            onUpdateApplication(updatedApp);
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const filteredDocs = activeApp.documents.filter(d => d.category !== currentUploadingCategory);
+          const updatedApp: Application = {
+            ...activeApp,
+            documents: [...filteredDocs, newDoc]
+          };
+          onUpdateApplication(updatedApp);
+        }
 
-        onUpdateApplication(updatedApp);
         setTimeout(() => {
           setUploadingDocCategory('');
-          setSelectedFile(null);
           setUploadProgress(0);
         }, 600);
       } else {
         setUploadProgress(progress);
       }
-    }, 200);
+    }, 150);
+  };
+
+  const handleFileUpload = (category: string) => {
+    triggerFileUpload(category);
   };
 
   // Simulating Payment Gateways
@@ -512,7 +618,8 @@ export default function StudentDashboard({
     <div className="py-6 space-y-8" id="student-portal-root">
       {/* Search / Track Area if not logged in */}
       {!activeApp ? (
-        <motion.div 
+        <div className="space-y-8">
+          <motion.div 
           initial={{ opacity: 0, rotateX: -15, y: 30 }}
           animate={{ opacity: 1, rotateX: 0, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
@@ -554,145 +661,123 @@ export default function StudentDashboard({
                   <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (পাসপোর্ট নম্বর):</label>
                   <div className="relative">
                     <input
-                      id="track-password-input"
                       required
                       type="password"
+                      placeholder="যেমন: EF0192837"
                       value={studentPassword}
                       onChange={(e) => setStudentPassword(e.target.value)}
-                      placeholder="পাসপোর্ট নম্বরটি পুনরায় লিখুন"
-                      className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
+                      className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold font-mono"
                     />
                     <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
                   </div>
                 </div>
               </div>
 
-              {searchError && <p className="text-[11px] text-red-500 font-bold bg-red-50 p-2.5 rounded border border-red-100" id="search-error">{searchError}</p>}
+              {searchError && (
+                <div className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-xl p-3 flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <span>{searchError}</span>
+                </div>
+              )}
 
-              <button
-                id="submit-search-track-btn"
-                type="submit"
-                className="w-full flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold-dark py-3 text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-brand-sky/20"
-              >
-                <span>ড্যাশবোর্ডে লগইন করুন</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="submit"
+                  className="w-full rounded-xl bg-slate-900 py-3 text-xs font-black text-white hover:bg-slate-800 transition-all border-b border-brand-gold"
+                >
+                  ট্র্যাক করুন
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowApplyForm(!showApplyForm)}
+                  className="w-full rounded-xl border-2 border-brand-sky py-3 text-xs font-black text-brand-sky hover:bg-brand-sky/5 transition-all"
+                >
+                  {showApplyForm ? "আবেদন ফর্ম বন্ধ করুন" : "নতুন ফাইল ওপেন করুন"}
+                </button>
+              </div>
             </form>
+          </div>
+        </motion.div>
 
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-slate-100"></div>
-              <span className="flex-shrink mx-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">অথবা নতুন আবেদন</span>
-              <div className="flex-grow border-t border-slate-100"></div>
-            </div>
+        {/* New Application Form with folding effect */}
+        <AnimatePresence>
+          {showApplyForm && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, rotateX: -20, transformOrigin: "top" }}
+            animate={{ opacity: 1, height: "auto", rotateX: 0 }}
+            exit={{ opacity: 0, height: 0, rotateX: -20 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="rounded-2xl border-2 border-brand-gold/15 bg-white p-5 md:p-6 shadow-xl space-y-6 overflow-visible perspective-1000" 
+            id="new-apply-form-block"
+          >
+            {/* Wizard Header & Progress Bar */}
+            <div className="border-b border-slate-100 pb-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-display font-black text-slate-800 text-base md:text-lg flex items-center gap-1.5">
+                    <Sparkles className="h-5 w-5 text-brand-gold animate-pulse" />
+                    <span>বুলগেরিয়া স্টুডেন্ট ভিসা ফাইলিং পোর্টাল</span>
+                  </h3>
+                  <p className="text-[10px] md:text-xs text-slate-500">সহজ এবং স্বয়ংক্রিয় ধাপে আপনার ফাইল ওপেন করার প্রসেস সম্পন্ন করুন।</p>
+                </div>
+                <span className="text-xs font-black px-2.5 py-1 bg-brand-sky-light text-brand-sky border border-brand-sky/25 rounded-lg shrink-0">
+                  ধাপ {wizardStep} / ৪
+                </span>
+              </div>
 
-            {/* Test Student Quick Selects - Extremely Helpful */}
-            <div className="space-y-3">
-              <h4 className="text-[10px] text-slate-500 font-bold uppercase tracking-wider text-center">টেস্ট ডেমো স্টুডেন্টদের তালিকা (ক্লিক করে ট্র্যাক করুন):</h4>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {applications.map((app) => (
-                  <button
-                    key={app.id}
-                    id={`quick-select-${app.id}`}
-                    onClick={() => handleQuickSelect(app.id)}
-                    className="flex items-center justify-between rounded-xl border-2 border-slate-100 bg-slate-50/50 px-4 py-2.5 text-left transition-all hover:bg-brand-sky-light/60 hover:border-brand-sky/30"
-                  >
-                    <div>
-                      <h5 className="text-xs font-bold text-slate-800 leading-tight">{app.fullName}</h5>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{app.id} · {app.passportNumber}</p>
-                    </div>
-                    {getStatusBadge(app.status)}
-                  </button>
-                ))}
+              {/* Step Indicators */}
+              <div className="relative pt-2">
+                <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0"></div>
+                <div 
+                  className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-brand-sky to-brand-gold -translate-y-1/2 z-0 transition-all duration-500"
+                  style={{ width: `${((wizardStep - 1) / 3) * 100}%` }}
+                ></div>
+                
+                <div className="relative flex justify-between z-10">
+                  {[
+                    { step: 1, label: "ব্যক্তিগত তথ্য" },
+                    { step: 2, label: "ইউনিভার্সিটি ও কোর্স" },
+                    { step: 3, label: "সার্ভিসসমূহ" },
+                    { step: 4, label: "রিভিউ ও সাবমিট" }
+                  ].map((s) => {
+                    const isActive = wizardStep === s.step;
+                    const isCompleted = wizardStep > s.step;
+                    const isAllowed = isStepAllowed(s.step);
+                    return (
+                      <div key={s.step} className="flex flex-col items-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isAllowed) {
+                              setWizardStep(s.step);
+                            }
+                          }}
+                          disabled={!isAllowed}
+                          className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[11px] font-black transition-all ${
+                            isActive 
+                              ? "bg-brand-sky border-brand-sky text-white shadow-md shadow-brand-sky/20 scale-110 animate-pulse" 
+                              : isCompleted 
+                                ? "bg-emerald-500 border-emerald-500 text-white cursor-pointer hover:bg-emerald-600" 
+                                : isAllowed
+                                  ? "bg-white border-brand-sky/60 text-brand-sky cursor-pointer hover:bg-brand-sky/5"
+                                  : "bg-white border-slate-200 text-slate-400 cursor-not-allowed"
+                          }`}
+                          title={`${s.label} ধাপে যান`}
+                        >
+                          {isCompleted ? <span className="text-[10px]">✔</span> : s.step}
+                        </button>
+                        <span className={`hidden md:block text-[9px] font-bold mt-1.5 ${
+                          isActive ? "text-brand-sky" : isCompleted ? "text-emerald-600" : isAllowed ? "text-brand-sky/80" : "text-slate-400"
+                        }`}>
+                          {s.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            <div className="pt-2 text-center">
-              <button
-                id="toggle-apply-form-btn"
-                onClick={() => setShowApplyForm(!showApplyForm)}
-                className="text-xs font-bold text-brand-sky hover:text-brand-sky-dark hover:underline"
-              >
-                {showApplyForm ? 'পদ্ধতি লুকান' : 'নতুন ফাইল প্রসেসিং এর জন্য আবেদন করুন'}
-              </button>
-            </div>
-          </div>
-
-          {/* New Application Form with folding effect */}
-          <AnimatePresence>
-            {showApplyForm && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0, rotateX: -20, transformOrigin: "top" }}
-                animate={{ opacity: 1, height: "auto", rotateX: 0 }}
-                exit={{ opacity: 0, height: 0, rotateX: -20 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="rounded-2xl border-2 border-brand-gold/15 bg-white p-5 md:p-6 shadow-xl space-y-6 overflow-hidden perspective-1000" 
-                id="new-apply-form-block"
-              >
-                {/* Wizard Header & Progress Bar */}
-                <div className="border-b border-slate-100 pb-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-display font-black text-slate-800 text-base md:text-lg flex items-center gap-1.5">
-                        <Sparkles className="h-5 w-5 text-brand-gold animate-pulse" />
-                        <span>বুলগেরিয়া স্টুডেন্ট ভিসা ফাইলিং পোর্টাল</span>
-                      </h3>
-                      <p className="text-[10px] md:text-xs text-slate-500">সহজ এবং স্বয়ংক্রিয় ধাপে আপনার ফাইল ওপেন করার প্রসেস সম্পন্ন করুন।</p>
-                    </div>
-                    <span className="text-xs font-black px-2.5 py-1 bg-brand-sky-light text-brand-sky border border-brand-sky/25 rounded-lg shrink-0">
-                      ধাপ {wizardStep} / ৪
-                    </span>
-                  </div>
-
-                  {/* Step Indicators */}
-                  <div className="relative pt-2">
-                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-slate-100 -translate-y-1/2 z-0"></div>
-                    <div 
-                      className="absolute top-1/2 left-0 h-0.5 bg-gradient-to-r from-brand-sky to-brand-gold -translate-y-1/2 z-0 transition-all duration-500"
-                      style={{ width: `${((wizardStep - 1) / 3) * 100}%` }}
-                    ></div>
-                    
-                    <div className="relative flex justify-between z-10">
-                      {[
-                        { step: 1, label: 'ব্যক্তিগত তথ্য' },
-                        { step: 2, label: 'ইউনিভার্সিটি ও কোর্স' },
-                        { step: 3, label: 'সার্ভিসসমূহ' },
-                        { step: 4, label: 'রিভিউ ও সাবমিট' }
-                      ].map((s) => {
-                        const isActive = wizardStep === s.step;
-                        const isCompleted = wizardStep > s.step;
-                        return (
-                          <div key={s.step} className="flex flex-col items-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Allow flexible correction: any step can be clicked if they've filled basic name info in Step 1
-                                if (formData.fullName.trim() !== '' || s.step === 1) {
-                                  setWizardStep(s.step);
-                                }
-                              }}
-                              disabled={s.step > 1 && formData.fullName.trim() === ''}
-                              className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-[11px] font-black transition-all ${
-                                isActive 
-                                  ? 'bg-brand-sky border-brand-sky text-white shadow-md shadow-brand-sky/20 scale-110 animate-pulse' 
-                                  : isCompleted 
-                                    ? 'bg-emerald-500 border-emerald-500 text-white cursor-pointer hover:bg-emerald-600' 
-                                    : 'bg-white border-slate-200 text-slate-400 cursor-pointer hover:border-brand-sky/60 hover:text-brand-sky'
-                              }`}
-                              title={`${s.label} ধাপে যান`}
-                            >
-                              {isCompleted ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : s.step}
-                            </button>
-                            <span className={`hidden md:block text-[9px] font-bold mt-1.5 ${
-                              isActive ? 'text-brand-sky' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
-                            }`}>
-                              {s.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
 
                 {/* Form Steps Container */}
                 <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
@@ -796,6 +881,7 @@ export default function StudentDashboard({
 
                               setFormError('');
                               setWizardStep(2);
+                              setMaxStepReached(prev => Math.max(prev, 2));
                             }}
                             className="inline-flex items-center space-x-1 rounded-xl bg-brand-sky px-5 py-2.5 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors"
                           >
@@ -826,19 +912,19 @@ export default function StudentDashboard({
                           <button
                             type="button"
                             onClick={() => setIsUniDropdownOpen(!isUniDropdownOpen)}
-                            className="w-full flex items-center justify-between rounded-xl border-2 border-slate-200 bg-white p-3.5 text-left shadow-sm hover:border-brand-sky/60 hover:bg-slate-50/30 transition-all focus:outline-none focus:border-brand-sky focus:ring-2 focus:ring-brand-sky-light/20"
+                            className="w-full flex items-center justify-between rounded-xl border-2 border-slate-200 bg-white p-3 sm:p-3.5 text-left shadow-sm hover:border-brand-sky/60 hover:bg-slate-50/30 transition-all focus:outline-none focus:border-brand-sky focus:ring-2 focus:ring-brand-sky-light/20 min-w-0"
                             id="university-select-trigger"
                           >
                             {selectedApplyUni ? (
-                              <div className="flex items-center space-x-3">
-                                <div className={`h-3 w-3 rounded-full bg-gradient-to-tr ${universityCoursesMap[selectedApplyUni].logoColor} shrink-0`}></div>
-                                <div className="text-left">
-                                  <h4 className="text-xs font-extrabold text-slate-800 leading-none">{selectedApplyUni}</h4>
-                                  <p className="text-[10px] text-slate-400 font-bold mt-1.5 flex items-center gap-2">
+                              <div className="flex items-start gap-2.5 max-w-[85%] min-w-0 flex-1">
+                                <div className={`h-3 w-3 rounded-full bg-gradient-to-tr ${universityCoursesMap[selectedApplyUni].logoColor} shrink-0 mt-1`}></div>
+                                <div className="text-left min-w-0 flex-1">
+                                  <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 leading-snug break-words">{selectedApplyUni}</h4>
+                                  <div className="text-[9px] sm:text-[10px] text-slate-400 font-bold mt-1.5 flex flex-wrap gap-x-2 gap-y-1 items-center">
                                     <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5 text-slate-300" /> {universityCoursesMap[selectedApplyUni].location}</span>
                                     <span className="text-slate-200">|</span>
                                     <span className="flex items-center gap-0.5 text-brand-gold-dark"><Coins className="h-2.5 w-2.5 text-brand-gold" /> {universityCoursesMap[selectedApplyUni].tuitionFee}</span>
-                                  </p>
+                                  </div>
                                 </div>
                               </div>
                             ) : (
@@ -847,7 +933,7 @@ export default function StudentDashboard({
                                 <span className="text-xs font-black text-brand-sky">বিশ্ববিদ্যালয় সিলেক্ট করুন</span>
                               </div>
                             )}
-                            <ChevronDown className={`h-4.5 w-4.5 text-slate-400 transition-transform duration-300 ${isUniDropdownOpen ? 'rotate-180 text-brand-sky' : ''}`} />
+                            <ChevronDown className={`h-4.5 w-4.5 text-slate-400 transition-transform duration-300 shrink-0 ml-1 ${isUniDropdownOpen ? 'rotate-180 text-brand-sky' : ''}`} />
                           </button>
 
                           {/* Dropdown Menu List with AnimatePresence */}
@@ -858,7 +944,7 @@ export default function StudentDashboard({
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 transition={{ duration: 0.2, ease: "easeOut" }}
-                                className="absolute left-0 right-0 z-30 mt-1 max-h-72 overflow-y-auto rounded-xl border-2 border-slate-100 bg-white shadow-xl divide-y divide-slate-50"
+                                className="absolute left-0 right-0 z-50 mt-1 max-h-60 sm:max-h-80 overflow-y-auto rounded-xl border-2 border-slate-200 bg-white shadow-2xl divide-y divide-slate-100 scrollbar-thin scrollbar-thumb-slate-200"
                                 id="university-dropdown-list"
                               >
                                 {Object.keys(universityCoursesMap).map((uniName) => {
@@ -872,25 +958,27 @@ export default function StudentDashboard({
                                         setSelectedApplyCourse(uni.courses[0]);
                                         setIsUniDropdownOpen(false);
                                       }}
-                                      className={`flex items-center justify-between p-3 cursor-pointer transition-colors ${
+                                      className={`flex items-start justify-between p-3 sm:p-4 cursor-pointer transition-colors ${
                                         isSelected 
-                                          ? 'bg-brand-sky-light/10 text-brand-sky' 
-                                          : 'hover:bg-slate-50'
+                                          ? 'bg-brand-sky-light/10 text-brand-sky font-extrabold' 
+                                          : 'hover:bg-slate-50/75 text-slate-700'
                                       }`}
                                     >
-                                      <div className="flex items-center space-x-3 text-left">
-                                        <div className={`h-2.5 w-2.5 rounded-full bg-gradient-to-tr ${uni.logoColor} shrink-0`}></div>
-                                        <div>
-                                          <h5 className="text-xs font-extrabold text-slate-800 leading-tight">{uniName}</h5>
-                                          <p className="text-[9px] text-slate-400 font-bold mt-1 flex items-center gap-2">
+                                      <div className="flex items-start gap-2.5 text-left flex-1 min-w-0">
+                                        <div className={`h-3 w-3 rounded-full bg-gradient-to-tr ${uni.logoColor} shrink-0 mt-1`} />
+                                        <div className="min-w-0 flex-1">
+                                          <h5 className="text-[11px] sm:text-xs font-bold text-slate-800 leading-snug break-words">
+                                            {uniName}
+                                          </h5>
+                                          <div className="text-[9px] text-slate-400 font-bold mt-1 flex flex-wrap gap-x-2 gap-y-0.5 items-center">
                                             <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5 text-slate-300" /> {uni.location}</span>
                                             <span className="text-slate-200">·</span>
                                             <span className="flex items-center gap-0.5 text-brand-gold-dark"><Coins className="h-2.5 w-2.5 text-brand-gold" /> {uni.tuitionFee}</span>
-                                          </p>
+                                          </div>
                                         </div>
                                       </div>
                                       {isSelected && (
-                                        <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-brand-gold text-white text-[10px] font-black shrink-0 ml-1">
+                                        <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-brand-gold text-white text-[10px] font-black shrink-0 ml-1.5 mt-0.5">
                                           ✓
                                         </span>
                                       )}
@@ -962,6 +1050,7 @@ export default function StudentDashboard({
                               }
                               setFormError('');
                               setWizardStep(3);
+                              setMaxStepReached(prev => Math.max(prev, 3));
                             }}
                             className="inline-flex items-center space-x-1 rounded-xl bg-brand-sky px-5 py-2.5 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors"
                           >
@@ -1064,6 +1153,7 @@ export default function StudentDashboard({
                             type="button"
                             onClick={() => {
                               setWizardStep(4);
+                              setMaxStepReached(prev => Math.max(prev, 4));
                             }}
                             className="inline-flex items-center space-x-1 rounded-xl bg-brand-sky px-5 py-2.5 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors"
                           >
@@ -1198,7 +1288,7 @@ export default function StudentDashboard({
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
       ) : (
         /* Active Application Area */
         <motion.div 
@@ -1483,23 +1573,149 @@ export default function StudentDashboard({
                     />
                   </div>
 
-                  {/* Student Details */}
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-slate-800 flex items-center justify-center gap-1">
-                      {activeApp.fullName}
-                      <Sparkles className="h-3.5 w-3.5 text-brand-gold shrink-0 animate-pulse" />
-                    </h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">পাসপোর্ট: {activeApp.passportNumber}</p>
-                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-sky-light/50 border border-brand-sky/15 text-[10px] text-brand-sky-dark font-extrabold mt-1.5">
-                      <Compass className="h-3 w-3" /> Bulgaria Student Portal
-                    </div>
-                  </div>
+                  {/* Student Details / Editing Toggle */}
+                  {!isEditingProfile ? (
+                    <div className="space-y-4">
+                      {/* Student Details */}
+                      <div className="space-y-1">
+                        <h3 className="text-sm font-black text-slate-800 flex items-center justify-center gap-1">
+                          {activeApp.fullName}
+                          <Sparkles className="h-3.5 w-3.5 text-brand-gold shrink-0 animate-pulse" />
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">পাসপোর্ট: {activeApp.passportNumber}</p>
+                        <p className="text-[10px] text-slate-500 font-bold">ফোন: {activeApp.phone}</p>
+                        <p className="text-[10px] text-slate-500 font-bold truncate max-w-[200px] mx-auto" title={activeApp.email}>ইমেইল: {activeApp.email}</p>
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-sky-light/50 border border-brand-sky/15 text-[10px] text-brand-sky-dark font-extrabold mt-1.5">
+                          <Compass className="h-3 w-3" /> Bulgaria Student Portal
+                        </div>
+                      </div>
 
-                  {/* University / Course Meta */}
-                  <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-left space-y-1 text-[11px] leading-relaxed">
-                    <p className="text-slate-500"><span className="font-bold text-slate-700">নির্বাচিত বিশ্ববিদ্যালয়:</span> {activeApp.desiredCourse.split(' (')[1]?.replace(')', '') || 'বুলগেরিয়া বিশ্ববিদ্যালয়'}</p>
-                    <p className="text-slate-500 line-clamp-1"><span className="font-bold text-slate-700">কোর্স:</span> {activeApp.desiredCourse.split(' (')[0]}</p>
-                  </div>
+                      {/* University / Course Meta */}
+                      <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-left space-y-1 text-[11px] leading-relaxed">
+                        <p className="text-slate-500"><span className="font-bold text-slate-700">নির্বাচিত বিশ্ববিদ্যালয়:</span> {activeApp.desiredCourse.split(' (')[1]?.replace(')', '') || 'বুলগেরিয়া বিশ্ববিদ্যালয়'}</p>
+                        <p className="text-slate-500 line-clamp-1"><span className="font-bold text-slate-700">কোর্স:</span> {activeApp.desiredCourse.split(' (')[0]}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditProfileData({
+                            fullName: activeApp.fullName,
+                            passportNumber: activeApp.passportNumber,
+                            email: activeApp.email,
+                            phone: activeApp.phone
+                          });
+                          setEditProfileError('');
+                          setIsEditingProfile(true);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors mt-2"
+                      >
+                        <span>প্রোফাইল সংশোধন করুন</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5 text-left border-t border-slate-100 pt-3" id="profile-edit-form">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পূর্ণ নাম (Full Name):</label>
+                        <input
+                          type="text"
+                          value={editProfileData.fullName}
+                          onChange={(e) => setEditProfileData({ ...editProfileData, fullName: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পাসপোর্ট নম্বর (Passport Number):</label>
+                        <input
+                          type="text"
+                          value={editProfileData.passportNumber}
+                          onChange={(e) => setEditProfileData({ ...editProfileData, passportNumber: e.target.value.toUpperCase() })}
+                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none uppercase font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">মোবাইল নম্বর (Phone Number):</label>
+                        <input
+                          type="tel"
+                          value={editProfileData.phone}
+                          onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">ইমেল ঠিকানা (Email Address):</label>
+                        <input
+                          type="email"
+                          value={editProfileData.email}
+                          onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
+                        />
+                      </div>
+
+                      {editProfileError && (
+                        <p className="text-[10px] font-black text-brand-red bg-rose-50 border border-rose-100 p-2 rounded-lg leading-snug">
+                          {editProfileError}
+                        </p>
+                      )}
+
+                      <div className="flex gap-2 pt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            // Validation checks
+                            if (!editProfileData.fullName.trim() || !editProfileData.passportNumber.trim() || !editProfileData.email.trim() || !editProfileData.phone.trim()) {
+                              setEditProfileError('অনুগ্রহ করে প্রোফাইলের সব তথ্য সঠিকভাবে পূরণ করুন।');
+                              return;
+                            }
+
+                            const cleanPhone = editProfileData.phone.replace(/[\s-]/g, '');
+                            let localPhone = cleanPhone;
+                            if (cleanPhone.startsWith('+880')) {
+                              localPhone = cleanPhone.slice(4);
+                            } else if (cleanPhone.startsWith('880')) {
+                              localPhone = cleanPhone.slice(3);
+                            }
+
+                            if (!/^01[3-9]\d{8}$/.test(localPhone)) {
+                              setEditProfileError('দয়া করে একটি সঠিক ১১ ডিজিটের বাংলাদেশী মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)');
+                              return;
+                            }
+
+                            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editProfileData.email.trim())) {
+                              setEditProfileError('দয়া করে একটি সঠিক ইমেল অ্যাড্রেস প্রদান করুন (যেমন: example@gmail.com)');
+                              return;
+                            }
+
+                            setEditProfileError('');
+                            
+                            // Save profile changes to database (Firestore)
+                            const updatedApp: Application = {
+                              ...activeApp,
+                              fullName: editProfileData.fullName.trim(),
+                              passportNumber: editProfileData.passportNumber.trim().toUpperCase(),
+                              phone: editProfileData.phone.trim(),
+                              email: editProfileData.email.trim()
+                            };
+                            onUpdateApplication(updatedApp);
+                            setIsEditingProfile(false);
+                          }}
+                          className="flex-grow rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-2 text-xs font-black text-center transition-all border-b border-emerald-700/50 shadow-sm"
+                        >
+                          সংরক্ষণ করুন
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingProfile(false)}
+                          className="rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 text-xs font-bold text-center transition-all"
+                        >
+                          বাতিল
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 2. Progress Metric and Bulgaria Intake Countdown */}
@@ -1721,6 +1937,17 @@ export default function StudentDashboard({
                           {uploaded && (
                             <div className="mt-2 flex flex-wrap gap-2 items-center">
                               <span className="text-[10px] text-slate-400">আপলোড করা ফাইল: <strong className="text-slate-600 font-mono">{uploaded.fileName} ({uploaded.fileSize})</strong></span>
+                              {uploaded.fileUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewDoc(uploaded)}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-black transition-all border border-slate-200"
+                                  title="ফাইল প্রিভিউ করুন"
+                                >
+                                  <Eye className="h-3 w-3 text-brand-sky" />
+                                  <span>প্রিভিউ করুন</span>
+                                </button>
+                              )}
                               {uploaded.status === 'Approved' && (
                                 <span className="inline-flex items-center space-x-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 border border-emerald-100">
                                   <CheckCircle className="h-3 w-3" />
@@ -2862,6 +3089,154 @@ export default function StudentDashboard({
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+      {/* Hidden file input for real document uploading */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        className="hidden" 
+        id="real-doc-file-input"
+      />
+
+      {/* Document Preview Modal for Students */}
+      <AnimatePresence>
+        {previewDoc && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm" id="student-doc-preview-modal-overlay">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="relative bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh] text-left"
+              id="student-doc-preview-modal-card"
+            >
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="text-left">
+                  <h3 className="font-display font-black text-slate-800 text-xs sm:text-sm">{previewDoc.name}</h3>
+                  <p className="text-[10px] text-slate-400 font-bold font-mono mt-0.5">{previewDoc.fileName} ({previewDoc.fileSize})</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="rounded-full p-1 bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Body / Preview area */}
+              <div className="p-6 overflow-y-auto flex-grow flex items-center justify-center bg-slate-100 min-h-[350px]">
+                {previewDoc.fileUrl ? (
+                  (() => {
+                    const previewUrl = getSafePreviewUrl(previewDoc.fileUrl);
+                    const isPdf = previewDoc.fileUrl.startsWith('data:application/pdf') || 
+                                  previewDoc.fileName.toLowerCase().endsWith('.pdf') ||
+                                  previewUrl.includes('application/pdf');
+                    const isImage = previewDoc.fileUrl.startsWith('data:image/') || 
+                                    /\.(png|jpe?g|gif|webp|svg)$/i.test(previewDoc.fileName);
+                    
+                    if (isImage) {
+                      return (
+                        <div className="flex flex-col items-center gap-4 w-full">
+                          <img
+                            src={previewUrl}
+                            alt={previewDoc.name}
+                            className="max-h-[55vh] max-w-full object-contain rounded-xl shadow border-2 border-white"
+                            referrerPolicy="no-referrer"
+                          />
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>নতুন উইন্ডোতে বড় করে দেখুন (View Full Image)</span>
+                          </a>
+                        </div>
+                      );
+                    } else if (isPdf) {
+                      return (
+                        <div className="w-full h-full flex flex-col items-center gap-4">
+                          <object
+                            data={previewUrl}
+                            type="application/pdf"
+                            className="w-full h-[55vh] rounded-xl border border-slate-200 bg-white shadow-sm"
+                          >
+                            <iframe
+                              src={previewUrl}
+                              className="w-full h-[55vh] rounded-xl border border-slate-200 bg-white shadow-sm"
+                              title={previewDoc.name}
+                            />
+                          </object>
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>নতুন উইন্ডোতে পিডিএফটি দেখুন (Open PDF in New Window)</span>
+                          </a>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
+                          <div className="h-14 w-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl font-bold">📄</div>
+                          <h4 className="text-xs font-bold text-slate-800">অ-ছবি ডকুমেন্ট ফাইল (Non-Image File)</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            এই ফাইলটি সরাসরি ব্রাউজারে রেন্ডার করা যাচ্ছে না। ডাউনলোড করে ফাইলটি প্রিভিউ করুন।
+                          </p>
+                          <a
+                            href={previewUrl}
+                            download={previewDoc.fileName}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-5 py-2.5 text-xs font-black hover:bg-slate-800 shadow transition-all"
+                          >
+                            ফাইল ডাউনলোড করুন (Download File)
+                          </a>
+                        </div>
+                      );
+                    }
+                  })()
+                ) : (
+                  <div className="text-center space-y-3 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
+                    <div className="text-3xl">⚠️</div>
+                    <h4 className="text-xs font-bold text-slate-800">কোনো ফাইল ডাটা পাওয়া যায়নি</h4>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      এটি একটি ডেমো রেকর্ড। শিক্ষার্থীর আপলোড করা রিয়েল ডকুমেন্টে সম্পূর্ণ ডাউনলোডযোগ্য ও প্রিভিউযোগ্য ডাটা থাকবে।
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                <span className="text-[10px] text-slate-400 font-bold font-mono">আপলোড: {previewDoc.uploadedAt}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDoc(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                  >
+                    বন্ধ করুন
+                  </button>
+                  {previewDoc.fileUrl && (
+                    <a
+                      href={previewDoc.fileUrl}
+                      download={previewDoc.fileName}
+                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-5 py-2 text-xs font-black hover:bg-emerald-700 shadow transition-all"
+                    >
+                      ডাউনলোড (Download)
+                    </a>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );

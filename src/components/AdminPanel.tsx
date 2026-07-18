@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Application, ApplicationStatus, UploadedDocument, NotificationLog } from '../types';
-import { documentRequirements } from '../data';
+import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember } from '../types';
+import { documentRequirements, initialApplications } from '../data';
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { initialSupportMembers } from './SupportPage';
 import { 
   Users, 
   User,
@@ -25,12 +28,45 @@ import {
   Lock,
   ShieldCheck,
   Activity,
-  Sparkles
+  Sparkles,
+  Settings,
+  Camera,
+  Save,
+  Download,
+  Trash2
 } from 'lucide-react';
 
 interface AdminPanelProps {
   applications: Application[];
   onUpdateApplication: (app: Application) => void;
+}
+
+/**
+ * Converts a base64 Data URI to a local Blob URL for reliable browser rendering (avoiding iframe sandbox data: URI blocks).
+ */
+function getSafePreviewUrl(dataUrl: string): string {
+  if (!dataUrl) return '';
+  if (!dataUrl.startsWith('data:')) {
+    return dataUrl;
+  }
+  try {
+    const parts = dataUrl.split(',');
+    if (parts.length < 2) return dataUrl;
+    
+    const mimeMatch = parts[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    
+    const binary = atob(parts[1]);
+    const array = [];
+    for (let i = 0; i < binary.length; i++) {
+      array.push(binary.charCodeAt(i));
+    }
+    const blob = new Blob([new Uint8Array(array)], { type: mime });
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error('Error generating preview URL:', error);
+    return dataUrl;
+  }
 }
 
 export default function AdminPanel({ applications, onUpdateApplication }: AdminPanelProps) {
@@ -41,6 +77,175 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+
+  // Tab/Navigation State (Applicants vs Support Page Editor)
+  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor'>('applicants');
+
+  // Support Editor states
+  const [supportMembers, setSupportMembers] = useState<SupportMember[]>([]);
+  const [selectedSupportMemberId, setSelectedSupportMemberId] = useState<string>('dilowar_hosen');
+  const [lastSelectedId, setLastSelectedId] = useState<string>('');
+  const [supportDraft, setSupportDraft] = useState<SupportMember | null>(null);
+  const [isSavingSupport, setIsSavingSupport] = useState(false);
+  const [supportSuccessMsg, setSupportSuccessMsg] = useState('');
+  const [loadingSupport, setLoadingSupport] = useState(true);
+
+  // File Preview Modal State
+  const [previewDoc, setPreviewDoc] = useState<UploadedDocument | null>(null);
+
+  // File input refs for support photo/cover uploads
+  const supportPhotoInputRef = useRef<HTMLInputElement>(null);
+  const supportCoverInputRef = useRef<HTMLInputElement>(null);
+
+  // Synchronize support members from Firestore
+  useEffect(() => {
+    if (!isAdminLoggedIn) return;
+
+    const unsubscribe = onSnapshot(collection(db, 'support_members'), (snapshot) => {
+      const list: SupportMember[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as SupportMember);
+      });
+
+      if (snapshot.empty) {
+        // Seed if empty
+        initialSupportMembers.forEach(async (member) => {
+          try {
+            await setDoc(doc(db, 'support_members', member.id), member);
+          } catch (err) {
+            console.error('Seeding support_members failed:', err);
+          }
+        });
+        setSupportMembers(initialSupportMembers);
+        setLoadingSupport(false);
+      } else {
+        // Sort by createdAt to maintain the order
+        list.sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
+        setSupportMembers(list);
+        setLoadingSupport(false);
+      }
+    }, (error) => {
+      console.error('Firestore Admin Support Load Error: ', error);
+      setSupportMembers(initialSupportMembers);
+      setLoadingSupport(false);
+    });
+
+    return () => unsubscribe();
+  }, [isAdminLoggedIn]);
+
+  // Sync draft when selected member changes or initially loaded, without overwriting draft updates
+  useEffect(() => {
+    if (supportMembers.length > 0) {
+      if (selectedSupportMemberId !== lastSelectedId) {
+        const found = supportMembers.find(m => m.id === selectedSupportMemberId);
+        if (found) {
+          setSupportDraft(found);
+          setLastSelectedId(selectedSupportMemberId);
+        }
+      }
+    } else if (supportMembers.length > 0 && !selectedSupportMemberId) {
+      setSelectedSupportMemberId(supportMembers[0].id);
+    }
+  }, [selectedSupportMemberId, supportMembers, lastSelectedId]);
+
+  // Support Editor Helper Functions
+  const updateDraftField = (key: keyof SupportMember, value: any) => {
+    if (!supportDraft) return;
+    setSupportDraft({
+      ...supportDraft,
+      [key]: value
+    });
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, memberId: string, type: 'photo' | 'cover') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check size first, e.g. 10MB limit for safe canvas operations
+    if (file.size > 10 * 1024 * 1024) {
+      alert("ফাইলের সাইজ অনেক বড়! অনুগ্রহ করে ১০ মেগাবাইটের নিচের ছবি আপলোড করুন।");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        const dataUrl = reader.result;
+        
+        // Use HTML Canvas to compress the image
+        const img = new Image();
+        img.src = dataUrl;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Set a reasonable max dimension for support pictures
+          const MAX_DIMENSION = 800;
+          if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIMENSION) / width);
+              width = MAX_DIMENSION;
+            } else {
+              width = Math.round((width * MAX_DIMENSION) / height);
+              height = MAX_DIMENSION;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            // Export as compressed JPEG (quality 0.7) to bring size down to ~30-50KB
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            
+            setSupportDraft(prev => {
+              if (!prev) return null;
+              return type === 'photo'
+                ? { ...prev, photoUrl: compressedBase64 }
+                : { ...prev, coverPhotoUrl: compressedBase64 };
+            });
+          }
+        };
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveSupportMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supportDraft) return;
+
+    setIsSavingSupport(true);
+    setSupportSuccessMsg('');
+    try {
+      await setDoc(doc(db, 'support_members', supportDraft.id), supportDraft);
+      setSupportSuccessMsg('মেম্বারের তথ্য সফলভাবে সেভ করা হয়েছে!');
+      setTimeout(() => setSupportSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Error saving support member:', err);
+      alert('সাপোর্ট মেম্বারের তথ্য সেভ করতে সমস্যা হয়েছে।');
+    } finally {
+      setIsSavingSupport(false);
+    }
+  };
+
+  const handleResetSupportToDefault = async () => {
+    if (window.confirm("আপনি কি নিশ্চিতভাবে সব সাপোর্ট পেজের তথ্য ডিফল্ট অবস্থায় রিসেট করতে চান? এটি আপনার কাস্টম পরিবর্তনগুলো মুছে ফেলবে।")) {
+      try {
+        setSupportSuccessMsg('ডিফল্ট ডাটা রিসেট করা হচ্ছে...');
+        for (const member of initialSupportMembers) {
+          await setDoc(doc(db, 'support_members', member.id), member);
+        }
+        setSupportSuccessMsg('সফলভাবে রিসেট করা হয়েছে!');
+        setTimeout(() => setSupportSuccessMsg(''), 3000);
+      } catch (err) {
+        console.error('Resetting support members failed:', err);
+        alert('রিসেট করতে সমস্যা হয়েছে।');
+      }
+    }
+  };
 
   // Filtering states
   const [searchTerm, setSearchTerm] = useState('');
@@ -393,7 +598,37 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
         </button>
       </div>
 
-      {/* 1. Admin Stat Cards */}
+      {/* 1.5 Tab Navigation inside Admin Panel */}
+      <div className="flex border-b border-slate-200 gap-1.5" id="admin-sub-tabs">
+        <button
+          onClick={() => setActiveAdminTab('applicants')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black rounded-t-2xl transition-all border-b-2 -mb-[2px] ${
+            activeAdminTab === 'applicants'
+              ? 'border-brand-sky text-brand-sky bg-white shadow-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+          }`}
+          id="admin-tab-btn-applicants"
+        >
+          <Users className="h-4 w-4" />
+          <span>আবেদনকারী ও ফাইল ম্যানেজমেন্ট ({applications.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('support_editor')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black rounded-t-2xl transition-all border-b-2 -mb-[2px] ${
+            activeAdminTab === 'support_editor'
+              ? 'border-brand-sky text-brand-sky bg-white shadow-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+          }`}
+          id="admin-tab-btn-support"
+        >
+          <Settings className="h-4 w-4 text-brand-gold" />
+          <span>সাপোর্ট টিম ও পেজ সেটিংস</span>
+        </button>
+      </div>
+
+      {activeAdminTab === 'applicants' && (
+        <>
+          {/* 1. Admin Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" id="admin-stats-row">
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-500 to-indigo-500"></div>
@@ -687,6 +922,38 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-500 font-mono mt-0.5">{doc.fileName} ({doc.fileSize}) · আপলোড: {doc.uploadedAt}</p>
+                            
+                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                              {doc.fileUrl ? (
+                                <>
+                                  <button
+                                    onClick={() => setPreviewDoc(doc)}
+                                    className="inline-flex items-center gap-1.5 text-[10px] font-bold text-brand-sky hover:text-brand-sky-dark bg-brand-sky-light/10 hover:bg-brand-sky-light/20 px-2 py-1 rounded transition-colors"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" />
+                                    ফাইল দেখুন (View)
+                                  </button>
+                                  <a
+                                    href={doc.fileUrl}
+                                    download={doc.fileName}
+                                    className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded transition-colors"
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                    ডাউনলোড (Download)
+                                  </a>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    alert(`এটি ডেমো ফাইল। নতুন আবেদনকারীর আপলোড করা ফাইল সরাসরি দেখতে ও ডাউনলোড করতে পারবেন।\n\nফাইল নাম: ${doc.fileName}`);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  ডেমো ফাইল (View/Download)
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Quick Actions */}
@@ -749,6 +1016,333 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
           )}
         </div>
       </div>
+        </>
+      )}
+
+      {/* 2. Support Page Settings & Team Editor */}
+      {activeAdminTab === 'support_editor' && (
+        <div className="space-y-6" id="support-editor-container">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
+            <div className="space-y-1 text-left">
+              <h3 className="font-display font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                <Settings className="h-5 w-5 text-brand-gold" />
+                <span>সাপোর্ট টিম ও পাবলিক পেজ সেটিংস</span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                এখানে ওনার (Dilowar Hosen) এবং ব্যবস্থাপনা পরিচালকের (Sohel Rana) ফটো, ডেসক্রিপশন এবং যোগাযোগের তথ্য কাস্টমাইজ করুন।
+              </p>
+            </div>
+            
+            <button
+              type="button"
+              onClick={handleResetSupportToDefault}
+              className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 px-4 py-2 text-[10px] font-black transition-all flex items-center gap-1.5 shrink-0"
+              title="রিসেট করুন"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>ডিফল্ট রিসেট (Reset Defaults)</span>
+            </button>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-12">
+            {/* Left Column: Select Member to Edit */}
+            <div className="lg:col-span-4 space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 text-left">
+                <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block pb-1 border-b border-slate-50">মেম্বার সিলেক্ট করুন</span>
+                {loadingSupport ? (
+                  <p className="text-xs text-slate-400 py-4 text-center">লোড হচ্ছে...</p>
+                ) : (
+                  <div className="space-y-2">
+                    {supportMembers.map((member) => (
+                      <button
+                        type="button"
+                        key={member.id}
+                        onClick={() => setSelectedSupportMemberId(member.id)}
+                        className={`w-full flex items-center gap-3 p-3.5 rounded-xl text-left transition-all border ${
+                          selectedSupportMemberId === member.id
+                            ? 'border-brand-sky bg-brand-sky-light/10 text-brand-sky shadow-sm'
+                            : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0 overflow-hidden font-display font-black text-xs text-slate-700">
+                          {member.photoUrl ? (
+                            <img src={member.photoUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            member.name.split(' ').map(n => n[0]).join('')
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-xs font-black block truncate">{member.name}</span>
+                          <span className="text-[9px] font-bold text-slate-400 block truncate">{member.role}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column: Edit Fields Form */}
+            <div className="lg:col-span-8">
+              {supportDraft ? (
+                <form onSubmit={handleSaveSupportMember} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6 text-left">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                    <div className="space-y-0.5 text-left">
+                      <span className="text-[10px] bg-brand-sky/10 text-brand-sky font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
+                        {supportDraft.id === 'dilowar_hosen' ? 'ওনার প্রোফাইল' : 'পরিচালক প্রোফাইল'}
+                      </span>
+                      <h4 className="text-xs font-black text-slate-800 font-sans mt-1">
+                        {supportDraft.name}-এর প্রোফাইল এডিটর
+                      </h4>
+                    </div>
+                    {supportSuccessMsg && (
+                      <span className="text-[11px] font-bold text-emerald-600 animate-pulse bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-xl shrink-0">
+                        {supportSuccessMsg}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 1. Profile photos */}
+                  <div className="space-y-3">
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">প্রোফাইল ছবি ও কভার ফটো (Images)</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Avatar Photo Upload */}
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 flex flex-col justify-between">
+                        <div className="flex gap-3 items-center">
+                          <div className="h-14 w-14 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                            {supportDraft.photoUrl ? (
+                              <img src={supportDraft.photoUrl} alt="" className="h-full w-full object-cover rounded-lg" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="text-slate-400 text-xs font-black">NA</div>
+                            )}
+                          </div>
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-slate-800 block">প্রোফাইল ফটো (Avatar)</span>
+                            <span className="text-[10px] text-slate-400 block">সাইজ সর্বোচ্চ ৯০০ কি.বা.</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => supportPhotoInputRef.current?.click()}
+                            className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <Camera className="h-3.5 w-3.5 text-slate-500" />
+                            <span>আপলোড ছবি</span>
+                          </button>
+                          <input
+                            ref={supportPhotoInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUpload(e, supportDraft.id, 'photo')}
+                            className="hidden"
+                          />
+                          {supportDraft.photoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => updateDraftField('photoUrl', '')}
+                              className="bg-rose-50 hover:bg-rose-100 border border-rose-100 text-brand-red rounded-lg p-2 transition-colors"
+                              title="ছবি মুছুন"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Cover Photo Upload */}
+                      <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 flex flex-col justify-between">
+                        <div className="flex gap-3 items-center">
+                          <div className="h-14 w-24 rounded-xl bg-white border border-slate-200 p-1 flex items-center justify-center shrink-0 overflow-hidden">
+                            {supportDraft.coverPhotoUrl ? (
+                              <img src={supportDraft.coverPhotoUrl} alt="" className="h-full w-full object-cover rounded-lg" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="text-slate-400 text-xs font-black">গ্রাডিয়েন্ট</div>
+                            )}
+                          </div>
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-slate-800 block">কভার ব্যানার (Cover Banner)</span>
+                            <span className="text-[10px] text-slate-400 block">সাইজ সর্বোচ্চ ৯০০ কি.বা.</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => supportCoverInputRef.current?.click()}
+                            className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
+                          >
+                            <Camera className="h-3.5 w-3.5 text-slate-500" />
+                            <span>আপলোড ব্যানার</span>
+                          </button>
+                          <input
+                            ref={supportCoverInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUpload(e, supportDraft.id, 'cover')}
+                            className="hidden"
+                          />
+                          {supportDraft.coverPhotoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => updateDraftField('coverPhotoUrl', '')}
+                              className="bg-rose-50 hover:bg-rose-100 border border-rose-100 text-brand-red rounded-lg p-2 transition-colors"
+                              title="ব্যানার মুছুন"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Basic Credentials */}
+                  <div className="space-y-4">
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">প্রাথমিক তথ্য (Basic Profile)</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">মেম্বারের নাম (Name):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.name}
+                          onChange={(e) => updateDraftField('name', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">পদবী/রোল (Role/Designation):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.role}
+                          onChange={(e) => updateDraftField('role', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">ব্যাজ ট্যাগ (Badge Tag):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.badge}
+                          onChange={(e) => updateDraftField('badge', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Contact & Location Info */}
+                  <div className="space-y-4">
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">যোগাযোগ ও অবস্থান (Contact details)</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">ইমেইল এড্রেস (Email):</label>
+                        <input
+                          required
+                          type="email"
+                          value={supportDraft.email}
+                          onChange={(e) => updateDraftField('email', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">সরাসরি ফোন (Phone):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.phone}
+                          onChange={(e) => updateDraftField('phone', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">WhatsApp Number:</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.whatsapp}
+                          onChange={(e) => updateDraftField('whatsapp', e.target.value)}
+                          placeholder="8801700000000"
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-1">
+                        <label className="text-[10px] font-black text-slate-500">অফিস অবস্থান (Location):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.location}
+                          onChange={(e) => updateDraftField('location', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Biography / Intro */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">পরিচিতি ও ভূমিকা (Bio/About):</label>
+                    <textarea
+                      required
+                      rows={4}
+                      value={supportDraft.bio}
+                      onChange={(e) => updateDraftField('bio', e.target.value)}
+                      placeholder="এখানে মেম্বারের বিস্তারিত পরিচিতি ও কাজের ভূমিকা লিখুন..."
+                      className="w-full rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:outline-none focus:border-brand-sky whitespace-pre-line leading-relaxed"
+                    />
+                  </div>
+
+                  {/* 5. Custom Buttons settings */}
+                  <div className="space-y-4">
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">কল-টু-অ্যাকশন কাস্টমাইজেশন (CTA Action Button)</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black text-slate-500">বাটনের লিখা (CTA Text):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.btnText}
+                          onChange={(e) => updateDraftField('btnText', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                      <div className="space-y-1 text-left">
+                        <label className="text-[10px] font-black text-slate-500">অ্যাকশন লিঙ্ক (CTA URL):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.btnUrl}
+                          onChange={(e) => updateDraftField('btnUrl', e.target.value)}
+                          placeholder="https://wa.me/..."
+                          className="w-full rounded-xl border border-slate-200 p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Submit save button */}
+                  <div className="flex justify-end pt-3 border-t border-slate-100">
+                    <button
+                      type="submit"
+                      disabled={isSavingSupport}
+                      className="flex items-center space-x-1.5 rounded-xl bg-slate-900 text-white px-6 py-3 text-xs font-black hover:bg-slate-800 disabled:bg-slate-400 shadow-md transition-all active:scale-95"
+                    >
+                      <Save className="h-4 w-4 text-brand-gold" />
+                      <span>{isSavingSupport ? 'সংরক্ষণ করা হচ্ছে...' : 'পরিবর্তনগুলো সংরক্ষণ করুন'}</span>
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-400 text-xs">
+                  মেম্বার সেটিংস লোড করা সম্ভব হয়নি।
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modern Popups & Modals (AnimatePresence) */}
       <AnimatePresence>
@@ -1022,6 +1616,144 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* 3. Applicant Document Preview Modal */}
+        {previewDoc && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm" id="document-preview-modal-overlay">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="relative bg-white rounded-3xl shadow-2xl border border-slate-200/80 max-w-2xl w-full overflow-hidden flex flex-col max-h-[85vh] text-left"
+              id="document-preview-modal-card"
+            >
+              {/* Modal Header */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <div className="text-left">
+                  <h3 className="font-display font-black text-slate-800 text-xs sm:text-sm">{previewDoc.name}</h3>
+                  <p className="text-[10px] text-slate-400 font-bold font-mono mt-0.5">{previewDoc.fileName} ({previewDoc.fileSize})</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="rounded-full p-1 bg-slate-200 hover:bg-slate-300 text-slate-600 transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Modal Body / Preview area */}
+              <div className="p-6 overflow-y-auto flex-grow flex items-center justify-center bg-slate-100 min-h-[350px]">
+                {previewDoc.fileUrl ? (
+                  (() => {
+                    const previewUrl = getSafePreviewUrl(previewDoc.fileUrl);
+                    const isPdf = previewDoc.fileUrl.startsWith('data:application/pdf') || 
+                                  previewDoc.fileName.toLowerCase().endsWith('.pdf') ||
+                                  previewUrl.includes('application/pdf');
+                    const isImage = previewDoc.fileUrl.startsWith('data:image/') || 
+                                    /\.(png|jpe?g|gif|webp|svg)$/i.test(previewDoc.fileName);
+                    
+                    if (isImage) {
+                      return (
+                        <div className="flex flex-col items-center gap-4 w-full">
+                          <img
+                            src={previewUrl}
+                            alt={previewDoc.name}
+                            className="max-h-[55vh] max-w-full object-contain rounded-xl shadow border-2 border-white"
+                            referrerPolicy="no-referrer"
+                          />
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>নতুন উইন্ডোতে বড় করে দেখুন (View Full Image)</span>
+                          </a>
+                        </div>
+                      );
+                    } else if (isPdf) {
+                      return (
+                        <div className="w-full h-full flex flex-col items-center gap-4">
+                          <object
+                            data={previewUrl}
+                            type="application/pdf"
+                            className="w-full h-[55vh] rounded-xl border border-slate-200 bg-white shadow-sm"
+                          >
+                            <iframe
+                              src={previewUrl}
+                              className="w-full h-[55vh] rounded-xl border border-slate-200 bg-white shadow-sm"
+                              title={previewDoc.name}
+                            />
+                          </object>
+                          <a
+                            href={previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>নতুন উইন্ডোতে পিডিএফটি দেখুন (Open PDF in New Window)</span>
+                          </a>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
+                          <div className="h-14 w-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl font-bold">📄</div>
+                          <h4 className="text-xs font-bold text-slate-800">অ-ছবি ডকুমেন্ট ফাইল (Non-Image File)</h4>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            এই ফাইলটি সরাসরি ব্রাউজারে রেন্ডার করা যাচ্ছে না। ডাউনলোড করে ফাইলটি প্রিভিউ করুন।
+                          </p>
+                          <a
+                            href={previewUrl}
+                            download={previewDoc.fileName}
+                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-5 py-2.5 text-xs font-black hover:bg-slate-800 shadow transition-all"
+                          >
+                            ফাইল ডাউনলোড করুন (Download File)
+                          </a>
+                        </div>
+                      );
+                    }
+                  })()
+                ) : (
+                  <div className="text-center space-y-3 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
+                    <div className="text-3xl">⚠️</div>
+                    <h4 className="text-xs font-bold text-slate-800">কোনো ফাইল ডাটা পাওয়া যায়নি</h4>
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      এটি একটি ডেমো আবেদনকারী রেকর্ড। শিক্ষার্থীর আপলোড করা রিয়েল ডকুমেন্টে সম্পূর্ণ ডাউনলোডযোগ্য ডাটা থাকবে।
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
+                <span className="text-[10px] text-slate-400 font-bold font-mono">আপলোড: {previewDoc.uploadedAt}</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDoc(null)}
+                    className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
+                  >
+                    বন্ধ করুন
+                  </button>
+                  {previewDoc.fileUrl && (
+                    <a
+                      href={previewDoc.fileUrl}
+                      download={previewDoc.fileName}
+                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-5 py-2 text-xs font-black hover:bg-emerald-700 shadow transition-all"
+                    >
+                      ডাউনলোড (Download)
+                    </a>
+                  )}
+                </div>
+              </div>
             </motion.div>
           </div>
         )}

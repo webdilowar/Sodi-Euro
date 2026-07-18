@@ -15,5 +15,10 @@ service cloud.firestore {
     match /applications/{applicationId} {
       allow read, write: if true;
     }
+
+    // Document rule for support members
+    match /support_members/{memberId} {
+      allow read, write: if true;
+    }
   }
 }

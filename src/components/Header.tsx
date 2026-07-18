@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { Compass, GraduationCap, ShieldCheck, Sparkles, Menu, X } from 'lucide-react';
+import { Compass, GraduationCap, ShieldCheck, Sparkles, Menu, X, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeaderProps {
-  currentView: 'lobby' | 'student' | 'admin';
-  setView: (view: 'lobby' | 'student' | 'admin') => void;
+  currentView: 'lobby' | 'student' | 'admin' | 'support';
+  setView: (view: 'lobby' | 'student' | 'admin' | 'support') => void;
   activeApplicationId?: string;
 }
 
 export default function Header({ currentView, setView, activeApplicationId }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleNavClick = (view: 'lobby' | 'student' | 'admin') => {
+  const handleNavClick = (view: 'lobby' | 'student' | 'admin' | 'support') => {
     setView(view);
     setIsMenuOpen(false);
   };
@@ -84,6 +84,19 @@ export default function Header({ currentView, setView, activeApplicationId }: He
           >
             <ShieldCheck className="h-4 w-4 text-brand-gold" />
             <span>অ্যাডমিন প্যানেল</span>
+          </button>
+
+          <button
+            id="nav-support-btn"
+            onClick={() => handleNavClick('support')}
+            className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+              currentView === 'support'
+                ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
+                : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
+            }`}
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span>সাপোর্ট ও যোগাযোগ</span>
           </button>
         </nav>
 
@@ -165,6 +178,22 @@ export default function Header({ currentView, setView, activeApplicationId }: He
                 <div className="flex-grow text-left">
                   <span className="block">অ্যাডমিন প্যানেল</span>
                   <span className="text-[10px] font-normal opacity-80 block mt-0.5">Manage Agency File Approvals</span>
+                </div>
+              </button>
+
+              <button
+                id="mobile-nav-support-btn"
+                onClick={() => handleNavClick('support')}
+                className={`flex w-full items-center space-x-3 rounded-xl px-4 py-3 text-xs font-bold transition-all ${
+                  currentView === 'support'
+                    ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-l-4 border-brand-gold'
+                    : 'text-slate-700 hover:bg-slate-50 border border-slate-100'
+                }`}
+              >
+                <HelpCircle className="h-5 w-5 shrink-0 text-brand-gold" />
+                <div className="flex-grow text-left">
+                  <span className="block">সাপোর্ট ও যোগাযোগ</span>
+                  <span className="text-[10px] font-normal opacity-80 block mt-0.5">Contact Dilowar Hosen & Sohel Rana</span>
                 </div>
               </button>
             </div>

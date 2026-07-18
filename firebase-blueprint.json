@@ -26,12 +26,40 @@
         }
       },
       "required": ["id", "fullName", "passportNumber", "email", "phone", "desiredCourse", "status", "paymentStatus", "paymentAmount", "createdAt"]
+    },
+    "support_member": {
+      "title": "Support Member",
+      "description": "Represents a support team member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "location": { "type": "string" },
+        "bio": { "type": "string" },
+        "badge": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "coverPhotoUrl": { "type": "string" },
+        "colorClass": { "type": "string" },
+        "accentBorder": { "type": "string" },
+        "btnText": { "type": "string" },
+        "btnUrl": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "email"]
     }
   },
   "firestore": {
     "/applications/{applicationId}": {
       "schema": "application",
       "description": "Student visa applications and tracking logs"
+    },
+    "/support_members/{memberId}": {
+      "schema": "support_member",
+      "description": "Support team members details"
     }
   }
 }

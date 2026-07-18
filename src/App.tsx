@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Lobby from './components/Lobby';
 import StudentDashboard from './components/StudentDashboard';
 import AdminPanel from './components/AdminPanel';
+import SupportPage from './components/SupportPage';
 import { initialApplications } from './data';
 import { Application } from './types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -23,8 +24,14 @@ import { db, handleFirestoreError, OperationType } from './firebase';
 
 export default function App() {
   // Navigation view state
-  const [view, setView] = useState<'lobby' | 'student' | 'admin'>('lobby');
+  const [view, setView] = useState<'lobby' | 'student' | 'admin' | 'support'>(() => {
+    return (localStorage.getItem('bulgaria_active_view_v1') as 'lobby' | 'student' | 'admin' | 'support') || 'lobby';
+  });
   
+  useEffect(() => {
+    localStorage.setItem('bulgaria_active_view_v1', view);
+  }, [view]);
+
   // Applications state loaded and synced with Firestore
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -223,6 +230,18 @@ export default function App() {
                   />
                 </motion.div>
               )}
+
+              {view === 'support' && (
+                <motion.div
+                  key="support"
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <SupportPage />
+                </motion.div>
+              )}
             </>
           )}
         </AnimatePresence>
@@ -232,10 +251,10 @@ export default function App() {
       <AnimatePresence>
         {liveNotification && (
           <motion.div
-            initial={{ opacity: 0, x: 100, scale: 0.9 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: 100, scale: 0.9 }}
-            className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border-2 border-brand-sky/30 overflow-hidden"
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.9 }}
+            className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-sm w-auto sm:w-full z-50 bg-white rounded-2xl shadow-2xl border-2 border-brand-sky/30 overflow-hidden"
             id="simulated-notification-popup"
           >
             {/* Notification simulated wrapper header */}
@@ -251,13 +270,13 @@ export default function App() {
                 <span>
                   {liveNotification.type === 'sms' 
                     ? 'সিমুলেটেড এসএমএস (Simulated SMS Received)' 
-                    : 'সিমুলেটেড ইমেল (Simulated Email Received)'}
+                    : 'সিমুলেটেড ইমেইল (Simulated Email Received)'}
                 </span>
               </div>
-              <button 
-                id="close-simulated-toast"
+              <button
                 onClick={() => setLiveNotification(null)}
-                className="text-white/80 hover:text-white"
+                className="p-1 hover:bg-white/10 rounded transition-colors"
+                title="বন্ধ করুন"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -270,51 +289,42 @@ export default function App() {
                 <span>এখন পাঠানো হলো</span>
               </div>
               <h4 className="text-xs font-bold text-slate-800 leading-snug">{liveNotification.title}</h4>
-              <p className="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <p className="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                 {liveNotification.body}
               </p>
-              
-              <div className="text-[10px] text-brand-sky font-medium flex items-center space-x-1 justify-end pt-1">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>অটোমেটেড রিয়েল-টাইম নোটিফিকেশন</span>
-              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 4. Elegant Agency Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8" id="app-footer">
+      {/* 4. Elegant Minimalist Footer */}
+      <footer className="border-t border-slate-100 bg-white py-6" id="app-footer">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2">
-                <span className="font-display text-sm font-bold text-slate-800">Sodi Euro</span>
-                <span className="rounded bg-brand-sky/10 px-1.5 py-0.2 text-[9px] font-bold text-brand-sky">
-                  One-Stop BD support
-                </span>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-[11px] text-slate-400">
+            <div className="flex flex-col items-center md:items-start gap-1">
+              <div className="flex items-center gap-1.5 justify-center md:justify-start">
+                <span className="font-sans font-black text-slate-700 text-xs tracking-tight">Sodi Euro</span>
+                <span className="text-slate-200">|</span>
+                <span>© 2026 Sodi Euro. All rights reserved.</span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                বুলগেরিয়ায় উচ্চশিক্ষায় পাড়ি জমানোর ওয়ান-স্টপ ভিসা কনসাল্টেন্সি এবং রিয়েল-টাইম ফাইলিং প্ল্যাটফর্ম।
-              </p>
+              <p className="text-[10px] text-slate-400 text-center md:text-left">ঢাকা, বাংলাদেশ ও সোফিয়া, বুলগেরিয়া শাখা দ্বারা পরিচালিত।</p>
             </div>
-
-            {/* Footer Quick stats & tools */}
-            <div className="flex flex-wrap gap-4 text-xs font-semibold text-slate-500">
-              <button onClick={() => setView('lobby')} className="hover:text-brand-sky">হোম ও গাইডলাইন</button>
-              <span>·</span>
-              <button onClick={() => setView('student')} className="hover:text-brand-sky">স্টুডেন্ট ট্র্যাকিং</button>
-              <span>·</span>
-              <button onClick={() => setView('admin')} className="hover:text-slate-800 flex items-center space-x-1 text-slate-600">
+            
+            <div className="flex flex-wrap items-center justify-center gap-4 text-slate-500">
+              <button onClick={() => setView('lobby')} className="hover:text-brand-sky transition-colors">হোম</button>
+              <span className="text-slate-200">•</span>
+              <button onClick={() => setView('student')} className="hover:text-brand-sky transition-colors">স্টুডেন্ট ট্র্যাকিং</button>
+              <span className="text-slate-200">•</span>
+              <button onClick={() => setView('support')} className="hover:text-brand-sky transition-colors">সাপোর্ট টিম</button>
+              <span className="text-slate-200">•</span>
+              <button 
+                onClick={() => setView('admin')} 
+                className="hover:text-slate-800 transition-colors flex items-center gap-1 text-[11px]"
+              >
                 <ShieldCheck className="h-3.5 w-3.5 text-brand-sky" />
                 <span>ম্যানেজমেন্ট কনসোল</span>
               </button>
             </div>
-          </div>
-
-          <div className="mt-6 border-t border-slate-100 pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] text-slate-400 gap-2">
-            <span>© 2026 Sodi Euro. All rights reserved.</span>
-            <span>ঢাকা, বাংলাদেশ ও সোফিয়া, বুলগেরিয়া শাখা দ্বারা পরিচালিত।</span>
           </div>
         </div>
       </footer>

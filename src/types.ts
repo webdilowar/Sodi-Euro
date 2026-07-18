@@ -21,6 +21,7 @@ export interface UploadedDocument {
   status: 'Pending' | 'Approved' | 'Rejected';
   feedback?: string;
   uploadedAt: string;
+  fileUrl?: string;
 }
 
 export interface Application {
@@ -70,4 +71,23 @@ export interface DocumentRequirement {
   guidelines: string[];
   bangladeshCollectionGuide: string;
   isRequired: boolean;
+}
+
+export interface SupportMember {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  whatsapp: string;
+  location: string;
+  bio: string;
+  badge: string;
+  photoUrl?: string;
+  coverPhotoUrl?: string;
+  colorClass: string;
+  accentBorder: string;
+  btnText: string;
+  btnUrl: string;
+  createdAt: string;
 }
