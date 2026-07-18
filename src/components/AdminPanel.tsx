@@ -499,22 +499,22 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
   if (!isAdminLoggedIn) {
     return (
-      <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 rounded-3xl relative overflow-hidden" id="admin-auth-container">
+      <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white border border-slate-100 rounded-3xl relative overflow-hidden" id="admin-auth-container">
         {/* Decorative elements */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-sky/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-gold/10 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-brand-sky/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-brand-gold/5 rounded-full blur-3xl"></div>
         
-        <div className="max-w-md w-full space-y-8 bg-slate-900/80 border border-slate-800/80 backdrop-blur-xl p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10">
+        <div className="max-w-md w-full space-y-8 bg-white border border-slate-100 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 shadow-slate-200/60">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-gold to-amber-300 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-brand-gold/10">
-              <Lock className="h-7 w-7" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-gold to-amber-300 text-white flex items-center justify-center mx-auto shadow-lg shadow-brand-gold/15">
+              <Lock className="h-7 w-7 text-slate-900" />
             </div>
             <div>
-              <span className="font-sans font-black text-brand-gold bg-slate-950/80 border border-brand-gold/25 px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest inline-block">
+              <span className="font-sans font-black text-brand-gold bg-brand-gold-light border border-brand-gold/20 px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest inline-block">
                 Sodi Euro Admin Portal
               </span>
-              <h2 className="mt-3 text-2xl font-black text-white font-sans tracking-tight">অ্যাডমিন গেটওয়ে (Secure Login)</h2>
-              <p className="mt-1 text-xs text-slate-400">
+              <h2 className="mt-3 text-2xl font-black text-slate-900 font-sans tracking-tight">অ্যাডমিন গেটওয়ে (Secure Login)</h2>
+              <p className="mt-1 text-xs text-slate-500">
                 শুধুমাত্র অনুমোদিত কর্মকর্তাদের প্রবেশাধিকার সংরক্ষিত
               </p>
             </div>
@@ -523,7 +523,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
           <form onSubmit={handleAdminLogin} className="space-y-4" id="admin-login-form">
             <div className="space-y-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] uppercase font-black tracking-wider text-slate-400">অ্যাডমিন আইডি (Username)</label>
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">অ্যাডমিন আইডি (Username)</label>
                 <input
                   required
                   id="admin-username-input"
@@ -531,12 +531,12 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   placeholder="যেমন: sodieuro"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950/80 py-3.5 px-4 text-xs text-white focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold placeholder:text-slate-600 transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 px-4 text-xs text-slate-800 focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky placeholder:text-slate-400 transition-all"
                 />
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] uppercase font-black tracking-wider text-slate-400">নিরাপত্তা পাসওয়ার্ড (Password)</label>
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">নিরাপত্তা পাসওয়ার্ড (Password)</label>
                 <input
                   required
                   id="admin-password-input"
@@ -544,14 +544,14 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   placeholder="••••••••"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950/80 py-3.5 px-4 text-xs text-white focus:border-brand-gold focus:outline-none focus:ring-1 focus:ring-brand-gold placeholder:text-slate-600 transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 px-4 text-xs text-slate-800 focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky placeholder:text-slate-400 transition-all"
                 />
               </div>
             </div>
 
             {loginError && (
-              <p className="text-[11px] text-red-400 font-bold bg-red-950/40 border border-red-900/50 p-3 rounded-xl flex items-center space-x-1.5 text-left" id="admin-login-error">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <p className="text-[11px] text-red-600 font-bold bg-red-50 border border-red-100 p-3 rounded-xl flex items-center space-x-1.5 text-left" id="admin-login-error">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
                 <span>{loginError}</span>
               </p>
             )}
@@ -559,9 +559,9 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
             <button
               id="admin-submit-login-btn"
               type="submit"
-              className="w-full flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-brand-gold to-amber-500 py-3.5 text-xs font-black text-slate-950 shadow-lg shadow-brand-gold/10 hover:opacity-95 active:scale-95 transition-all"
+              className="w-full flex items-center justify-center space-x-2 rounded-xl bg-slate-900 hover:bg-slate-800 py-3.5 text-xs font-black text-white shadow-lg shadow-slate-900/10 active:scale-95 transition-all"
             >
-              <ShieldCheck className="h-4 w-4" />
+              <ShieldCheck className="h-4 w-4 text-brand-gold" />
               <span>ড্যাশবোর্ডে প্রবেশ করুন</span>
             </button>
           </form>
