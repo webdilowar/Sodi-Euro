@@ -324,7 +324,7 @@ export default function SupportPage() {
                     {/* Compact Body Content */}
                     <div className="p-5 flex-grow flex flex-col justify-between">
                       <div>
-                        <div className="relative -mt-12 z-20 flex items-end gap-3.5 mb-4">
+                        <div className="relative -mt-12 z-20 flex items-center gap-3.5 mb-4">
                           {/* Photo or Monogram Avatar */}
                           <div className="h-16 w-16 rounded-2xl bg-white p-1 shadow-md border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
                             {member.photoUrl ? (
