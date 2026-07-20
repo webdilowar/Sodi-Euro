@@ -3,6 +3,16 @@ export interface ChatMessage {
   sender: 'student' | 'admin';
   text: string;
   sentAt: string;
+  attachments?: { name: string; url: string }[];
+  read?: boolean;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  passwordHash: string;
+  displayName: string;
+  lastLogin?: string;
 }
 
 export type ApplicationStatus =
@@ -90,4 +100,6 @@ export interface SupportMember {
   btnText: string;
   btnUrl: string;
   createdAt: string;
+  username?: string;
+  password?: string;
 }

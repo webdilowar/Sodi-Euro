@@ -36,7 +36,8 @@ import {
   Compass,
   Flame,
   RotateCcw,
-  Eye
+  Eye,
+  Paperclip
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -150,6 +151,8 @@ export default function StudentDashboard({
 
   // Live Chat messages state
   const [studentMsgText, setStudentMsgText] = useState('');
+  const [studentChatFile, setStudentChatFile] = useState('');
+  const [studentChatFileName, setStudentChatFileName] = useState('');
 
   // Application Form States (for new applicants)
   const [showApplyForm, setShowApplyForm] = useState(false);
@@ -1392,12 +1395,14 @@ export default function StudentDashboard({
               }`}
             >
               <span>অ্যাডমিনের সাথে চ্যাট (Support Chat)</span>
-              {activeApp.messages && activeApp.messages.length > 0 && activeApp.messages[activeApp.messages.length - 1].sender === 'admin' && (
-                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-sky opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-sky"></span>
-                </span>
-              )}
+              {(() => {
+                const unreadCount = activeApp.messages?.filter(m => m.sender === 'admin' && !m.read).length || 0;
+                return unreadCount > 0 ? (
+                  <span className="absolute top-1.5 right-1.5 rounded-full bg-rose-600 text-white h-4 w-4 flex items-center justify-center text-[8px] font-black animate-bounce shadow-sm">
+                    {unreadCount}
+                  </span>
+                ) : null;
+              })()}
             </button>
           </div>
 
@@ -2457,9 +2462,21 @@ export default function StudentDashboard({
 
           {/* Tab 5: Chat Messaging Support with Admin */}
           {activeTab === 'messages' && activeApp && (() => {
+            // Auto-mark unread admin replies as read when the student views this tab
+            const unreadAdminMsgs = activeApp.messages?.filter(m => m.sender === 'admin' && !m.read) || [];
+            if (unreadAdminMsgs.length > 0) {
+              setTimeout(() => {
+                const updatedMsgs = activeApp.messages?.map(m => m.sender === 'admin' ? { ...m, read: true } : m) || [];
+                onUpdateApplication({
+                  ...activeApp,
+                  messages: updatedMsgs
+                });
+              }, 60);
+            }
+
             const handleSendStudentMessage = (e: React.FormEvent) => {
               e.preventDefault();
-              if (!studentMsgText.trim()) return;
+              if (!studentMsgText.trim() && !studentChatFile) return;
 
               const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
@@ -2467,7 +2484,9 @@ export default function StudentDashboard({
                 id: `msg-${Date.now()}`,
                 sender: 'student' as const,
                 text: studentMsgText.trim(),
-                sentAt: currentTimestamp
+                sentAt: currentTimestamp,
+                read: false,
+                attachments: studentChatFile ? [{ name: studentChatFileName || 'Attachment', url: studentChatFile }] : undefined
               };
 
               const updatedApp: Application = {
@@ -2477,6 +2496,8 @@ export default function StudentDashboard({
 
               onUpdateApplication(updatedApp);
               setStudentMsgText('');
+              setStudentChatFile('');
+              setStudentChatFileName('');
             };
 
             return (
@@ -2497,30 +2518,48 @@ export default function StudentDashboard({
                 </div>
 
                 {/* Message list box */}
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 min-h-[220px] max-h-[350px] overflow-y-auto space-y-3 flex flex-col">
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 min-h-[250px] max-h-[380px] overflow-y-auto space-y-3 flex flex-col">
                   {(!activeApp.messages || activeApp.messages.length === 0) ? (
-                    <div className="my-auto text-center space-y-1">
-                      <p className="text-slate-400 text-xs">অ্যাডমিনের সাথে কোনো পূর্ববর্তী চ্যাট নেই।</p>
+                    <div className="my-auto text-center space-y-1 py-12">
+                      <p className="text-slate-400 text-xs font-semibold">অ্যাডমিনের সাথে কোনো পূর্ববর্তী চ্যাট নেই।</p>
                       <p className="text-[10px] text-slate-400">নিচের মেসেজ বক্সে টাইপ করে প্রথম মেসেজটি পাঠান।</p>
                     </div>
                   ) : (
-                    activeApp.messages.map((msg) => {
+                    activeApp.messages.map((msg, mIdx) => {
                       const isStudent = msg.sender === 'student';
                       return (
                         <div
-                          key={msg.id}
-                          className={`flex flex-col max-w-[85%] ${
+                          key={msg.id || mIdx}
+                          className={`flex flex-col max-w-[80%] ${
                             isStudent ? 'align-end self-end items-end' : 'align-start self-start items-start'
                           }`}
                         >
                           <div
-                            className={`rounded-2xl px-3.5 py-2 text-xs shadow-sm ${
+                            className={`rounded-2xl px-4 py-2.5 text-xs shadow-sm ${
                               isStudent
                                 ? 'bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white rounded-tr-none border-b border-brand-gold'
                                 : 'bg-white text-slate-800 rounded-tl-none border border-slate-200'
                             }`}
                           >
-                            <p className="leading-relaxed">{msg.text}</p>
+                            <p className="leading-relaxed whitespace-pre-line">{msg.text}</p>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mt-2.5 pt-1.5 border-t border-slate-200/20 space-y-1.5">
+                                {msg.attachments.map((file, fIdx) => (
+                                  <a
+                                    key={fIdx}
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={`flex items-center space-x-1.5 hover:underline font-bold text-[10px] p-1.5 rounded-lg ${
+                                      isStudent ? 'bg-slate-800/40 text-brand-gold' : 'bg-slate-100 text-slate-700 border border-slate-200/50'
+                                    }`}
+                                  >
+                                    <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate flex-grow">{file.name}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <span className="text-[9px] text-slate-400 mt-1 px-1 font-mono">
                             {isStudent ? 'আমি' : 'অ্যাডমিন সাপোর্ট'} · {msg.sentAt}
@@ -2531,22 +2570,65 @@ export default function StudentDashboard({
                   )}
                 </div>
 
-                {/* Send form */}
-                <form onSubmit={handleSendStudentMessage} className="flex space-x-2">
-                  <input
-                    required
-                    type="text"
-                    value={studentMsgText}
-                    onChange={(e) => setStudentMsgText(e.target.value)}
-                    placeholder="আপনার বার্তা বা প্রশ্নটি লিখুন..."
-                    className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs focus:outline-none focus:border-brand-sky"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-slate-900 text-white px-5 py-3 text-xs font-bold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 border-b border-brand-gold"
-                  >
-                    বার্তা পাঠান
-                  </button>
+                {/* Send form with File attachment previews */}
+                <form onSubmit={handleSendStudentMessage} className="space-y-2">
+                  {studentChatFile && (
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-150 px-3.5 py-2 rounded-xl text-[11px] font-bold text-slate-600 animate-fadeIn">
+                      <div className="flex items-center space-x-2 truncate">
+                        <Paperclip className="h-4 w-4 text-brand-sky shrink-0" />
+                        <span className="truncate">{studentChatFileName}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStudentChatFile('');
+                          setStudentChatFileName('');
+                        }}
+                        className="text-brand-red hover:text-red-700 text-xs shrink-0 font-extrabold"
+                      >
+                        মুছুন (Remove)
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex space-x-2">
+                    {/* Attachment selection trigger */}
+                    <label className="cursor-pointer h-12 w-12 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors shrink-0">
+                      <Paperclip className="h-5 w-5" />
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              if (reader.result) {
+                                setStudentChatFile(reader.result as string);
+                                setStudentChatFileName(file.name);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+
+                    <input
+                      type="text"
+                      value={studentMsgText}
+                      onChange={(e) => setStudentMsgText(e.target.value)}
+                      placeholder="আপনার বার্তা বা প্রশ্নটি লিখুন..."
+                      className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-xs focus:outline-none focus:border-brand-sky focus:ring-1 focus:ring-brand-sky text-slate-800"
+                    />
+
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-slate-900 text-white px-5 py-3 text-xs font-bold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 border-b border-brand-gold shrink-0"
+                    >
+                      বার্তা পাঠান
+                    </button>
+                  </div>
                 </form>
               </div>
             );

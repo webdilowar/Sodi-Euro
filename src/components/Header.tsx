@@ -40,68 +40,70 @@ export default function Header({ currentView, setView, activeApplicationId }: He
         </div>
 
         {/* Desktop Navigation - Hidden on Mobile */}
-        <nav className="hidden md:flex items-center space-x-2" id="main-navigation">
-          <button
-            id="nav-lobby-btn"
-            onClick={() => handleNavClick('lobby')}
-            className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              currentView === 'lobby'
-                ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
-                : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
-            }`}
-          >
-            <Compass className="h-4 w-4" />
-            <span>তথ্যসেবা ও নির্দেশিকা</span>
-          </button>
+        <div className="hidden md:flex items-center space-x-4" id="main-navigation-wrapper">
+          <nav className="flex items-center space-x-2" id="main-navigation">
+            <button
+              id="nav-lobby-btn"
+              onClick={() => handleNavClick('lobby')}
+              className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                currentView === 'lobby'
+                  ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
+                  : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
+              }`}
+            >
+              <Compass className="h-4 w-4" />
+              <span>তথ্যসেবা ও নির্দেশিকা</span>
+            </button>
 
-          <button
-            id="nav-student-btn"
-            onClick={() => handleNavClick('student')}
-            className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              currentView === 'student'
-                ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
-                : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
-            }`}
-          >
-            <GraduationCap className="h-4 w-4" />
-            <span>স্টুডেন্ট পোর্টাল</span>
-            {activeApplicationId && (
-              <span className="ml-1 rounded-full bg-brand-gold text-white px-1.5 py-0.2 text-[9px] font-extrabold flex items-center space-x-0.5 shadow-sm animate-pulse">
-                <Sparkles className="h-2.5 w-2.5 shrink-0" />
-                <span className="hidden xs:inline">সচল</span>
-              </span>
-            )}
-          </button>
+            <button
+              id="nav-student-btn"
+              onClick={() => handleNavClick('student')}
+              className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                currentView === 'student'
+                  ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
+                  : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
+              }`}
+            >
+              <GraduationCap className="h-4 w-4" />
+              <span>স্টুডেন্ট পোর্টাল</span>
+              {activeApplicationId && (
+                <span className="ml-1 rounded-full bg-brand-gold text-white px-1.5 py-0.2 text-[9px] font-extrabold flex items-center space-x-0.5 shadow-sm animate-pulse">
+                  <Sparkles className="h-2.5 w-2.5 shrink-0" />
+                  <span className="hidden xs:inline">সচল</span>
+                </span>
+              )}
+            </button>
 
-          <button
-            id="nav-admin-btn"
-            onClick={() => handleNavClick('admin')}
-            className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              currentView === 'admin'
-                ? 'bg-slate-900 text-white shadow-md border-b-2 border-brand-gold'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <ShieldCheck className="h-4 w-4 text-brand-gold" />
-            <span>অ্যাডমিন প্যানেল</span>
-          </button>
+            <button
+              id="nav-admin-btn"
+              onClick={() => handleNavClick('admin')}
+              className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                currentView === 'admin'
+                  ? 'bg-slate-900 text-white shadow-md border-b-2 border-brand-gold'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <ShieldCheck className="h-4 w-4 text-brand-gold" />
+              <span>অ্যাডমিন প্যানেল</span>
+            </button>
 
-          <button
-            id="nav-support-btn"
-            onClick={() => handleNavClick('support')}
-            className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
-              currentView === 'support'
-                ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
-                : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
-            }`}
-          >
-            <HelpCircle className="h-4 w-4" />
-            <span>সাপোর্ট ও যোগাযোগ</span>
-          </button>
-        </nav>
+            <button
+              id="nav-support-btn"
+              onClick={() => handleNavClick('support')}
+              className={`flex items-center space-x-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                currentView === 'support'
+                  ? 'bg-brand-sky text-white shadow-md shadow-brand-sky/20 border-b-2 border-brand-gold'
+                  : 'text-slate-600 hover:bg-brand-sky-light hover:text-brand-sky-dark'
+              }`}
+            >
+              <HelpCircle className="h-4 w-4" />
+              <span>সাপোর্ট ও যোগাযোগ</span>
+            </button>
+          </nav>
+        </div>
 
         {/* Mobile Hamburger Button - Visible on Mobile Only */}
-        <div className="flex md:hidden" id="mobile-menu-toggle-container">
+        <div className="flex md:hidden items-center space-x-3.5" id="mobile-menu-toggle-container">
           <button
             id="mobile-menu-toggle-btn"
             onClick={() => setIsMenuOpen(!isMenuOpen)}

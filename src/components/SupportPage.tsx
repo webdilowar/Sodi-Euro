@@ -34,7 +34,9 @@ export const initialSupportMembers: SupportMember[] = [
     accentBorder: "border-brand-sky/30",
     btnText: "ওনারের সাথে সরাসরি যোগাযোগ করুন",
     btnUrl: "https://wa.me/8801712345678?text=Hello%20Dilowar%20Hosen,%20I%20need%20support%20with%20my%20Bulgaria%20Student%20Visa%20Application.",
-    createdAt: "2026-07-10 00:00"
+    createdAt: "2026-07-10 00:00",
+    username: "dilowar",
+    password: "dilowar123"
   },
   {
     id: "sohel_rana",
@@ -50,7 +52,9 @@ export const initialSupportMembers: SupportMember[] = [
     accentBorder: "border-brand-gold/30",
     btnText: "পরিচালকের সাথে সরাসরি যোগাযোগ করুন",
     btnUrl: "https://wa.me/8801987654321?text=Hello%20Sohel%20Rana,%20I%20need%20support%20with%20my%20university%20admission%20status.",
-    createdAt: "2026-07-10 00:00"
+    createdAt: "2026-07-10 00:00",
+    username: "sohel",
+    password: "sohel123"
   }
 ];
 
@@ -324,9 +328,9 @@ export default function SupportPage() {
                     {/* Compact Body Content */}
                     <div className="p-5 flex-grow flex flex-col justify-between">
                       <div>
-                        <div className="relative -mt-12 z-20 flex items-center gap-3.5 mb-4">
-                          {/* Photo or Monogram Avatar */}
-                          <div className="h-16 w-16 rounded-2xl bg-white p-1 shadow-md border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden">
+                        <div className="relative z-20 flex items-end gap-3.5 mb-4">
+                          {/* Photo or Monogram Avatar - Overlaps the cover */}
+                          <div className="relative -mt-12 h-16 w-16 rounded-2xl bg-white p-1 shadow-md border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden z-30">
                             {member.photoUrl ? (
                               <img 
                                 src={member.photoUrl} 
@@ -341,8 +345,8 @@ export default function SupportPage() {
                             )}
                           </div>
                           
-                          {/* Name and Title */}
-                          <div className="text-left">
+                          {/* Name and Title - Kept strictly inside the white body container */}
+                          <div className="text-left pb-1">
                             <h3 className="text-sm font-black text-slate-800 leading-tight group-hover:text-brand-sky transition-colors">
                               {member.name}
                             </h3>

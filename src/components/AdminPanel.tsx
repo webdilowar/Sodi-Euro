@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember } from '../types';
+import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember, ChatMessage } from '../types';
 import { documentRequirements, initialApplications } from '../data';
-import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { initialSupportMembers } from './SupportPage';
 import { 
@@ -33,7 +33,9 @@ import {
   Camera,
   Save,
   Download,
-  Trash2
+  Trash2,
+  Paperclip,
+  Plus
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -78,8 +80,8 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // Tab/Navigation State (Applicants vs Support Page Editor)
-  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor'>('applicants');
+  // Tab/Navigation State (Applicants vs Support Page Editor vs Messages)
+  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor' | 'messages'>('applicants');
 
   // Support Editor states
   const [supportMembers, setSupportMembers] = useState<SupportMember[]>([]);
@@ -155,6 +157,58 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
       ...supportDraft,
       [key]: value
     });
+  };
+
+  const handleAddNewSupportMember = async () => {
+    const newId = `member-${Date.now()}`;
+    const newMember: SupportMember = {
+      id: newId,
+      name: "নতুন মেম্বার (New Member)",
+      role: "সহকারী পরিচালক (Assistant Director)",
+      email: "info@sodieuro.com",
+      phone: "+880 1712-000000",
+      whatsapp: "8801712000000",
+      location: "ঢাকা অফিস, বাংলাদেশ",
+      bio: "বুলগেরিয়া স্টুডেন্ট ভিসা ও প্রসেসিং এর কাজে সার্বিক সহায়তা প্রদান করেন।",
+      badge: "Support Executive",
+      colorClass: "from-brand-sky via-brand-sky-dark to-slate-950",
+      accentBorder: "border-brand-sky/30",
+      btnText: "সরাসরি যোগাযোগ করুন",
+      btnUrl: "https://wa.me/8801712000000",
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      username: `user_${Date.now().toString().slice(-4)}`,
+      password: "password123"
+    };
+    
+    try {
+      await setDoc(doc(db, 'support_members', newId), newMember);
+      setSelectedSupportMemberId(newId);
+      setSupportDraft(newMember);
+      setLastSelectedId(newId);
+    } catch (err) {
+      console.error('Error creating new support member:', err);
+      alert('নতুন মেম্বার তৈরি করতে সমস্যা হয়েছে।');
+    }
+  };
+
+  const handleDeleteSupportMember = async (memberId: string) => {
+    if (supportMembers.length <= 1) {
+      alert("কমপক্ষে একজন সাপোর্ট মেম্বার থাকতে হবে!");
+      return;
+    }
+    if (window.confirm("আপনি কি নিশ্চিতভাবে এই সাপোর্ট মেম্বারের প্রোফাইল সম্পূর্ণভাবে ডিলিট করতে চান?")) {
+      try {
+        await deleteDoc(doc(db, 'support_members', memberId));
+        alert("সাপোর্ট মেম্বারের প্রোফাইল সফলভাবে ডিলিট করা হয়েছে।");
+        const remaining = supportMembers.filter(m => m.id !== memberId);
+        if (remaining.length > 0) {
+          setSelectedSupportMemberId(remaining[0].id);
+        }
+      } catch (err) {
+        console.error("Error deleting support member:", err);
+        alert("সাপোর্ট মেম্বার ডিলিট করতে সমস্যা হয়েছে।");
+      }
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, memberId: string, type: 'photo' | 'cover') => {
@@ -266,6 +320,31 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
   // Direct Student Messaging state
   const [adminMessageText, setAdminMessageText] = useState('');
+  const [activeChatAppId, setActiveChatAppId] = useState<string | null>(null);
+  const [adminChatFile, setAdminChatFile] = useState<string>('');
+  const [adminChatFileName, setAdminChatFileName] = useState<string>('');
+
+  // Automatically mark student messages as read when admin views the chat
+  useEffect(() => {
+    if (activeAdminTab === 'messages' && activeChatAppId) {
+      const app = applications.find(a => a.id === activeChatAppId);
+      if (app) {
+        const hasUnread = app.messages?.some(m => m.sender === 'student' && !m.read);
+        if (hasUnread) {
+          const updatedMessages = app.messages?.map(m => {
+            if (m.sender === 'student' && !m.read) {
+              return { ...m, read: true };
+            }
+            return m;
+          }) || [];
+          onUpdateApplication({
+            ...app,
+            messages: updatedMessages
+          });
+        }
+      }
+    }
+  }, [activeAdminTab, activeChatAppId, applications, onUpdateApplication]);
 
   // Communications Modals toggles
   const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -275,9 +354,18 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminUsername.trim() === 'sodieuro' && adminPassword.trim() === 'sodieuro') {
+    const trimmedUser = adminUsername.trim().toLowerCase();
+    const trimmedPass = adminPassword.trim();
+    
+    const matchedMember = supportMembers.find(
+      m => m.username?.toLowerCase() === trimmedUser && m.password === trimmedPass
+    );
+
+    if ((trimmedUser === 'sodieuro' && trimmedPass === 'sodieuro') || matchedMember) {
       setIsAdminLoggedIn(true);
       localStorage.setItem('sodieuro_admin_logged_in', 'true');
+      const displayName = matchedMember ? matchedMember.name : 'Master Admin';
+      localStorage.setItem('sodieuro_admin_display_name', displayName);
       setLoginError('');
     } else {
       setLoginError('ভুল আইডি অথবা পাসওয়ার্ড! শুধুমাত্র অথরাইজড এডমিন প্রবেশ করতে পারবেন।');
@@ -377,7 +465,9 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
     const updatedDocs = selectedApp.documents.map(doc => {
       if (doc.id === docId) {
-        return { ...doc, status: 'Approved' as const, feedback: undefined };
+        const docCopy = { ...doc, status: 'Approved' as const };
+        delete docCopy.feedback; // Completely remove feedback key so Firestore doesn't complain about undefined value
+        return docCopy;
       }
       return doc;
     });
@@ -446,6 +536,24 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     onUpdateApplication(updatedApp);
     setActiveReviewDocId(null);
     setRejectionFeedback('');
+  };
+
+  // Handle student application deletion from Firestore database
+  const handleDeleteApplication = async (appId: string) => {
+    if (!window.confirm("আপনি কি নিশ্চিতভাবে এই আবেদনকারীর সকল তথ্য ডিলিট করতে চান? এই অ্যাকশনটি রিভার্স করা যাবে না!")) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'applications', appId));
+      // Reset selected app id if the deleted application was currently selected
+      if (selectedAppId === appId) {
+        setSelectedAppId(null);
+      }
+      alert("আবেদনকারীর তথ্য সফলভাবে ডাটাবেজ থেকে ডিলিট করা হয়েছে।");
+    } catch (err) {
+      console.error("Error deleting application: ", err);
+      alert("আবেদনকারী ডিলিট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+    }
   };
 
   // Handle custom notifications trigger
@@ -623,6 +731,29 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
         >
           <Settings className="h-4 w-4 text-brand-gold" />
           <span>সাপোর্ট টিম ও পেজ সেটিংস</span>
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('messages')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black rounded-t-2xl transition-all border-b-2 -mb-[2px] relative ${
+            activeAdminTab === 'messages'
+              ? 'border-brand-sky text-brand-sky bg-white shadow-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+          }`}
+          id="admin-tab-btn-messages"
+        >
+          <MessageSquare className="h-4 w-4 text-brand-sky" />
+          <span>শিক্ষার্থী সাপোর্ট মেসেজ</span>
+          {(() => {
+            const unreadCount = applications.reduce((sum, app) => {
+              const unread = app.messages?.filter(m => m.sender === 'student' && !m.read).length || 0;
+              return sum + unread;
+            }, 0);
+            return unreadCount > 0 ? (
+              <span className="ml-1.5 rounded-full bg-rose-600 text-white px-2 py-0.5 text-[10px] font-black animate-pulse shadow-sm">
+                {unreadCount}
+              </span>
+            ) : null;
+          })()}
         </button>
       </div>
 
@@ -828,13 +959,13 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
                   {/* Status pipeline update triggers */}
                   <div className="space-y-1.5 shrink-0 text-left">
-                    <label className="text-[10px] font-black text-slate-400 block uppercase">আবেদন স্ট্যাটাস পরিবর্তন:</label>
-                    <div className="relative">
+                    <label className="text-[10px] font-black text-slate-400 block uppercase">আবেদন স্ট্যাটাস পরিবর্তন ও নিয়ন্ত্রণ:</label>
+                    <div className="flex items-center gap-2">
                       <select
                         id="admin-change-status-select"
                         value={selectedApp.status}
                         onChange={(e) => handleUpdateStatus(e.target.value as ApplicationStatus)}
-                        className="rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-black bg-slate-50 focus:border-brand-sky focus:outline-none text-slate-700 transition-all shadow-sm"
+                        className="rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-black bg-slate-50 focus:border-brand-sky focus:outline-none text-slate-700 transition-all shadow-sm flex-grow sm:flex-grow-0"
                       >
                         <option value="Submitted">Submitted (আবেদন জমা)</option>
                         <option value="Document Verification">Document Verification (যাচাইকরণ)</option>
@@ -842,6 +973,15 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                         <option value="Visa Issued">Visa Issued (ভিসা অনুমোদিত)</option>
                         <option value="Rejected">Rejected (স্থগিত)</option>
                       </select>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteApplication(selectedApp.id)}
+                        className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-brand-red hover:text-red-700 transition-all shadow-sm shrink-0 flex items-center justify-center"
+                        title="আবেদনকারীর সকল তথ্য ডাটাবেজ থেকে ডিলিট করুন"
+                        id={`admin-btn-delete-app-${selectedApp.id}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1048,7 +1188,17 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
             {/* Left Column: Select Member to Edit */}
             <div className="lg:col-span-4 space-y-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 text-left">
-                <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block pb-1 border-b border-slate-50">মেম্বার সিলেক্ট করুন</span>
+                <div className="flex justify-between items-center pb-2 border-b border-slate-100 gap-2">
+                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block">মেম্বার সিলেক্ট করুন</span>
+                  <button
+                    type="button"
+                    onClick={handleAddNewSupportMember}
+                    className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-black px-2.5 py-1.5 flex items-center gap-1 border border-emerald-200/45 transition-all shadow-sm shrink-0 active:scale-95"
+                  >
+                    <Plus className="h-3 w-3" />
+                    <span>নতুন মেম্বার</span>
+                  </button>
+                </div>
                 {loadingSupport ? (
                   <p className="text-xs text-slate-400 py-4 text-center">লোড হচ্ছে...</p>
                 ) : (
@@ -1089,7 +1239,8 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                     <div className="space-y-0.5 text-left">
                       <span className="text-[10px] bg-brand-sky/10 text-brand-sky font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
-                        {supportDraft.id === 'dilowar_hosen' ? 'ওনার প্রোফাইল' : 'পরিচালক প্রোফাইল'}
+                        {supportDraft.id === 'dilowar_hosen' ? 'ওনার প্রোফাইল (Owner)' : 
+                         supportDraft.id === 'sohel_rana' ? 'ব্যবস্থাপনা পরিচালক (MD)' : 'সাপোর্ট টিম প্রোফাইল (Support Team)'}
                       </span>
                       <h4 className="text-xs font-black text-slate-800 font-sans mt-1">
                         {supportDraft.name}-এর প্রোফাইল এডিটর
@@ -1233,6 +1384,36 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                     </div>
                   </div>
 
+                  {/* 2b. Admin Portal Credentials */}
+                  <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">অ্যাডমিন লগইন তথ্য (Admin Portal Credentials)</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500">ইউজারনেম (Username):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.username || ''}
+                          onChange={(e) => updateDraftField('username', e.target.value.trim().toLowerCase())}
+                          placeholder="e.g. dilowar"
+                          className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500">পাসওয়ার্ড (Password):</label>
+                        <input
+                          required
+                          type="text"
+                          value={supportDraft.password || ''}
+                          onChange={(e) => updateDraftField('password', e.target.value)}
+                          placeholder="e.g. dilowar123"
+                          className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky font-mono"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-slate-400">এই ইউজারনেম এবং পাসওয়ার্ড দিয়ে সংশ্লিষ্ট মেম্বার এডমিন প্যানেলে লগইন করতে পারবেন।</p>
+                  </div>
+
                   {/* 3. Contact & Location Info */}
                   <div className="space-y-4">
                     <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">যোগাযোগ ও অবস্থান (Contact details)</span>
@@ -1323,7 +1504,20 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   </div>
 
                   {/* Submit save button */}
-                  <div className="flex justify-end pt-3 border-t border-slate-100">
+                  <div className="flex justify-between items-center pt-4 border-t border-slate-150 gap-3">
+                    {supportDraft.id !== 'dilowar_hosen' && supportDraft.id !== 'sohel_rana' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSupportMember(supportDraft.id)}
+                        className="flex items-center space-x-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-brand-red px-4 py-2.5 text-[11px] font-black shadow-sm transition-all active:scale-95"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>প্রোফাইলটি ডিলিট করুন</span>
+                      </button>
+                    ) : (
+                      <div></div> // Spacer
+                    )}
+                    
                     <button
                       type="submit"
                       disabled={isSavingSupport}
@@ -1343,6 +1537,366 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
           </div>
         </div>
       )}
+
+      {activeAdminTab === 'messages' && (() => {
+        // Find all applications that have messages, sorted by latest message sentAt timestamp
+        const appsWithMessages = applications
+          .filter(app => app.messages && app.messages.length > 0)
+          .sort((a, b) => {
+            const lastA = a.messages?.[a.messages.length - 1]?.sentAt || '';
+            const lastB = b.messages?.[b.messages.length - 1]?.sentAt || '';
+            return lastB.localeCompare(lastA);
+          });
+
+        const currentChatApp = applications.find(a => a.id === (activeChatAppId || appsWithMessages[0]?.id));
+
+        return (
+          <div className="space-y-6 text-left" id="admin-messages-tab-root">
+            {/* Header section with total metrics */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-1 text-left">
+                <h3 className="text-sm sm:text-base font-black text-slate-800 flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-brand-sky" />
+                  <span>শিক্ষার্থী সহায়তা মেসেজ সেন্টার (Message Center)</span>
+                </h3>
+                <p className="text-[11px] text-slate-400">রিয়েল-টাইম মেসেজ আদান-প্রদান এবং শিক্ষার্থী সমস্যা সমাধান হাব</p>
+              </div>
+              <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-100 font-mono text-[11px] font-bold text-slate-600">
+                <span>সক্রিয় চ্যাট থ্রেড: {appsWithMessages.length} টি</span>
+              </div>
+            </div>
+
+            {/* Main responsive grid: 2 Columns on desktop, single column on mobile */}
+            <div className="grid grid-cols-12 gap-6 bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden h-[620px]" id="admin-chat-grid-container">
+              
+              {/* Left Column (Threads list / sidebar): span 4 on desktop, hide on mobile if a thread is open */}
+              <div className={`col-span-12 lg:col-span-4 border-r border-slate-100 flex flex-col h-full bg-slate-50/40 ${
+                activeChatAppId ? 'hidden lg:flex' : 'flex'
+              }`}>
+                {/* Search / Filter threads */}
+                <div className="p-4 border-b border-slate-100 bg-white space-y-3 text-left">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="শিক্ষার্থীর নাম খুঁজুন..."
+                      onChange={(e) => {
+                        // Dynamic selection from drop-down instead or basic list visual filtering
+                      }}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs focus:outline-none focus:border-brand-sky focus:bg-white transition-all text-slate-700 font-semibold"
+                    />
+                    <Search className="absolute left-3 top-3.5 h-3.5 w-3.5 text-slate-400" />
+                  </div>
+
+                  {/* Start new chat selector */}
+                  <div className="space-y-1 text-left">
+                    <label className="text-[9px] font-black text-slate-400 block uppercase">নতুন চ্যাট শুরু করুন (New Thread):</label>
+                    <select
+                      value={currentChatApp?.id || ''}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setActiveChatAppId(e.target.value);
+                        }
+                      }}
+                      className="w-full text-xs font-bold text-slate-700 rounded-xl border border-slate-200 p-2 bg-white focus:outline-none focus:border-brand-sky"
+                    >
+                      <option value="" disabled>শিক্ষার্থী বাছাই করুন...</option>
+                      {applications.map(app => (
+                        <option key={app.id} value={app.id}>
+                          {app.fullName} (ID: {app.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Scrollable list of threads */}
+                <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-3 space-y-1 bg-slate-50/30">
+                  {appsWithMessages.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 text-xs font-semibold">
+                      এখনো কোনো মেসেজ থ্রেড নেই।
+                    </div>
+                  ) : (
+                    appsWithMessages.map(app => {
+                      const isSelected = currentChatApp?.id === app.id;
+                      const lastMsg = app.messages?.[app.messages.length - 1];
+                      const unreadStudentCount = app.messages?.filter(m => m.sender === 'student' && !m.read).length || 0;
+
+                      return (
+                        <button
+                          key={app.id}
+                          onClick={() => setActiveChatAppId(app.id)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border ${
+                            isSelected
+                              ? 'bg-slate-900 text-white border-slate-950 shadow-md scale-[1.01]'
+                              : 'bg-white text-slate-700 border-slate-100 hover:border-slate-200 hover:bg-slate-50/80 shadow-sm'
+                          }`}
+                        >
+                          <div className="h-10 w-10 rounded-full border border-slate-200/80 overflow-hidden shrink-0 relative bg-slate-100">
+                            {app.profilePhoto ? (
+                              <img src={app.profilePhoto} alt={app.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-slate-400 font-bold text-xs">
+                                {app.fullName.substring(0, 2)}
+                              </div>
+                            )}
+                            {unreadStudentCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full text-[8px] font-black h-4.5 w-4.5 flex items-center justify-center shadow-sm animate-pulse">
+                                {unreadStudentCount}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="min-w-0 flex-1 space-y-0.5 text-left">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black truncate block pr-2">{app.fullName}</span>
+                              <span className={`text-[8px] font-mono shrink-0 ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                                {lastMsg ? lastMsg.sentAt.split(' ')[1] || lastMsg.sentAt : ''}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] truncate block ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
+                              {lastMsg ? lastMsg.text : 'কোনো মেসেজ নেই'}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column (Chat screen): span 8 on desktop, full screen on mobile if a thread is open */}
+              <div className={`col-span-12 lg:col-span-8 flex flex-col h-full bg-white relative ${
+                activeChatAppId ? 'flex' : 'hidden lg:flex'
+              }`}>
+                {currentChatApp ? (
+                  <>
+                    {/* Header */}
+                    <div className="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+                      <div className="flex items-center gap-3 text-left">
+                        {/* Mobile back button */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveChatAppId(null)}
+                          className="lg:hidden rounded-lg p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors mr-1"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                          </svg>
+                        </button>
+
+                        <div className="h-10 w-10 rounded-full border border-slate-800 overflow-hidden shrink-0 bg-slate-800">
+                          {currentChatApp.profilePhoto ? (
+                            <img src={currentChatApp.profilePhoto} alt={currentChatApp.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-slate-400 font-bold text-xs">
+                              {currentChatApp.fullName.substring(0, 2)}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-black tracking-wider text-brand-gold uppercase">{currentChatApp.fullName}</h4>
+                          <p className="text-[9px] sm:text-[10px] text-slate-300 font-medium">Passport: {currentChatApp.passportNumber} · Course: {currentChatApp.desiredCourse}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="hidden sm:inline text-[9px] bg-slate-800 border border-slate-700 text-slate-300 font-mono px-2.5 py-1.5 rounded-xl font-bold">
+                          ID: {currentChatApp.id}
+                        </span>
+                        <span className={`text-[9px] font-black uppercase px-2.5 py-1.5 rounded-xl ${
+                          currentChatApp.status === 'Visa Issued' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                          currentChatApp.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                          currentChatApp.status === 'Document Verification' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                        }`}>
+                          {currentChatApp.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Messages list */}
+                    <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+                      {(!currentChatApp.messages || currentChatApp.messages.length === 0) ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-3 py-16">
+                          <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 animate-bounce">
+                            <MessageSquare className="h-5 w-5" />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-xs font-black text-slate-700 block">কোনো পূর্ববর্তী কথোপকথন পাওয়া যায়নি</span>
+                            <span className="text-[10px] text-slate-400 block">নিচের মেসেজ বক্সের মাধ্যমে প্রথম মেসেজ পাঠান।</span>
+                          </div>
+                        </div>
+                      ) : (
+                        currentChatApp.messages.map((msg, idx) => {
+                          const isAdmin = msg.sender === 'admin';
+                          return (
+                            <div
+                              key={msg.id || idx}
+                              className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'} space-y-1`}
+                            >
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">
+                                {isAdmin ? 'ম্যানেজার (Admin)' : 'শিক্ষার্থী (Student)'}
+                              </span>
+                              
+                              <div
+                                className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed break-words shadow-sm ${
+                                  isAdmin
+                                    ? 'bg-slate-900 text-white rounded-tr-none'
+                                    : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
+                                }`}
+                              >
+                                <p className="whitespace-pre-line font-medium text-left">{msg.text}</p>
+                                
+                                {msg.attachments && msg.attachments.length > 0 && (
+                                  <div className="mt-2.5 pt-2 border-t border-slate-100/10 space-y-1.5">
+                                    <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">সংযুক্ত ফাইলসমূহ:</span>
+                                    {msg.attachments.map((file, fIdx) => (
+                                      <a
+                                        key={fIdx}
+                                        href={file.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex items-center space-x-1.5 hover:underline text-brand-gold font-bold text-[10px] bg-slate-800/40 p-2 rounded-xl text-left"
+                                      >
+                                        <Paperclip className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                                        <span className="truncate flex-grow">{file.name}</span>
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[8px] text-slate-400 font-mono px-1">{msg.sentAt}</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {/* Quick Response Templates / Recommendations for speed */}
+                    <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0 pl-2">কুইক রিপ্লাই:</span>
+                      {[
+                        "আপনার কাগজপত্র অনুমোদিত হয়েছে।",
+                        "অনুগ্রহ করে সঠিক পাসপোর্ট সাইজ ছবি আপলোড দিন।",
+                        "এম্বাসি ইন্টারভিউ স্লট চূড়ান্ত করা হয়েছে।",
+                        "দয়া করে ফি এর রশিদটি আপলোড করুন।"
+                      ].map((tmpl, tIdx) => (
+                        <button
+                          key={tIdx}
+                          type="button"
+                          onClick={() => setAdminMessageText(tmpl)}
+                          className="rounded-lg bg-white hover:bg-slate-100 border border-slate-200/60 px-3 py-1 text-[10px] font-bold text-slate-600 transition-colors shrink-0 whitespace-nowrap shadow-sm active:scale-95"
+                        >
+                          {tmpl}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Footer Input Area */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!adminMessageText.trim() && !adminChatFile) return;
+
+                        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+                        const newMsg: ChatMessage = {
+                          id: `msg-${Date.now()}`,
+                          sender: 'admin',
+                          text: adminMessageText,
+                          sentAt: timestamp,
+                          read: true,
+                          attachments: adminChatFile ? [{ name: adminChatFileName || 'Attachment', url: adminChatFile }] : undefined
+                        };
+
+                        const updatedApp: Application = {
+                          ...currentChatApp,
+                          messages: [...(currentChatApp.messages || []), newMsg]
+                        };
+
+                        onUpdateApplication(updatedApp);
+                        setAdminMessageText('');
+                        setAdminChatFile('');
+                        setAdminChatFileName('');
+                      }}
+                      className="p-3 bg-white border-t border-slate-200/80 space-y-2 shrink-0"
+                    >
+                      {/* Attached file row */}
+                      {adminChatFile && (
+                        <div className="flex items-center justify-between bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl text-[10px] font-bold text-slate-600">
+                          <div className="flex items-center space-x-1.5 truncate">
+                            <Paperclip className="h-3.5 w-3.5 text-brand-sky shrink-0" />
+                            <span className="truncate">{adminChatFileName}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdminChatFile('');
+                              setAdminChatFileName('');
+                            }}
+                            className="text-brand-red hover:text-red-700 text-xs font-black shrink-0"
+                          >
+                            মুছুন (Remove)
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        {/* File upload */}
+                        <label className="cursor-pointer h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                          <Paperclip className="h-4 w-4" />
+                          <input
+                            type="file"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  if (reader.result) {
+                                    setAdminChatFile(reader.result as string);
+                                    setAdminChatFileName(file.name);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+
+                        <input
+                          type="text"
+                          placeholder="শিক্ষার্থীর উদ্দেশ্যে উত্তর লিখুন..."
+                          value={adminMessageText}
+                          onChange={(e) => setAdminMessageText(e.target.value)}
+                          className="flex-grow rounded-xl border border-slate-200 px-3 py-2.5 text-xs focus:outline-none focus:border-brand-sky text-slate-800 font-semibold"
+                        />
+
+                        <button
+                          type="submit"
+                          className="bg-slate-900 text-white rounded-xl h-10 px-4.5 text-xs font-black flex items-center justify-center space-x-1.5 hover:bg-slate-800 transition-all active:scale-95 shrink-0"
+                        >
+                          <Send className="h-3.5 w-3.5 text-brand-gold" />
+                          <span>পাঠান</span>
+                        </button>
+                      </div>
+                    </form>
+                  </>
+                ) : (
+                  <div className="m-auto text-center p-12 text-slate-400 text-xs space-y-3 max-w-sm">
+                    <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto">
+                      <MessageSquare className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs font-black text-slate-700 block">কোনো শিক্ষার্থী নির্বাচিত করা হয়নি</span>
+                      <span className="text-[10px] text-slate-400 block">কথোপকথন শুরু করতে বাম পাশের তালিকা থেকে একটি থ্রেড নির্বাচন করুন অথবা নতুন চ্যাট শুরু করুন।</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modern Popups & Modals (AnimatePresence) */}
       <AnimatePresence>

@@ -52,6 +52,37 @@ export default function App() {
     localStorage.setItem('bulgaria_active_view_v1', view);
   }, [view]);
 
+  // Set initial browser history state if empty on mount
+  useEffect(() => {
+    if (!window.history.state) {
+      window.history.replaceState({ view }, '', '');
+    }
+  }, []);
+
+  // Sync view state changes to browser history
+  useEffect(() => {
+    const currentHistoryState = window.history.state;
+    if (!currentHistoryState || currentHistoryState.view !== view) {
+      window.history.pushState({ view }, '', '');
+    }
+  }, [view]);
+
+  // Listen to browser popstate (back/forward buttons) to change active view
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        setView(event.state.view);
+      } else {
+        setView('lobby');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
   // Applications state loaded and synced with Firestore
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
