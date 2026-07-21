@@ -37,7 +37,14 @@ import {
   Flame,
   RotateCcw,
   Eye,
-  Paperclip
+  Paperclip,
+  Linkedin,
+  Facebook,
+  MessageCircle,
+  Globe,
+  Mail,
+  Phone,
+  LogOut
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -144,6 +151,43 @@ export default function StudentDashboard({
   // Navigation inside dashboard
   const [activeTab, setActiveTab] = useState<'tracking' | 'documents' | 'payment' | 'additional-services' | 'messages'>('tracking');
   
+  // Signup Flow States
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [signupName, setSignupName] = useState('');
+  const [signupPassport, setSignupPassport] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPhone, setSignupPhone] = useState('');
+  const [signupError, setSignupError] = useState('');
+  const [showApplyFormInDashboard, setShowApplyFormInDashboard] = useState(false);
+
+  // Profile Completion calculator
+  const calculateProfileCompletion = (app: Application): number => {
+    let percent = 0;
+    if (app.fullName && app.fullName.trim().length > 0) percent += 10;
+    if (app.passportNumber && app.passportNumber.trim().length > 0) percent += 10;
+    if (app.phone && app.phone.trim().length > 0) percent += 10;
+    if (app.email && app.email.trim().length > 0) percent += 10;
+    if (app.profilePhoto && app.profilePhoto.trim().length > 0) percent += 10;
+    
+    if (app.academicHistory) {
+      const sscFilled = app.academicHistory.sscSchool && app.academicHistory.sscGpa && app.academicHistory.sscYear;
+      if (sscFilled) percent += 15;
+      
+      const hscFilled = app.academicHistory.hscCollege && app.academicHistory.hscGpa && app.academicHistory.hscYear;
+      if (hscFilled) percent += 15;
+      
+      const bachFilled = app.academicHistory.bachelorUni && app.academicHistory.bachelorCgpa && app.academicHistory.bachelorYear;
+      if (bachFilled) percent += 10;
+    }
+    
+    if (app.socialMedia) {
+      const socialFilled = app.socialMedia.facebook || app.socialMedia.linkedin || app.socialMedia.whatsapp;
+      if (socialFilled) percent += 10;
+    }
+    
+    return percent;
+  };
+
   // Login / Track Search states (using Passport Number as Username and Password)
   const [searchQuery, setSearchQuery] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
@@ -180,9 +224,27 @@ export default function StudentDashboard({
     fullName: '',
     passportNumber: '',
     email: '',
-    phone: ''
+    phone: '',
+    sscSchool: '',
+    sscGpa: '',
+    sscYear: '',
+    hscCollege: '',
+    hscGpa: '',
+    hscYear: '',
+    bachelorUni: '',
+    bachelorCgpa: '',
+    bachelorYear: '',
+    facebook: '',
+    linkedin: '',
+    whatsapp: ''
   });
   const [editProfileError, setEditProfileError] = useState('');
+
+  // Shopping Cart & Popover toggles
+  const [cart, setCart] = useState<string[]>([]);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isChatWidgetOpen, setIsChatWidgetOpen] = useState(false);
+  const [isCartCheckout, setIsCartCheckout] = useState(false);
 
   // Payment states
   const [paymentMethod, setPaymentMethod] = useState<'bkash' | 'nagad' | 'card'>('bkash');
@@ -313,6 +375,60 @@ export default function StudentDashboard({
   const handleApplySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+
+    // If we have an active logged-in application that is in 'Registered' status
+    if (activeApp && activeApp.status === 'Registered') {
+      if (!selectedApplyUni || !selectedApplyCourse) {
+        setFormError('অনুগ্রহ করে একটি বিশ্ববিদ্যালয় এবং প্রোগ্রাম সিলেক্ট করুন।');
+        return;
+      }
+
+      const desiredCourse = `${selectedApplyCourse} (${selectedApplyUni})`;
+
+      // Calculate Dynamic Price based on services
+      const calculatedTotal = serviceOptions
+        .filter(s => s.isMandatory || selectedServices.includes(s.id))
+        .reduce((sum, s) => sum + s.price, 0);
+
+      // Prepare 2 equal split installments (50% each)
+      const inst1Amt = Math.round(calculatedTotal / 2);
+      const inst2Amt = calculatedTotal - inst1Amt;
+
+      const initialInstallments = [
+        { installmentNumber: 1, amount: inst1Amt, status: 'Unpaid' as const },
+        { installmentNumber: 2, amount: inst2Amt, status: 'Unpaid' as const }
+      ];
+
+      const updatedApp: Application = {
+        ...activeApp,
+        desiredCourse,
+        status: 'Submitted',
+        paymentStatus: 'Unpaid',
+        paymentAmount: calculatedTotal,
+        totalAmount: calculatedTotal,
+        paidAmount: 0,
+        selectedServices: selectedServices,
+        installments: initialInstallments,
+        notificationHistory: [
+          ...activeApp.notificationHistory,
+          {
+            id: `not-${Math.random()}`,
+            title: 'ভিসা আবেদন সফলভাবে জমা হয়েছে',
+            body: `প্রিয় ${activeApp.fullName}, আপনার বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনটি সফলভাবে সিস্টেমে যুক্ত করা হয়েছে। আপনার নির্বাচিত সার্ভিস ফি: ৳${calculatedTotal.toLocaleString()} BDT। আপনি এখন ফি পরিশোধ করতে পারবেন এবং কাগজপত্র আপলোড সেকশন সচল হয়েছে।`,
+            type: activeApp.phone ? 'sms' : 'email',
+            sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            recipient: activeApp.phone || activeApp.email
+          }
+        ]
+      };
+
+      onUpdateApplication(updatedApp);
+      setShowApplyFormInDashboard(false);
+      setWizardStep(1);
+      setMaxStepReached(1);
+      setActiveTab('tracking');
+      return;
+    }
 
     const { fullName, passportNumber, email, phone } = formData;
     if (!fullName || !passportNumber || !email || !phone) {
@@ -490,6 +606,67 @@ export default function StudentDashboard({
     if (!activeApp) return;
     setIsProcessingPayment(true);
 
+    if (isCartCheckout) {
+      const cartServices = serviceOptions.filter(s => cart.includes(s.id));
+      const cartTotal = cartServices.reduce((sum, s) => sum + s.price, 0);
+      const serviceNames = cartServices.map(s => s.nameEn).join(', ');
+
+      setTimeout(() => {
+        const txnId = paymentMethod === 'card' 
+          ? `CARD${Math.floor(100000000 + Math.random() * 900000000)}`
+          : `${paymentMethod === 'bkash' ? 'BKX' : 'NGD'}${Math.floor(100000000 + Math.random() * 900000000)}`;
+
+        const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+        const updatedHistory = [
+          ...activeApp.notificationHistory,
+          {
+            id: `not-pay-cart-${Date.now()}`,
+            title: `অতিরিক্ত সার্ভিস পেমেন্ট সফল - ৳${cartTotal.toLocaleString()} BDT`,
+            body: `প্রিয় ${activeApp.fullName}, আপনার নির্বাচিত সার্ভিসসমূহ (${serviceNames}) বাবদ ৳${cartTotal.toLocaleString()} BDT সফলভাবে পরিশোধ করা হয়েছে। ট্রানজেকশন আইডি: ${txnId}।`,
+            type: 'email' as const,
+            sentAt: currentTimestamp,
+            recipient: activeApp.email
+          },
+          {
+            id: `not-pay-cart-sms-${Date.now()}`,
+            title: `সার্ভিস ফি প্রাপ্তি নিশ্চিতকরণ`,
+            body: `আপনার বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের অতিরিক্ত সার্ভিসসমূহ (${serviceNames}) বাবদ BDT ৳${cartTotal.toLocaleString()} পরিশোধিত হয়েছে। ট্রানজেকশন আইডি: ${txnId}`,
+            type: 'sms' as const,
+            sentAt: currentTimestamp,
+            recipient: activeApp.phone
+          }
+        ];
+
+        const payMethodLabel = paymentMethod === 'card' ? 'Visa Card' : (paymentMethod === 'bkash' ? 'bKash' : 'Nagad');
+
+        // Also add to any existing installments or keep them as is
+        const currentSelected = activeApp.selectedServices || [];
+        const newSelected = [...currentSelected, ...cart];
+        
+        const currentTotal = activeApp.totalAmount || activeApp.paymentAmount || 15000;
+        const currentPaid = activeApp.paidAmount || (activeApp.paymentStatus === 'Paid' ? currentTotal : 0);
+
+        const updatedApp: Application = {
+          ...activeApp,
+          selectedServices: newSelected,
+          paidAmount: currentPaid + cartTotal,
+          totalAmount: currentTotal + cartTotal,
+          paymentAmount: currentTotal + cartTotal,
+          notificationHistory: updatedHistory,
+          // If they were partially paid or fully paid, let's keep status correct or update
+          paymentStatus: (currentPaid + cartTotal >= currentTotal + cartTotal) ? 'Paid' : activeApp.paymentStatus
+        };
+
+        onUpdateApplication(updatedApp);
+        setIsProcessingPayment(false);
+        setCart([]); // Clear cart
+        setIsCartCheckout(false);
+        setPaymentModalStep(4);
+      }, 2000);
+      return;
+    }
+
     const totalAmt = activeApp.totalAmount || activeApp.paymentAmount || 15000;
     const currentPaid = activeApp.paidAmount || (activeApp.paymentStatus === 'Paid' ? totalAmt : 0);
     
@@ -551,7 +728,7 @@ export default function StudentDashboard({
         {
           id: `not-pay-sms-${Date.now()}`,
           title: `ফি প্রাপ্তি নিশ্চিতকরণ (${paymentOptionLabel})`,
-          body: `আপনার বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের ${paymentOptionLabel} বাবদ ৳${payingAmount.toLocaleString()} BDT পরিশোধিত হয়েছে। ট্রানজেকশন আইডি: ${txnId}`,
+          body: `আপনার বুলগেরিয়া স্টুডেন্ট visa আবেদনের ${paymentOptionLabel} বাবদ ৳${payingAmount.toLocaleString()} BDT পরিশোধিত হয়েছে। ট্রানজেকশন আইডি: ${txnId}`,
           type: 'sms' as const,
           sentAt: currentTimestamp,
           recipient: activeApp.phone
@@ -595,6 +772,43 @@ export default function StudentDashboard({
     }, 2000);
   };
 
+  // Live Chat helpers
+  const handleSendStudentMessage = (text: string) => {
+    if (!activeApp || !text.trim()) return;
+    const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const newMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'student' as const,
+      text: text.trim(),
+      sentAt: currentTimestamp,
+      read: false
+    };
+    const updatedApp: Application = {
+      ...activeApp,
+      messages: [...(activeApp.messages || []), newMessage]
+    };
+    onUpdateApplication(updatedApp);
+  };
+
+  const markMessagesAsRead = () => {
+    if (!activeApp || !activeApp.messages) return;
+    let hasUnread = false;
+    const updatedMessages = activeApp.messages.map(m => {
+      if (m.sender === 'admin' && !m.read) {
+        hasUnread = true;
+        return { ...m, read: true };
+      }
+      return m;
+    });
+    if (hasUnread) {
+      const updatedApp: Application = {
+        ...activeApp,
+        messages: updatedMessages
+      };
+      onUpdateApplication(updatedApp);
+    }
+  };
+
   // Active status color helpers
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -613,6 +827,58 @@ export default function StudentDashboard({
     }
   };
 
+  const handleDirectSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSignupError('');
+    if (!signupName.trim() || !signupPassport.trim() || !signupEmail.trim() || !signupPhone.trim()) {
+      setSignupError('অনুগ্রহ করে সব তথ্য সঠিকভাবে পূরণ করুন।');
+      return;
+    }
+
+    const passportUpper = signupPassport.trim().toUpperCase();
+    const exists = applications.find(a => a.passportNumber.toUpperCase() === passportUpper);
+    if (exists) {
+      setSignupError('এই পাসপোর্ট নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
+      return;
+    }
+
+    const newId = `APP-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newApp: Application = {
+      id: newId,
+      fullName: signupName.trim(),
+      passportNumber: passportUpper,
+      email: signupEmail.trim(),
+      phone: signupPhone.trim(),
+      desiredCourse: 'BSc in Computer Science (Technical University of Sofia)',
+      status: 'Registered',
+      paymentStatus: 'Unpaid',
+      paymentAmount: 0,
+      paidAmount: 0,
+      documents: [],
+      createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      notificationHistory: [
+        {
+          id: `not-${Math.random()}`,
+          title: 'অ্যাকাউন্ট নিবন্ধন ও ফাইল ওপেন সফল',
+          body: `প্রিয় ${signupName.trim()}, আপনার Sodi Euro স্টুডেন্ট পোর্টাল অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। আইডি: ${newId}। বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের জন্য আপনার প্রোফাইল সম্পূর্ণ করুন।`,
+          type: 'email',
+          sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+          recipient: signupEmail.trim()
+        }
+      ]
+    };
+
+    onAddApplication(newApp);
+    setActiveAppId(newId);
+    setActiveTab('tracking');
+
+    setSignupName('');
+    setSignupPassport('');
+    setSignupEmail('');
+    setSignupPhone('');
+    setAuthMode('login');
+  };
+
   const calculatedTotal = serviceOptions
     .filter(s => s.isMandatory || selectedServices.includes(s.id))
     .reduce((sum, s) => sum + s.price, 0);
@@ -626,79 +892,189 @@ export default function StudentDashboard({
           initial={{ opacity: 0, rotateX: -15, y: 30 }}
           animate={{ opacity: 1, rotateX: 0, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="mx-auto max-w-2xl space-y-8 perspective-1000" 
+          className="mx-auto max-w-2xl space-y-6 perspective-1000" 
           id="portal-login-screen"
         >
           <div className="text-center space-y-3">
             <span className="font-display font-black text-brand-sky bg-brand-sky-light border border-brand-sky/20 px-3 py-1 rounded-full text-xs">
-              Sodi Euro স্টুডেন্ট সার্ভিসেস
+              Sodi Euro স্টুডেন্ট পোর্টাল
             </span>
-            <h1 className="font-display text-3xl font-extrabold text-slate-800">আপনার ভিসা আবেদন ট্র্যাকিং করুন</h1>
+            <h1 className="font-display text-2xl md:text-3xl font-extrabold text-slate-800">বুলগেরিয়া স্টুডেন্ট ভিসা ফাইলিং ও ট্র্যাকিং</h1>
             <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              Sodi Euro ড্যাশবোর্ডে আপনার অ্যাপ্লিকেশন আইডি অথবা পাসপোর্ট নম্বর দিয়ে আবেদনের রিয়েল-টাইম আপডেট চেক করুন এবং কাগজপত্র আপলোড সম্পূর্ণ করুন।
+              Sodi Euro ডিজিটাল পোর্টালে নিবন্ধন করুন, আপনার প্রোফাইল সম্পূর্ণ করুন এবং আপনার স্টুডেন্ট ভিসা প্রসেসের প্রতিটি আপডেট রিয়েল-টাইমে ট্র্যাক করুন।
             </p>
           </div>
 
+          {/* Tab Switcher */}
+          <div className="flex bg-slate-100/80 p-1.5 rounded-xl max-w-xs mx-auto">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('login');
+                setSearchError('');
+              }}
+              className={`flex-1 text-center py-2 text-xs font-black rounded-lg transition-all ${
+                authMode === 'login'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              লগইন (Login)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setSearchError('');
+              }}
+              className={`flex-1 text-center py-2 text-xs font-black rounded-lg transition-all ${
+                authMode === 'signup'
+                  ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              নতুন নিবন্ধন (Sign Up)
+            </button>
+          </div>
+
           <div className="rounded-2xl border-2 border-brand-gold/15 bg-white p-6 shadow-xl space-y-6 transform-style-3d hover:shadow-2xl hover:shadow-brand-sky/5 transition-all duration-300">
-            <form onSubmit={handleStudentLogin} className="space-y-4" id="track-form">
-              <div className="space-y-3.5">
-                {/* Username Input */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">ইউজারনেম (পাসপোর্ট নম্বর):</label>
-                  <div className="relative">
-                    <input
-                      id="track-search-input"
-                      required
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="যেমন: EF0192837"
-                      className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
-                    />
-                    <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+            {authMode === 'login' ? (
+              /* LOGIN FORM */
+              <form onSubmit={handleStudentLogin} className="space-y-4" id="track-form">
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">পাসপোর্ট নম্বর (Passport Number):</label>
+                    <div className="relative">
+                      <input
+                        id="track-search-input"
+                        required
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="যেমন: EF0129384"
+                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold uppercase"
+                      />
+                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (Password):</label>
+                    <div className="relative">
+                      <input
+                        required
+                        type="password"
+                        placeholder="লগইন পাসওয়ার্ড (আপনার পাসপোর্ট নম্বর)"
+                        value={studentPassword}
+                        onChange={(e) => setStudentPassword(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold font-mono"
+                      />
+                      <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1 font-semibold">ড্যাশবোর্ডে প্রবেশের জন্য আপনার পাসপোর্ট নম্বরটি একইসাথে ইউজারনেম এবং পাসওয়ার্ড হিসেবে টাইপ করুন।</p>
                   </div>
                 </div>
 
-                {/* Password Input */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (পাসপোর্ট নম্বর):</label>
-                  <div className="relative">
-                    <input
-                      required
-                      type="password"
-                      placeholder="যেমন: EF0192837"
-                      value={studentPassword}
-                      onChange={(e) => setStudentPassword(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold font-mono"
-                    />
-                    <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                {searchError && (
+                  <div className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-xl p-3 flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{searchError}</span>
                   </div>
-                </div>
-              </div>
+                )}
 
-              {searchError && (
-                <div className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-xl p-3 flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <span>{searchError}</span>
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   type="submit"
                   className="w-full rounded-xl bg-slate-900 py-3 text-xs font-black text-white hover:bg-slate-800 transition-all border-b border-brand-gold"
                 >
-                  ট্র্যাক করুন
+                  লগইন ও ট্র্যাকিং করুন
                 </button>
+              </form>
+            ) : (
+              /* DIRECT SIGNUP FORM (NO OTP REQUIRED) */
+              <form onSubmit={handleDirectSignup} className="space-y-4">
+                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center mb-4">
+                  <p className="text-xs font-bold text-emerald-800">✓ নতুন অ্যাকাউন্ট তৈরি ও সরাসরি ফাইল ওপেন</p>
+                  <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">কোনো ওটিপি ঝামেলা ছাড়া নিচের তথ্যগুলো দিয়ে সাথে সাথে আপনার অ্যাকাউন্ট খুলে আবেদন শুরু করুন।</p>
+                </div>
+
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">শিক্ষার্থীর পূর্ণ নাম (পাসপোর্ট অনুযায়ী):</label>
+                    <div className="relative">
+                      <input
+                        required
+                        type="text"
+                        placeholder="যেমন: MD KAMRUL HASAN"
+                        value={signupName}
+                        onChange={(e) => setSignupName(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
+                      />
+                      <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">পাসপোর্ট নম্বর (Passport Number):</label>
+                    <div className="relative">
+                      <input
+                        required
+                        type="text"
+                        placeholder="যেমন: EF0129384"
+                        value={signupPassport}
+                        onChange={(e) => setSignupPassport(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold uppercase"
+                      />
+                      <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">* এটিই হবে আপনার ট্র্যাকিং ড্যাশবোর্ডে লগইন করার পাসওয়ার্ড।</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">ইমেইল অ্যাড্রেস:</label>
+                    <div className="relative">
+                      <input
+                        required
+                        type="email"
+                        placeholder="যেমন: student@gmail.com"
+                        value={signupEmail}
+                        onChange={(e) => setSignupEmail(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
+                      />
+                      <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 block">মোবাইল নম্বর (বাংলাদেশী):</label>
+                    <div className="relative">
+                      <input
+                        required
+                        type="text"
+                        placeholder="যেমন: 017XXXXXXXX"
+                        value={signupPhone}
+                        onChange={(e) => setSignupPhone(e.target.value)}
+                        className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
+                      />
+                      <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {signupError && (
+                  <div className="text-[11px] font-bold text-rose-500 bg-rose-50 border border-rose-100 rounded-xl p-3 flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{signupError}</span>
+                  </div>
+                )}
+
                 <button
-                  type="button"
-                  onClick={() => setShowApplyForm(!showApplyForm)}
-                  className="w-full rounded-xl border-2 border-brand-sky py-3 text-xs font-black text-brand-sky hover:bg-brand-sky/5 transition-all"
+                  type="submit"
+                  className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-black text-white hover:bg-emerald-700 transition-all shadow-md active:scale-95"
                 >
-                  {showApplyForm ? "আবেদন ফর্ম বন্ধ করুন" : "নতুন ফাইল ওপেন করুন"}
+                  সরাসরি অ্যাকাউন্ট তৈরি করুন ও ফাইল ওপেন করুন
                 </button>
-              </div>
-            </form>
+              </form>
+            )}
           </div>
         </motion.div>
 
@@ -1258,12 +1634,6 @@ export default function StudentDashboard({
                           </div>
                         </div>
 
-                        {formError && (
-                          <div className="text-[11px] text-red-500 font-bold bg-red-50 p-2.5 rounded border border-red-100">
-                            {formError}
-                          </div>
-                        )}
-
                         <div className="flex justify-between pt-2">
                           <button
                             type="button"
@@ -1273,15 +1643,13 @@ export default function StudentDashboard({
                             <ChevronLeft className="h-4 w-4" />
                             <span>পূর্ববর্তী</span>
                           </button>
-                          
                           <button
                             type="button"
-                            id="submit-registration-btn"
-                            onClick={handleApplySubmit}
-                            className="inline-flex items-center justify-center space-x-1 rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold px-6 py-2.5 text-xs font-black text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md shadow-brand-sky/20"
+                            onClick={(e) => handleApplySubmit(e)}
+                            className="inline-flex items-center space-x-1 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-black text-white hover:bg-emerald-700 transition-all shadow-md active:scale-95"
                           >
-                            <span>ফাইল ওপেন করুন ও পোর্টাল চালু করুন</span>
-                            <ArrowRight className="h-4 w-4" />
+                            <span>ফাইল ওপেন ও জমা দিন</span>
+                            <Send className="h-4 w-4" />
                           </button>
                         </div>
                       </motion.div>
@@ -1293,314 +1661,986 @@ export default function StudentDashboard({
           </AnimatePresence>
         </div>
       ) : (
-        /* Active Application Area */
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6" 
-          id="portal-dashboard-screen"
-        >
-          {/* Dashboard Header Bar */}
-          <div className="flex flex-col space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between md:space-y-0">
-            <div className="flex items-center space-x-3.5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-sky/10 text-brand-sky shrink-0">
-                <User className="h-6 w-6" />
-              </div>
-              <div>
-                <div className="flex items-center space-x-2">
-                  <h2 className="font-display text-lg font-bold text-slate-800">{activeApp.fullName}</h2>
-                  <span className="font-mono text-xs text-slate-400">({activeApp.id})</span>
+        activeApp.status === 'Registered' ? (
+            <div className="space-y-6 animate-fade-in" id="registered-profile-completion-dashboard">
+              {/* Global Student Dashboard Logout Bar */}
+              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mb-6" id="student-logout-bar">
+                <div className="flex items-center space-x-3 text-left w-full sm:w-auto">
+                  <div className="h-10 w-10 rounded-xl bg-brand-sky/10 border border-brand-sky/20 text-brand-sky flex items-center justify-center font-black shrink-0">
+                    {activeApp.fullName.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-800">{activeApp.fullName}</span>
+                      {calculateProfileCompletion(activeApp) >= 70 && (
+                        <span className="inline-flex items-center text-blue-500" title="Verified Profile (70%+ Complete)">
+                          <svg className="w-3.5 h-3.5 fill-blue-500 text-white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        </span>
+                      )}
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500">{activeApp.desiredCourse}</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveAppId(null)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 rounded-xl bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all shrink-0"
+                  id="student-logout-btn"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
+                </button>
               </div>
-            </div>
+              {/* Profile Completion progress card */}
+              <div className="rounded-2xl border-2 border-brand-gold/15 bg-white p-6 shadow-sm space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="text-left">
+                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-brand-gold animate-pulse" />
+                      <span>আপনার প্রোফাইল সম্পূর্ণ করুন (Complete Your Profile)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের জন্য আপনার প্রোফাইল কমপক্ষে ৫০% সম্পূর্ণ করতে হবে। বর্তমানে আপনার প্রোফাইল সম্পূর্ণতার অগ্রগতি:
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 justify-between md:justify-end">
+                    <span className="text-2xl font-black text-brand-sky">{calculateProfileCompletion(activeApp)}%</span>
+                    <span className="text-xs font-bold text-slate-400">সম্পন্ন (Complete)</span>
+                  </div>
+                </div>
 
-            <div className="flex flex-wrap gap-2 items-center">
-              {getStatusBadge(activeApp.status)}
-              <button
-                id="logout-portal-btn"
-                onClick={() => {
-                  setActiveAppId(null);
-                  setActiveTab('tracking');
-                }}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50"
-              >
-                আউট করুন
-              </button>
-            </div>
-          </div>
+                {/* Progress Bar */}
+                <div className="relative w-full h-3.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-brand-sky via-brand-sky-dark to-brand-gold transition-all duration-500"
+                    style={{ width: `${calculateProfileCompletion(activeApp)}%` }}
+                  />
+                </div>
 
-          {/* Sub Navigation Tabs */}
-          <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory" id="dashboard-tabs">
-            <button
-              id="tab-tracking"
-              onClick={() => setActiveTab('tracking')}
-              className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
-                activeTab === 'tracking'
-                  ? 'border-brand-sky text-brand-sky'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span className="md:inline hidden">রিয়েল-টাইম ট্র্যাকিং (Real-time tracking)</span>
-              <span className="md:hidden inline">আবেদন ট্র্যাকিং</span>
-            </button>
-            <button
-              id="tab-documents"
-              onClick={() => setActiveTab('documents')}
-              className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
-                activeTab === 'documents'
-                  ? 'border-brand-sky text-brand-sky'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span className="md:inline hidden">ডকুমেন্ট আপলোড ও গাইডলাইন (Secure Upload)</span>
-              <span className="md:hidden inline">কাগজপত্র আপলোড</span>
-            </button>
-            <button
-              id="tab-payment"
-              onClick={() => setActiveTab('payment')}
-              className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start relative ${
-                activeTab === 'payment'
-                  ? 'border-brand-sky text-brand-sky'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span className="md:inline hidden">ফি ও পেমেন্ট গেটওয়ে (Indian Visa Services)</span>
-              <span className="md:hidden inline">ফি ও পেমেন্ট</span>
-              {activeApp.paymentStatus !== 'Paid' && (
-                <span className="absolute top-1.5 right-1 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-gold"></span>
-                </span>
-              )}
-            </button>
-            <button
-              id="tab-additional-services"
-              onClick={() => setActiveTab('additional-services')}
-              className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
-                activeTab === 'additional-services'
-                  ? 'border-brand-sky text-brand-sky'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>অতিরিক্ত সেবা সমূহ (Services)</span>
-            </button>
-            <button
-              id="tab-messages"
-              onClick={() => setActiveTab('messages')}
-              className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start relative ${
-                activeTab === 'messages'
-                  ? 'border-brand-sky text-brand-sky'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span>অ্যাডমিনের সাথে চ্যাট (Support Chat)</span>
-              {(() => {
-                const unreadCount = activeApp.messages?.filter(m => m.sender === 'admin' && !m.read).length || 0;
-                return unreadCount > 0 ? (
-                  <span className="absolute top-1.5 right-1.5 rounded-full bg-rose-600 text-white h-4 w-4 flex items-center justify-center text-[8px] font-black animate-bounce shadow-sm">
-                    {unreadCount}
-                  </span>
-                ) : null;
-              })()}
-            </button>
-          </div>
+                {calculateProfileCompletion(activeApp) < 50 ? (
+                  <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 flex items-start gap-3 text-left">
+                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-amber-800 leading-tight">ভিসা আবেদন লক করা আছে (Visa Application Gated)</p>
+                      <p className="text-[11px] text-amber-600 font-semibold mt-1">
+                        আপনার প্রোফাইল ৫০% সম্পূর্ণ হলেই বুলগেরিয়া স্টুডেন্ট ভিসা আবেদন (বিশ্ববিদ্যালয়, কোর্স ও অতিরিক্ত সেবা নির্বাচন) আনলক হবে। অনুগ্রহ করে নিচে আপনার অ্যাকাডেমিক এবং সোশ্যাল লিংকসমূহ আপডেট করে ৫০% সম্পন্ন করুন।
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 flex items-start gap-3 text-left">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-bold text-emerald-800 leading-tight">ভিসা আবেদন সচল হয়েছে! (Visa Application Unlocked)</p>
+                      <p className="text-[11px] text-emerald-600 font-semibold mt-1">
+                        অভিনন্দন! আপনার প্রোফাইল ৫০% বা তার বেশি সম্পূর্ণ হয়েছে। এখন আপনি বুলগেরিয়া স্টুডেন্ট ভিসা প্রসেস শুরু করতে পারবেন। নিচে ডানদিকের প্যানেলে "স্টুডেন্ট ভিসা আবেদন শুরু করুন" বাটনে ক্লিক করুন।
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-          {/* Tab 1: Real-time Tracking */}
-          {activeTab === 'tracking' && (
-            <div className="grid gap-6 lg:grid-cols-3" id="tracking-tab-content">
-              {/* Tracker Timeline Column */}
-              <div className="space-y-6 lg:col-span-2">
-                {activeApp.paymentStatus !== 'Paid' && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl border-2 border-brand-gold bg-gradient-to-r from-amber-50/85 via-orange-50/70 to-amber-50/45 p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                    id="unpaid-alert-banner"
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold/15 text-brand-gold-dark border border-brand-gold/30">
-                        <CreditCard className="h-5 w-5 animate-pulse" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-800">পেমেন্ট পেন্ডিং আছে (Payment Action Required)</h4>
-                        <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
-                          আপনার ভারতীয় ডাবল এন্ট্রি ভিসা এবং দিল্লী ট্রাভেল প্রসেসিং ফি <strong>৳ ১৫,০০০ BDT</strong> অপরিশোধিত রয়েছে। দ্রুত প্রসেসিং শুরু করতে ফি পরিশোধ করুন।
-                        </p>
-                      </div>
+              {showApplyFormInDashboard ? (
+                /* INLINE UNIVERSITY/COURSE FILING WIZARD */
+                <div className="rounded-2xl border-2 border-brand-sky/20 bg-white p-5 md:p-6 shadow-xl space-y-6 text-left">
+                  <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
+                    <div>
+                      <h3 className="font-display font-black text-slate-800 text-base md:text-lg">বুলগেরিয়া স্টুডেন্ট ভিসা প্রসেস শুরু করুন (Visa Application Wizard)</h3>
+                      <p className="text-[10px] md:text-xs text-slate-500">আপনার বিশ্ববিদ্যালয়, প্রোগ্রাম এবং প্রয়োজনীয় সেবা নির্বাচন করুন।</p>
                     </div>
                     <button
-                      id="banner-pay-now-btn"
-                      onClick={() => setActiveTab('payment')}
-                      className="w-full sm:w-auto shrink-0 rounded-lg bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white px-4 py-2.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all text-center border-b border-brand-gold"
+                      type="button"
+                      onClick={() => {
+                        setShowApplyFormInDashboard(false);
+                        setWizardStep(1);
+                      }}
+                      className="text-xs font-bold text-rose-500 hover:underline bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100"
                     >
-                      ফি পরিশোধ করুন ➔
+                      বন্ধ করুন (Cancel)
                     </button>
-                  </motion.div>
-                )}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="font-display font-bold text-slate-800 text-sm mb-6 border-b border-slate-50 pb-3">
-                    আপনার আবেদনের বর্তমান অবস্থা (Live Processing Status)
-                  </h3>
+                  </div>
 
-                  <div className="relative border-l-2 border-slate-100 pl-6 ml-3 space-y-8">
-                    {[
-                      {
-                        key: 'Submitted',
-                        title: 'আবেদন ফাইল খোলা হয়েছে',
-                        desc: 'আপনার বেসিক ফাইল এজেন্সিতে রেডি করা হয়েছে।',
-                        time: activeApp.createdAt,
-                        isActive: true,
-                        isCompleted: true
-                      },
-                      {
-                        key: 'Document Verification',
-                        title: 'ডকুমেন্ট ভেরিফিকেশন ও এটেস্টেশন',
-                        desc: 'বাংলাদেশ পররাষ্ট্র মন্ত্রণালয় ও শিক্ষাবোর্ডের সত্যায়ন প্রক্রিয়া চলমান।',
-                        time: activeApp.documents.length > 0 ? activeApp.documents[0].uploadedAt : '',
-                        isActive: activeApp.status === 'Document Verification' || activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued',
-                        isCompleted: activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued'
-                      },
-                      {
-                        key: 'Embassy Processing',
-                        title: 'দিল্লী দূতাবাস প্রসেসিং ও ভারতীয় ভিসা',
-                        desc: 'ভারতীয় ট্রানজিট ভিসা বুকিং সম্পন্ন এবং দিল্লীস্থ বুলগেরিয়ান দূতাবাসে অ্যাপয়েন্টমেন্ট বুকিং প্রসেস।',
-                        time: activeApp.status === 'Embassy Processing' ? 'চলমান' : (activeApp.status === 'Visa Issued' ? 'সম্পন্ন' : ''),
-                        isActive: activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued',
-                        isCompleted: activeApp.status === 'Visa Issued'
-                      },
-                      {
-                        key: 'Visa Issued',
-                        title: 'বুলগেরিয়া স্টুডেন্ট ভিসা অনুমোদিত',
-                        desc: 'অভিনন্দন! আপনার বুলগেরিয়া স্টুডেন্ট ভিসা সফলভাবে অনুমোদন ও পাসপোর্ট স্ট্যাম্পিং সম্পন্ন হয়েছে।',
-                        time: activeApp.status === 'Visa Issued' ? 'ফ্লাইট প্রিপারেশন' : '',
-                        isActive: activeApp.status === 'Visa Issued',
-                        isCompleted: activeApp.status === 'Visa Issued'
-                      }
-                    ].map((step, idx) => (
-                      <div key={idx} className="relative" id={`tracking-step-${idx}`}>
-                        {/* Bullet circle */}
-                        <div className={`absolute -left-[33px] top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                          step.isCompleted 
-                            ? 'bg-brand-sky border-brand-sky text-white' 
-                            : (step.isActive ? 'bg-white border-brand-sky text-brand-sky' : 'bg-white border-slate-200 text-slate-400')
-                        }`}>
-                          {step.isCompleted ? (
-                            <CheckCircle className="h-4 w-4" />
+                  {/* STEP 2: University & Course Selection */}
+                  {wizardStep === 2 && (
+                    <div className="space-y-5 animate-fade-in">
+                      <div className="relative">
+                        <label className="text-xs font-black text-slate-800 flex items-center gap-1.5 mb-1.5">
+                          <School className="h-4 w-4 text-brand-sky" />
+                          <span>১. বুলগেরিয়ার বিশ্ববিদ্যালয় পছন্দ করুন (Select University)</span>
+                        </label>
+                        
+                        <button
+                          type="button"
+                          onClick={() => setIsUniDropdownOpen(!isUniDropdownOpen)}
+                          className="w-full flex items-center justify-between rounded-xl border-2 border-slate-200 bg-white p-3 text-left shadow-sm hover:border-brand-sky/60 hover:bg-slate-50/30 transition-all focus:outline-none min-w-0"
+                        >
+                          {selectedApplyUni ? (
+                            <div className="flex items-start gap-2 max-w-[85%] min-w-0 flex-1">
+                              <div className={`h-3 w-3 rounded-full bg-gradient-to-tr ${universityCoursesMap[selectedApplyUni].logoColor} shrink-0 mt-1`}></div>
+                              <div className="text-left min-w-0 flex-1">
+                                <h4 className="text-xs font-bold text-slate-800 leading-snug break-words">{selectedApplyUni}</h4>
+                                <div className="text-[9px] text-slate-400 font-bold mt-1 flex flex-wrap gap-x-2 gap-y-1 items-center">
+                                  <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5 text-slate-300" /> {universityCoursesMap[selectedApplyUni].location}</span>
+                                  <span className="text-slate-200">|</span>
+                                  <span className="flex items-center gap-0.5 text-brand-gold-dark font-mono">{universityCoursesMap[selectedApplyUni].tuitionFee}</span>
+                                </div>
+                              </div>
+                            </div>
                           ) : (
-                            <Clock className="h-3 w-3" />
+                            <div className="flex items-center space-x-2">
+                              <span className="h-2 w-2 rounded-full bg-brand-sky animate-ping"></span>
+                              <span className="text-xs font-black text-brand-sky">একটি বিশ্ববিদ্যালয় সিলেক্ট করুন (Choose University)</span>
+                            </div>
                           )}
+                          <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-300 shrink-0 ml-1 ${isUniDropdownOpen ? 'rotate-180 text-brand-sky' : ''}`} />
+                        </button>
+
+                        <AnimatePresence>
+                          {isUniDropdownOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="absolute left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border-2 border-slate-200 bg-white shadow-2xl divide-y divide-slate-100"
+                            >
+                              {Object.keys(universityCoursesMap).map((uniName) => {
+                                const uni = universityCoursesMap[uniName];
+                                const isSelected = selectedApplyUni === uniName;
+                                return (
+                                  <div
+                                    key={uniName}
+                                    onClick={() => {
+                                      setSelectedApplyUni(uniName);
+                                      setSelectedApplyCourse(uni.courses[0]);
+                                      setIsUniDropdownOpen(false);
+                                    }}
+                                    className={`flex items-start justify-between p-3 cursor-pointer transition-colors ${
+                                      isSelected ? 'bg-brand-sky-light/10 text-brand-sky font-extrabold' : 'hover:bg-slate-50 text-slate-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-start gap-2 text-left flex-1 min-w-0">
+                                      <div className={`h-3 w-3 rounded-full bg-gradient-to-tr ${uni.logoColor} shrink-0 mt-1`} />
+                                      <div className="min-w-0 flex-1">
+                                        <h5 className="text-xs font-bold text-slate-800 leading-snug break-words">{uniName}</h5>
+                                        <div className="text-[9px] text-slate-400 font-bold mt-1 flex flex-wrap gap-x-2 gap-y-0.5 items-center">
+                                          <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5 text-slate-300" /> {uni.location}</span>
+                                          <span className="text-slate-200">·</span>
+                                          <span className="flex items-center gap-0.5 text-brand-gold-dark font-mono">{uni.tuitionFee}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    {isSelected && <span className="text-brand-gold text-xs font-black">✓</span>}
+                                  </div>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {selectedApplyUni && (
+                        <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <label className="text-xs font-black text-slate-800 block">
+                            ২. প্রোগ্রাম ও কোর্স সিলেক্ট করুন (Choose Program & Course):
+                          </label>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {universityCoursesMap[selectedApplyUni].courses.map((course) => {
+                              const isCourseSelected = selectedApplyCourse === course;
+                              return (
+                                <div
+                                  key={course}
+                                  onClick={() => setSelectedApplyCourse(course)}
+                                  className={`p-3 rounded-lg border-2 text-xs font-bold cursor-pointer text-left transition-all flex items-center justify-between ${
+                                    isCourseSelected
+                                      ? 'bg-white border-brand-sky text-brand-sky-dark shadow-md'
+                                      : 'bg-white/60 border-slate-100 text-slate-600 hover:border-slate-200 hover:bg-white'
+                                  }`}
+                                >
+                                  <span>{course}</span>
+                                  {isCourseSelected && <CheckCircle2 className="h-4 w-4 text-brand-sky shrink-0 ml-2" />}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex justify-end pt-3">
+                        <button
+                          type="button"
+                          disabled={!selectedApplyUni || !selectedApplyCourse}
+                          onClick={() => setWizardStep(3)}
+                          className="rounded-xl bg-slate-900 text-white px-6 py-2.5 text-xs font-black hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-md border-b-2 border-brand-gold"
+                        >
+                          <span>পরবর্তী ধাপে যান</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 3: Services Selection */}
+                  {wizardStep === 3 && (
+                    <div className="space-y-4 animate-fade-in">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">সার্ভিস ও অতিরিক্ত সেবা নির্বাচন করুন (Select Processing Services)</h4>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {serviceOptions.map((service) => {
+                          const isMandatory = service.isMandatory;
+                          const isSelected = isMandatory || selectedServices.includes(service.id);
+                          return (
+                            <div
+                              key={service.id}
+                              onClick={() => {
+                                if (isMandatory) return;
+                                if (isSelected) {
+                                  setSelectedServices(selectedServices.filter(id => id !== service.id));
+                                } else {
+                                  setSelectedServices([...selectedServices, service.id]);
+                                }
+                              }}
+                              className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between ${
+                                isSelected 
+                                  ? 'bg-brand-sky-light/5 border-brand-sky shadow-md' 
+                                  : 'bg-white border-slate-100 hover:border-slate-200'
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-start justify-between">
+                                  <h5 className="text-xs font-black text-slate-800">{service.name}</h5>
+                                  {isMandatory && <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded">আবশ্যক</span>}
+                                </div>
+                                <p className="text-[10px] text-slate-500 leading-snug">{service.description}</p>
+                              </div>
+                              <div className="mt-3 pt-2.5 border-t border-slate-100/70 flex justify-between items-center">
+                                <span className="text-xs font-bold font-mono text-slate-700">৳{service.price.toLocaleString()} BDT</span>
+                                <span className={`text-[10px] font-black ${isSelected ? 'text-brand-sky' : 'text-slate-400'}`}>
+                                  {isSelected ? '✓ সিলেক্টেড' : '+ যোগ করুন'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex justify-between pt-4 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => setWizardStep(2)}
+                          className="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-600 transition-all"
+                        >
+                          পূর্ববর্তী
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setWizardStep(4)}
+                          className="rounded-xl bg-slate-900 text-white px-6 py-2.5 text-xs font-black hover:bg-slate-800 transition-all flex items-center gap-1.5 shadow-md border-b-2 border-brand-gold"
+                        >
+                          <span>রিভিউ করুন</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 4: Review & Submit */}
+                  {wizardStep === 4 && (
+                    <div className="space-y-5 animate-fade-in">
+                      <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b border-slate-200/60 pb-2">আবেদন রিভিউ ও তথ্য যাচাই</h4>
+                        <div className="grid gap-4 sm:grid-cols-2 text-xs">
+                          <div>
+                            <span className="text-slate-400 block font-bold uppercase text-[9px]">নির্বাচিত বিশ্ববিদ্যালয়</span>
+                            <span className="font-bold text-slate-700">{selectedApplyUni}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block font-bold uppercase text-[9px]">নির্বাচিত প্রোগ্রাম</span>
+                            <span className="font-bold text-slate-700">{selectedApplyCourse}</span>
+                          </div>
                         </div>
 
-                        {/* Text */}
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center justify-between">
-                            <h4 className={`text-xs font-bold ${step.isActive ? 'text-slate-800' : 'text-slate-400'}`}>
-                              {step.title}
-                            </h4>
-                            {step.time && (
-                              <span className="text-[10px] text-slate-400 font-mono">{step.time}</span>
-                            )}
+                        <div className="border-t border-slate-200/60 pt-3 space-y-2">
+                          <span className="text-slate-400 block font-bold uppercase text-[9px]">সিলেক্টেড সার্ভিসসমূহ ও ফি বিবরণী</span>
+                          <div className="space-y-1.5">
+                            {serviceOptions
+                              .filter(s => s.isMandatory || selectedServices.includes(s.id))
+                              .map(s => (
+                                <div key={s.id} className="flex justify-between text-xs font-semibold text-slate-700">
+                                  <span className="text-slate-600 flex items-center gap-1">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-brand-sky"></span>
+                                    {s.nameEn}
+                                  </span>
+                                  <span className="font-mono text-slate-800">৳{s.price.toLocaleString()} BDT</span>
+                                </div>
+                              ))}
                           </div>
-                          <p className={`text-xs ${step.isActive ? 'text-slate-600' : 'text-slate-400'}`}>
-                            {step.desc}
+                          
+                          <div className="border-t border-slate-200 pt-2.5 mt-2.5 flex justify-between items-center">
+                            <span className="text-xs font-black text-slate-800">সর্বমোট প্রসেসিং ফি (Grand Total):</span>
+                            <span className="text-xs font-black bg-brand-gold text-slate-950 px-3 py-1 rounded-lg border border-brand-gold-dark font-mono shadow-sm">
+                              ৳{serviceOptions
+                                .filter(s => s.isMandatory || selectedServices.includes(s.id))
+                                .reduce((sum, s) => sum + s.price, 0).toLocaleString()} BDT
+                            </span>
+                          </div>
+
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/30 mt-2">
+                            * নিয়মানুযায়ী সর্বমোট ফি-টি ২ টি সমান কিস্তিতে বিভক্ত করা হয়েছে (৫০% প্রথম কিস্তি আবেদন ফাইল তৈরীর পর এবং অবশিষ্টাংশ ভিসা স্ট্যাম্পিং এর সময়)।
                           </p>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Additional tracking guidance */}
-                <div className="rounded-xl bg-brand-sky-light p-4 border border-brand-sky/20 flex items-start space-x-3">
-                  <ShieldAlert className="h-5 w-5 text-brand-sky shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-bold text-brand-sky-dark">জরুরি রিয়েল-тайম নির্দেশনা</h4>
-                    <p className="text-[11px] text-slate-700 leading-relaxed mt-1">
-                      বুলগেরিয়া দূতাবাস দিল্লীতে হওয়ায় আমরা আপনার ভারতীয় ডাবল এন্ট্রি visa এবং দিল্লী ভ্রমণের সমস্ত হোটেল ও কনভেয়েন্স শিডিউল এখান থেকেই কন্ট্রোল করছি। প্রতিটি বড় আপডেটের পর আপনার ফোনে স্বয়ংক্রিয় এসএমএস (SMS) চলে যাবে।
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Real-time Notifications & SMS History Column */}
-              <div className="space-y-6 lg:col-span-1">
-                {/* 1. Interactive Student Profile Photo Card */}
-                <div className="rounded-2xl border-2 border-brand-gold/15 bg-white p-5 shadow-md text-center space-y-4 relative overflow-hidden" id="student-interactive-profile-card">
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-sky via-brand-gold to-brand-sky-dark"></div>
-                  
-                  {/* Photo container */}
-                  <div className="relative w-28 h-28 mx-auto group">
-                    <div className="w-full h-full rounded-full border-4 border-slate-100 overflow-hidden shadow-md bg-slate-50 flex items-center justify-center">
-                      {activeApp.profilePhoto ? (
-                        <img 
-                          src={activeApp.profilePhoto} 
-                          alt={activeApp.fullName} 
-                          className="w-full h-full object-cover" 
-                          referrerPolicy="no-referrer"
-                        />
-                      ) : (
-                        <div className="text-slate-300 flex flex-col items-center">
-                          <User className="h-12 w-12 text-slate-300" />
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mt-1">NO PHOTO</span>
+                      {formError && (
+                        <div className="text-[11px] text-red-500 font-bold bg-red-50 p-2.5 rounded border border-red-100">
+                          {formError}
                         </div>
                       )}
+
+                      <div className="flex justify-between pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setWizardStep(3)}
+                          className="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-600 transition-all"
+                        >
+                          পূর্ববর্তী
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={handleApplySubmit}
+                          className="rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white px-6 py-2.5 text-xs font-black border-b-2 border-brand-gold shadow-md flex items-center gap-1.5"
+                        >
+                          <span>ফাইল ওপেন করুন ও পোর্টাল চালু করুন</span>
+                          <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                    
-                    {/* Camera Upload trigger */}
-                    <label 
-                      htmlFor="profile-photo-upload-input" 
-                      className="absolute bottom-0 right-0 bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white p-2 rounded-full shadow-lg border border-white cursor-pointer hover:scale-110 active:scale-95 transition-all"
-                      title="ছবি আপলোড করুন"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </label>
-                    <input 
-                      type="file" 
-                      id="profile-photo-upload-input" 
-                      accept="image/*" 
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                          if (typeof reader.result === 'string') {
-                            const updatedApp: Application = {
-                              ...activeApp,
-                              profilePhoto: reader.result
-                            };
-                            onUpdateApplication(updatedApp);
-                          }
-                        };
-                        reader.readAsDataURL(file);
-                      }}
-                      className="hidden" 
-                    />
+                  )}
+                </div>
+              ) : (
+                /* TWO COLUMN EDIT PROFILE AND GATE PREVIEW */
+                <div className="grid gap-6 lg:grid-cols-3">
+                  {/* Edit Profile Column */}
+                  <div className="space-y-6 lg:col-span-2">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-6">
+                      <div className="text-left border-b border-slate-100 pb-3 flex justify-between items-center">
+                        <h3 className="font-display text-sm md:text-base font-black text-slate-800">প্রোফাইল তথ্য আপডেট করুন (Update Profile Information)</h3>
+                       <div className="space-y-6">
+                         {/* Profile Photo Capture / Upload */}
+                        <div className="space-y-3 text-left">
+                          <label className="text-xs font-black text-slate-700 block">১. প্রোফাইল ছবি (Profile Photo):</label>
+                          <div className="flex flex-col sm:flex-row items-center gap-4">
+                            <div className="h-20 w-20 rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50 relative shrink-0 flex items-center justify-center">
+                              {activeApp.profilePhoto ? (
+                                <img src={activeApp.profilePhoto} alt="Profile" className="h-full w-full object-cover" />
+                              ) : (
+                                <User className="h-10 w-10 text-slate-300" />
+                              )}
+                            </div>
+                            <div className="space-y-1.5 flex-1 w-full">
+                              <div className="flex gap-2">
+                                <input
+                                  type="text"
+                                  placeholder="ছবির ইউআরএল দিন (Photo URL)"
+                                  value={activeApp.profilePhoto || ''}
+                                  onChange={(e) => {
+                                    onUpdateApplication({
+                                      ...activeApp,
+                                      profilePhoto: e.target.value
+                                    });
+                                  }}
+                                  className="rounded-lg border border-slate-200 p-2 text-xs font-semibold w-full focus:border-brand-sky focus:outline-none"
+                                />
+                                <label className="rounded-lg bg-slate-100 border border-slate-200 text-slate-600 px-3 py-2 text-xs font-bold cursor-pointer hover:bg-slate-200 transition-all shrink-0 flex items-center">
+                                  <Camera className="h-4 w-4 mr-1" />
+                                  <span>আপলোড</span>
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = () => {
+                                        if (typeof reader.result === 'string') {
+                                          onUpdateApplication({
+                                            ...activeApp,
+                                            profilePhoto: reader.result
+                                          });
+                                        }
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                              <p className="text-[10px] text-slate-400 font-semibold">যেমন: https://images.unsplash.com/... অথবা আপনার ছবি ডিরেক্ট আপলোড করুন।</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Academics Section */}
+                        <div className="space-y-4 pt-5 border-t border-slate-100 text-left">
+                          <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <GraduationCap className="h-4.5 w-4.5 text-brand-sky" />
+                            <span>২. শিক্ষাগত যোগ্যতা (Academic History):</span>
+                          </h4>
+
+                          <div className="grid gap-4 sm:grid-cols-3">
+                            {/* SSC */}
+                            <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">SSC স্কুল নাম:</label>
+                              <input
+                                type="text"
+                                placeholder="High School"
+                                value={activeApp.academicHistory?.sscSchool || ''}
+                                onChange={(e) => {
+                                  const acad = activeApp.academicHistory || {};
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    academicHistory: { ...acad, sscSchool: e.target.value }
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="পাসের সাল"
+                                  value={activeApp.academicHistory?.sscYear || ''}
+                                  onChange={(e) => {
+                                    const acad = activeApp.academicHistory || {};
+                                    onUpdateApplication({
+                                      ...activeApp,
+                                      academicHistory: { ...acad, sscYear: e.target.value }
+                                    });
+                                  }}
+                                  className="w-full rounded border border-slate-200 bg-white p-1.5 text-[10px] focus:outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="GPA"
+                                  value={activeApp.academicHistory?.sscGpa || ''}
+                                  onChange={(e) => {
+                                    const acad = activeApp.academicHistory || {};
+                                    onUpdateApplication({
+                                      ...activeApp,
+                                      academicHistory: { ...acad, sscGpa: e.target.value }
+                                    });
+                                  }}
+                                  className="w-full rounded border border-slate-200 bg-white p-1.5 text-[10px] focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            {/* HSC */}
+                            <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">HSC কলেজ নাম:</label>
+                              <input
+                                type="text"
+                                placeholder="Govt College"
+                                value={activeApp.academicHistory?.hscCollege || ''}
+                                onChange={(e) => {
+                                  const acad = activeApp.academicHistory || {};
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    academicHistory: { ...acad, hscCollege: e.target.value }
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="পাসের সাল"
+                                  value={activeApp.academicHistory?.hscYear || ''}
+                                  onChange={(e) => {
+                                    const acad = activeApp.academicHistory || {};
+                                    onUpdateApplication({
+                                      ...activeApp,
+                                      academicHistory: { ...acad, hscYear: e.target.value }
+                                    });
+                                  }}
+                                  className="w-full rounded border border-slate-200 bg-white p-1.5 text-[10px] focus:outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="GPA"
+                                  value={activeApp.academicHistory?.hscGpa || ''}
+                                  onChange={(e) => {
+                                    const acad = activeApp.academicHistory || {};
+                                    onUpdateApplication({
+                                      ...activeApp,
+                                      academicHistory: { ...acad, hscGpa: e.target.value }
+                                    });
+                                  }}
+                                  className="w-full rounded border border-slate-200 bg-white p-1.5 text-[10px] focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Bachelor */}
+                            <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">Bachelor বিশ্ববিদ্যালয় (ঐচ্ছিক):</label>
+                              <input
+                                type="text"
+                                placeholder="National University"
+                                value={activeApp.academicHistory?.bachelorUni || ''}
+                                onChange={(e) => {
+                                  const acad = activeApp.academicHistory || {};
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    academicHistory: { ...acad, bachelorUni: e.target.value }
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                                <input
+                                  type="text"
+                                  placeholder="পাসের সাল"
+                                  value={activeApp.academicHistory?.bachelorYear || ''}
+                                  onChange={(e) => {
+                                    const acad = activeApp.academicHistory || {};
+                                    onUpdateApplication({
+                                      ...activeApp,
+                                      academicHistory: { ...acad, bachelorYear: e.target.value }
+                                    });
+                                  }}
+                                  className="w-full rounded border border-slate-200 bg-white p-1.5 text-[10px] focus:outline-none"
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="CGPA"
+                                  value={activeApp.academicHistory?.bachelorCgpa || ''}
+                                   onChange={(e) => {
+                                     const acad = activeApp.academicHistory || {};
+                                     onUpdateApplication({
+                                       ...activeApp,
+                                       academicHistory: { ...acad, bachelorCgpa: e.target.value }
+                                     });
+                                   }}
+                                   className="w-full rounded border border-slate-200 bg-white p-1.5 text-[10px] focus:outline-none"
+                                 />
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+
+                       {/* Social Media links */}
+                       <div className="space-y-4 pt-5 border-t border-slate-100 text-left">
+                         <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                           <Globe className="h-4.5 w-4.5 text-brand-sky" />
+                           <span>৩. সোশ্যাল মিডিয়া ও যোগাযোগ লিংক (Social Media Links):</span>
+                         </h4>
+
+                         <div className="grid gap-4 sm:grid-cols-3">
+                           <div className="space-y-1">
+                             <label className="text-[11px] font-bold text-slate-600 block">ফেসবুক প্রোফাইল লিংক:</label>
+                             <input
+                               type="text"
+                               placeholder="facebook.com/username"
+                               value={activeApp.socialMedia?.facebook || ''}
+                               onChange={(e) => {
+                                 const soc = activeApp.socialMedia || {};
+                                 onUpdateApplication({
+                                   ...activeApp,
+                                   socialMedia: { ...soc, facebook: e.target.value }
+                                 });
+                               }}
+                               className="w-full rounded-lg border border-slate-200 p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                             />
+                           </div>
+                           <div className="space-y-1">
+                             <label className="text-[11px] font-bold text-slate-600 block">লিংকডইন প্রোফাইল লিংক:</label>
+                              <input
+                                type="text"
+                                placeholder="linkedin.com/in/username"
+                                value={activeApp.socialMedia?.linkedin || ''}
+                                onChange={(e) => {
+                                  const soc = activeApp.socialMedia || {};
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    socialMedia: { ...soc, linkedin: e.target.value }
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">হোয়াটসঅ্যাপ নম্বর:</label>
+                              <input
+                                type="text"
+                                placeholder="017XXXXXXXX"
+                                value={activeApp.socialMedia?.whatsapp || ''}
+                                onChange={(e) => {
+                                  const soc = activeApp.socialMedia || {};
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    socialMedia: { ...soc, whatsapp: e.target.value }
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Contact info update */}
+                        <div className="space-y-4 pt-5 border-t border-slate-100 text-left">
+                          <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <User className="h-4.5 w-4.5 text-brand-sky" />
+                            <span>৪. যোগাযোগের তথ্য (Contact Details):</span>
+                          </h4>
+
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">ইমেইল ঠিকানা:</label>
+                              <input
+                                type="email"
+                                value={activeApp.email || ''}
+                                onChange={(e) => {
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    email: e.target.value
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-600 block">মোবাইল নম্বর:</label>
+                              <input
+                                type="text"
+                                value={activeApp.phone || ''}
+                                onChange={(e) => {
+                                  onUpdateApplication({
+                                    ...activeApp,
+                                    phone: e.target.value
+                                  });
+                                }}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100 p-3.5 text-xs text-left font-bold">
+                          💡 প্রোফাইলের প্রতিটি নতুন ফিল্ড সেভ বা আপডেট করার পর আপনার প্রোফাইল প্রোগ্রেস পারসেন্টেজ সরাসরি বৃদ্ধি পাবে।
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Student Details / Editing Toggle */}
-                  {!isEditingProfile ? (
-                    <div className="space-y-4">
-                      {/* Student Details */}
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-black text-slate-800 flex items-center justify-center gap-1">
-                          {activeApp.fullName}
-                          <Sparkles className="h-3.5 w-3.5 text-brand-gold shrink-0 animate-pulse" />
-                        </h3>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">পাসপোর্ট: {activeApp.passportNumber}</p>
-                        <p className="text-[10px] text-slate-500 font-bold">ফোন: {activeApp.phone}</p>
-                        <p className="text-[10px] text-slate-500 font-bold truncate max-w-[200px] mx-auto" title={activeApp.email}>ইমেইল: {activeApp.email}</p>
-                        <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-sky-light/50 border border-brand-sky/15 text-[10px] text-brand-sky-dark font-extrabold mt-1.5">
-                          <Compass className="h-3 w-3" /> Bulgaria Student Portal
+                  {/* Visa Gating preview column */}
+                  <div className="space-y-6 lg:col-span-1">
+                    {calculateProfileCompletion(activeApp) < 50 ? (
+                      /* LOCKED SIDEBAR PREVIEW */
+                      <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-6 shadow-sm text-center space-y-4">
+                        <div className="h-14 w-14 rounded-full bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto shadow-inner">
+                          <Lock className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-display text-sm font-extrabold text-slate-700">বুলগেরিয়া ভিসা আবেদন লকড (Locked)</h4>
+                          <p className="text-[11px] text-slate-500 mt-2 leading-relaxed text-left">
+                            ভিসা আবেদন প্রক্রিয়া শুরু করার জন্য এবং আপনার জন্য সচল বিশ্ববিদ্যালয়সমূহ দেখতে আপনার প্রোফাইলটি কমপক্ষে ৫০% সম্পন্ন করুন। আপনার বামদিকের প্রোফাইল ফর্মে প্রয়োজনীয় তথ্য দিয়ে সংরক্ষণ বাটনে ক্লিক করলেই আপনার প্রোফাইল স্কোর বৃদ্ধি পাবে।
+                          </p>
+                        </div>
+                        <div className="pt-3 border-t border-slate-200">
+                          <div className="flex justify-between text-[10px] font-black text-slate-400 mb-1">
+                            <span>আনলক প্রগতি</span>
+                            <span>{calculateProfileCompletion(activeApp)}% / ৫০%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="bg-slate-400 h-full transition-all duration-300" style={{ width: `${(calculateProfileCompletion(activeApp) / 50) * 100}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* UNLOCKED SIDEBAR PREVIEW WITH START VISA APPLICATION BUTTON */
+                      <div className="rounded-2xl border-2 border-brand-sky/30 bg-gradient-to-b from-brand-sky-light/10 to-transparent p-6 shadow-md text-center space-y-4 border-b-4 border-brand-sky">
+                        <div className="h-14 w-14 rounded-full bg-brand-sky/10 border border-brand-sky/20 text-brand-sky flex items-center justify-center mx-auto shadow-inner animate-pulse">
+                          <Sparkles className="h-6 w-6 text-brand-sky" />
+                        </div>
+                        <div>
+                          <h4 className="font-display text-sm font-extrabold text-brand-sky-dark">ভিসা আবেদন সচল হয়েছে!</h4>
+                          <p className="text-[11px] text-slate-600 mt-2 leading-relaxed text-left">
+                            অভিনন্দন! আপনি সফলভাবে ৫০% এর বেশি প্রোফাইল সম্পন্ন করেছেন। বুলগেরিয়ার বিভিন্ন বিশ্ববিদ্যালয়ে আপনার ভিসা ফাইলিং ফাইলটি এখন ওপেন করার জন্য আবেদন প্রক্রিয়া শুরু করুন।
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowApplyFormInDashboard(true);
+                            setWizardStep(2);
+                            setMaxStepReached(2);
+                          }}
+                          className="w-full rounded-xl bg-slate-900 py-3 text-xs font-black text-white hover:bg-slate-800 transition-all border-b-2 border-brand-gold shadow-md flex items-center justify-center gap-1.5"
+                        >
+                          <span>স্টুডেন্ট ভিসা আবেদন শুরু করুন</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Global Student Dashboard Logout Bar */}
+              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mb-6" id="student-logout-bar">
+                <div className="flex items-center space-x-3 text-left w-full sm:w-auto">
+                  <div className="h-10 w-10 rounded-xl bg-brand-sky/10 border border-brand-sky/20 text-brand-sky flex items-center justify-center font-black shrink-0">
+                    {activeApp.fullName.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-800">{activeApp.fullName}</span>
+                      {calculateProfileCompletion(activeApp) >= 70 && (
+                        <span className="inline-flex items-center text-blue-500" title="Verified Profile (70%+ Complete)">
+                          <svg className="w-3.5 h-3.5 fill-blue-500 text-white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        </span>
+                      )}
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveAppId(null)}
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 rounded-xl bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all shrink-0"
+                  id="student-logout-btn"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+
+              {/* Sub Navigation Tabs */}
+              <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory animate-fade-in" id="dashboard-tabs">
+                <button
+                  id="tab-tracking"
+                  onClick={() => setActiveTab('tracking')}
+                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
+                    activeTab === 'tracking'
+                      ? 'border-brand-sky text-brand-sky'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span className="md:inline hidden">রিয়েল-টাইম ট্র্যাকিং (Real-time tracking)</span>
+                  <span className="md:hidden inline">আবেদন ট্র্যাকিং</span>
+                </button>
+                <button
+                  id="tab-documents"
+                  onClick={() => setActiveTab('documents')}
+                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
+                    activeTab === 'documents'
+                      ? 'border-brand-sky text-brand-sky'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span className="md:inline hidden">ডকুমেন্ট আপলোড ও গাইডলাইন (Secure Upload)</span>
+                  <span className="md:hidden inline">কাগজপত্র আপলোড</span>
+                </button>
+                <button
+                  id="tab-payment"
+                  onClick={() => setActiveTab('payment')}
+                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start relative ${
+                    activeTab === 'payment'
+                      ? 'border-brand-sky text-brand-sky'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span className="md:inline hidden">ফি ও পেমেন্ট গেটওয়ে (Indian Visa Services)</span>
+                  <span className="md:hidden inline">ফি ও পেমেন্ট</span>
+                  {activeApp.paymentStatus !== 'Paid' && (
+                    <span className="absolute top-1.5 right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-gold"></span>
+                    </span>
+                  )}
+                </button>
+                <button
+                  id="tab-additional-services"
+                  onClick={() => setActiveTab('additional-services')}
+                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
+                    activeTab === 'additional-services'
+                      ? 'border-brand-sky text-brand-sky'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>অতিরিক্ত সেবা সমূহ (Services)</span>
+                </button>
+              </div>
+
+              {/* Tab 1: Real-time Tracking */}
+              {activeTab === 'tracking' && (
+                <div className="space-y-6 animate-fade-in" id="tracking-tab-content">
+                  {/* 1. Interactive Full-width Student Profile Photo Card at the top */}
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm relative overflow-hidden w-full text-left" id="student-interactive-profile-card">
+                    <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-brand-sky via-brand-gold to-brand-sky-dark"></div>
+                    
+                    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+                      {/* Left: Avatar + Names */}
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4.5 text-center sm:text-left flex-1 min-w-0">
+                        {/* Photo container */}
+                        <div className="relative w-24 h-24 shrink-0 group">
+                          <div className="w-full h-full rounded-full border-4 border-slate-100 overflow-hidden shadow-md bg-slate-50 flex items-center justify-center">
+                            {activeApp.profilePhoto ? (
+                              <img 
+                                src={activeApp.profilePhoto} 
+                                alt={activeApp.fullName} 
+                                className="w-full h-full object-cover" 
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="text-slate-300 flex flex-col items-center">
+                                <User className="h-10 w-10 text-slate-300" />
+                                <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">NO PHOTO</span>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Camera Upload trigger */}
+                          <label 
+                            htmlFor="profile-photo-upload-input" 
+                            className="absolute bottom-0 right-0 bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white p-1.5 rounded-full shadow-lg border border-white cursor-pointer hover:scale-110 active:scale-95 transition-all"
+                            title="ছবি আপলোড করুন"
+                          >
+                            <Camera className="h-3.5 w-3.5" />
+                          </label>
+                          <input 
+                            type="file" 
+                            id="profile-photo-upload-input" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (typeof reader.result === 'string') {
+                                  const updatedApp: Application = {
+                                    ...activeApp,
+                                    profilePhoto: reader.result
+                                  };
+                                  onUpdateApplication(updatedApp);
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="hidden" 
+                          />
+                        </div>
+
+                        {/* Name and Passport and Badges */}
+                        <div className="space-y-1.5 flex-1 min-w-0 text-left">
+                          <div className="flex flex-wrap items-center justify-start gap-2">
+                            <h3 className="text-base font-black text-slate-800 flex items-center gap-1">
+                              {activeApp.fullName}
+                              {calculateProfileCompletion(activeApp) >= 70 && (
+                                <span className="inline-flex items-center text-blue-500" title="Verified Profile (70%+ Complete)">
+                                  <svg className="w-4 h-4 fill-blue-500 text-white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                                </span>
+                              )}
+                              <Sparkles className="h-4 w-4 text-brand-gold shrink-0 animate-pulse" />
+                            </h3>
+                            <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-sky-light/50 border border-brand-sky/15 text-[9px] text-brand-sky-dark font-extrabold">
+                              <Compass className="h-3 w-3" /> Bulgaria Student Portal
+                            </div>
+                          </div>
+                          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">পাসপোর্ট: <span className="font-mono text-slate-600">{activeApp.passportNumber}</span></p>
+                          <div className="text-[11px] text-slate-500 font-medium flex flex-wrap gap-x-3 gap-y-1">
+                            <span>ফোন: {activeApp.phone}</span>
+                            <span className="text-slate-200">|</span>
+                            <span className="truncate max-w-[220px]" title={activeApp.email}>ইমেইল: {activeApp.email}</span>
+                          </div>
+                          {activeApp.desiredCourse && (
+                            <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-2.5 max-w-xl text-[10.5px] leading-relaxed text-slate-600 mt-2">
+                              <span className="font-bold text-slate-700">নির্বাচিত বিশ্ববিদ্যালয় ও কোর্স:</span> {activeApp.desiredCourse}
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      {/* University / Course Meta */}
-                      <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-3 text-left space-y-1 text-[11px] leading-relaxed">
-                        <p className="text-slate-500"><span className="font-bold text-slate-700">নির্বাচিত বিশ্ববিদ্যালয়:</span> {activeApp.desiredCourse.split(' (')[1]?.replace(')', '') || 'বুলগেরিয়া বিশ্ববিদ্যালয়'}</p>
-                        <p className="text-slate-500 line-clamp-1"><span className="font-bold text-slate-700">কোর্স:</span> {activeApp.desiredCourse.split(' (')[0]}</p>
-                      </div>
+                      {/* Right: Academic History & Social links */}
+                      <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto shrink-0 border-t lg:border-t-0 border-slate-100 pt-4 lg:pt-0">
+                        {/* Academic History Summary */}
+                        <div className="border border-slate-100 bg-slate-50/50 rounded-xl p-3.5 text-left space-y-1.5 text-[10px] min-w-[220px] flex-1">
+                          <h4 className="font-bold text-slate-700 flex items-center gap-1 text-[10px] border-b border-slate-200/60 pb-1">
+                            <GraduationCap className="h-3.5 w-3.5 text-brand-sky" />
+                            <span>শিক্ষাগত বিবরণ (Academic Details)</span>
+                          </h4>
+                          {activeApp.academicHistory && (activeApp.academicHistory.sscSchool || activeApp.academicHistory.hscCollege || activeApp.academicHistory.bachelorUni) ? (
+                            <div className="space-y-0.5 text-slate-600">
+                              {activeApp.academicHistory.sscSchool && (
+                                <p><span className="font-bold text-slate-800">SSC:</span> {activeApp.academicHistory.sscSchool} ({activeApp.academicHistory.sscYear || 'N/A'}) - GPA: {activeApp.academicHistory.sscGpa || 'N/A'}</p>
+                              )}
+                              {activeApp.academicHistory.hscCollege && (
+                                <p><span className="font-bold text-slate-800">HSC:</span> {activeApp.academicHistory.hscCollege} ({activeApp.academicHistory.hscYear || 'N/A'}) - GPA: {activeApp.academicHistory.hscGpa || 'N/A'}</p>
+                              )}
+                              {activeApp.academicHistory.bachelorUni && (
+                                <p><span className="font-bold text-slate-800">Bachelor:</span> {activeApp.academicHistory.bachelorUni} CGPA: {activeApp.academicHistory.bachelorCgpa || 'N/A'}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-slate-400 italic text-[9px]">কোনো শিক্ষাগত ইতিহাস সেট করা হয়নি।</p>
+                          )}
+                        </div>
 
+                        {/* Social Media Links Summary */}
+                        <div className="border border-slate-100 bg-slate-50/50 rounded-xl p-3.5 text-left space-y-2 text-[10px] min-w-[180px]">
+                          <h4 className="font-bold text-slate-700 flex items-center gap-1 text-[10px] border-b border-slate-200/60 pb-1">
+                            <Globe className="h-3.5 w-3.5 text-brand-sky" />
+                            <span>সোশ্যাল প্রোফাইল (Social Profiles)</span>
+                          </h4>
+                          {activeApp.socialMedia && (activeApp.socialMedia.facebook || activeApp.socialMedia.linkedin || activeApp.socialMedia.whatsapp) ? (
+                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                              {activeApp.socialMedia.facebook && (
+                                <a
+                                  href={activeApp.socialMedia.facebook}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors text-[9px] font-bold"
+                                >
+                                  <Facebook className="h-2.5 w-2.5" />
+                                  <span>Facebook</span>
+                                </a>
+                              )}
+                              {activeApp.socialMedia.linkedin && (
+                                <a
+                                  href={activeApp.socialMedia.linkedin}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition-colors text-[9px] font-bold"
+                                >
+                                  <Linkedin className="h-2.5 w-2.5" />
+                                  <span>LinkedIn</span>
+                                </a>
+                              )}
+                              {activeApp.socialMedia.whatsapp && (
+                                <a
+                                  href={`https://wa.me/${activeApp.socialMedia.whatsapp.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors text-[9px] font-bold"
+                                >
+                                  <MessageCircle className="h-2.5 w-2.5" />
+                                  <span>WhatsApp</span>
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-slate-400 italic text-[9px]">কোনো সোশ্যাল লিংক যুক্ত করা হয়নি।</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-3 mt-3 border-t border-slate-100">
                       <button
                         type="button"
                         onClick={() => {
@@ -1608,292 +2648,433 @@ export default function StudentDashboard({
                             fullName: activeApp.fullName,
                             passportNumber: activeApp.passportNumber,
                             email: activeApp.email,
-                            phone: activeApp.phone
+                            phone: activeApp.phone,
+                            sscSchool: activeApp.academicHistory?.sscSchool || '',
+                            sscGpa: activeApp.academicHistory?.sscGpa || '',
+                            sscYear: activeApp.academicHistory?.sscYear || '',
+                            hscCollege: activeApp.academicHistory?.hscCollege || '',
+                            hscGpa: activeApp.academicHistory?.hscGpa || '',
+                            hscYear: activeApp.academicHistory?.hscYear || '',
+                            bachelorUni: activeApp.academicHistory?.bachelorUni || '',
+                            bachelorCgpa: activeApp.academicHistory?.bachelorCgpa || '',
+                            bachelorYear: activeApp.academicHistory?.bachelorYear || '',
+                            facebook: activeApp.socialMedia?.facebook || '',
+                            linkedin: activeApp.socialMedia?.linkedin || '',
+                            whatsapp: activeApp.socialMedia?.whatsapp || ''
                           });
                           setEditProfileError('');
-                          setIsEditingProfile(true);
+                          setIsEditingProfile(!isEditingProfile);
                         }}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors mt-2"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-600 transition-all"
                       >
-                        <span>প্রোফাইল সংশোধন করুন</span>
+                        <span>{isEditingProfile ? 'এডিট ফর্ম বন্ধ করুন (Close Edit Form)' : 'প্রোফাইল সংশোধন করুন (Edit Profile)'}</span>
                       </button>
                     </div>
-                  ) : (
-                    <div className="space-y-3.5 text-left border-t border-slate-100 pt-3" id="profile-edit-form">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পূর্ণ নাম (Full Name):</label>
-                        <input
-                          type="text"
-                          value={editProfileData.fullName}
-                          onChange={(e) => setEditProfileData({ ...editProfileData, fullName: e.target.value })}
-                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
-                        />
-                      </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পাসপোর্ট নম্বর (Passport Number):</label>
-                        <input
-                          type="text"
-                          value={editProfileData.passportNumber}
-                          onChange={(e) => setEditProfileData({ ...editProfileData, passportNumber: e.target.value.toUpperCase() })}
-                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none uppercase font-mono"
-                        />
-                      </div>
+                    {/* Inline Expandable Edit Form inside tracking area */}
+                    <AnimatePresence>
+                      {isEditingProfile && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 pt-4 border-t border-slate-100 overflow-hidden"
+                        >
+                          <div className="grid gap-4 md:grid-cols-2 text-left">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পূর্ণ নাম (Full Name):</label>
+                              <input
+                                type="text"
+                                value={editProfileData.fullName}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, fullName: e.target.value })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">মোবাইল নম্বর (Phone Number):</label>
-                        <input
-                          type="tel"
-                          value={editProfileData.phone}
-                          onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
-                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
-                        />
-                      </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পাসপোর্ট নম্বর (Passport Number):</label>
+                              <input
+                                type="text"
+                                value={editProfileData.passportNumber}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, passportNumber: e.target.value.toUpperCase() })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none uppercase font-mono"
+                              />
+                            </div>
 
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">ইমেল ঠিকানা (Email Address):</label>
-                        <input
-                          type="email"
-                          value={editProfileData.email}
-                          onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
-                          className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
-                        />
-                      </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">মোবাইল নম্বর (Phone Number):</label>
+                              <input
+                                type="tel"
+                                value={editProfileData.phone}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, phone: e.target.value })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
 
-                      {editProfileError && (
-                        <p className="text-[10px] font-black text-brand-red bg-rose-50 border border-rose-100 p-2 rounded-lg leading-snug">
-                          {editProfileError}
-                        </p>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">ইমেল ঠিকানা (Email Address):</label>
+                              <input
+                                type="email"
+                                value={editProfileData.email}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, email: e.target.value })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="border-t border-slate-100 mt-4 pt-4 grid gap-4 sm:grid-cols-3 text-left">
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
+                              <h5 className="text-[11px] font-black text-slate-700">SSC বিবরণী</h5>
+                              <input
+                                placeholder="School Name"
+                                type="text"
+                                value={editProfileData.sscSchool}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, sscSchool: e.target.value })}
+                                className="w-full rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <input
+                                  placeholder="Year"
+                                  type="text"
+                                  value={editProfileData.sscYear}
+                                  onChange={(e) => setEditProfileData({ ...editProfileData, sscYear: e.target.value })}
+                                  className="rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                                />
+                                <input
+                                  placeholder="GPA"
+                                  type="text"
+                                  value={editProfileData.sscGpa}
+                                  onChange={(e) => setEditProfileData({ ...editProfileData, sscGpa: e.target.value })}
+                                  className="rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
+                              <h5 className="text-[11px] font-black text-slate-700">HSC বিবরণী</h5>
+                              <input
+                                placeholder="College Name"
+                                type="text"
+                                value={editProfileData.hscCollege}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, hscCollege: e.target.value })}
+                                className="w-full rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <input
+                                  placeholder="Year"
+                                  type="text"
+                                  value={editProfileData.hscYear}
+                                  onChange={(e) => setEditProfileData({ ...editProfileData, hscYear: e.target.value })}
+                                  className="rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                                />
+                                <input
+                                  placeholder="GPA"
+                                  type="text"
+                                  value={editProfileData.hscGpa}
+                                  onChange={(e) => setEditProfileData({ ...editProfileData, hscGpa: e.target.value })}
+                                  className="rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
+                              <h5 className="text-[11px] font-black text-slate-700">Bachelor বিবরণী (ঐচ্ছিক)</h5>
+                              <input
+                                placeholder="University Name"
+                                type="text"
+                                value={editProfileData.bachelorUni}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, bachelorUni: e.target.value })}
+                                className="w-full rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                              />
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <input
+                                  placeholder="Year"
+                                  type="text"
+                                  value={editProfileData.bachelorYear}
+                                  onChange={(e) => setEditProfileData({ ...editProfileData, bachelorYear: e.target.value })}
+                                  className="rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                                />
+                                <input
+                                  placeholder="CGPA"
+                                  type="text"
+                                  value={editProfileData.bachelorCgpa}
+                                  onChange={(e) => setEditProfileData({ ...editProfileData, bachelorCgpa: e.target.value })}
+                                  className="rounded border border-slate-200 p-1.5 text-[10px] bg-white focus:outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-slate-100 mt-4 pt-4 grid gap-4 sm:grid-cols-3 text-left">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Facebook profile link:</label>
+                              <input
+                                type="text"
+                                value={editProfileData.facebook}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, facebook: e.target.value })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold bg-white focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">LinkedIn profile link:</label>
+                              <input
+                                type="text"
+                                value={editProfileData.linkedin}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, linkedin: e.target.value })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold bg-white focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">WhatsApp number:</label>
+                              <input
+                                type="text"
+                                value={editProfileData.whatsapp}
+                                onChange={(e) => setEditProfileData({ ...editProfileData, whatsapp: e.target.value })}
+                                className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold bg-white focus:border-brand-sky focus:outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          {editProfileError && (
+                            <p className="text-[10px] font-black text-brand-red bg-rose-50 border border-rose-100 p-2 rounded-lg leading-snug mt-3">
+                              {editProfileError}
+                            </p>
+                          )}
+
+                          <div className="flex gap-2 justify-end mt-4 pt-3 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!editProfileData.fullName.trim() || !editProfileData.passportNumber.trim() || !editProfileData.email.trim() || !editProfileData.phone.trim()) {
+                                  setEditProfileError('অনুগ্রহ করে প্রোফাইলের সব তথ্য সঠিকভাবে পূরণ করুন।');
+                                  return;
+                                }
+                                setEditProfileError('');
+                                
+                                const updatedApp: Application = {
+                                  ...activeApp,
+                                  fullName: editProfileData.fullName.trim(),
+                                  passportNumber: editProfileData.passportNumber.trim().toUpperCase(),
+                                  phone: editProfileData.phone.trim(),
+                                  email: editProfileData.email.trim(),
+                                  academicHistory: {
+                                    sscSchool: editProfileData.sscSchool?.trim(),
+                                    sscGpa: editProfileData.sscGpa?.trim(),
+                                    sscYear: editProfileData.sscYear?.trim(),
+                                    hscCollege: editProfileData.hscCollege?.trim(),
+                                    hscGpa: editProfileData.hscGpa?.trim(),
+                                    hscYear: editProfileData.hscYear?.trim(),
+                                    bachelorUni: editProfileData.bachelorUni?.trim(),
+                                    bachelorCgpa: editProfileData.bachelorCgpa?.trim(),
+                                    bachelorYear: editProfileData.bachelorYear?.trim()
+                                  },
+                                  socialMedia: {
+                                    facebook: editProfileData.facebook?.trim(),
+                                    linkedin: editProfileData.linkedin?.trim(),
+                                    whatsapp: editProfileData.whatsapp?.trim()
+                                  }
+                                };
+                                onUpdateApplication(updatedApp);
+                                setIsEditingProfile(false);
+                              }}
+                              className="rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-5 py-2 text-xs font-black transition-all shadow-sm"
+                            >
+                              সংরক্ষণ করুন (Save)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsEditingProfile(false)}
+                              className="rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 text-xs font-bold transition-all"
+                            >
+                              বাতিল (Cancel)
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div className="grid gap-6 lg:grid-cols-3 mt-4">
+                    {/* Tracker Timeline Column */}
+                    <div className="space-y-6 lg:col-span-2 text-left">
+                      {activeApp.paymentStatus !== 'Paid' && (
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="rounded-2xl border-2 border-brand-gold bg-gradient-to-r from-amber-50/85 via-orange-50/70 to-amber-50/45 p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                          id="unpaid-alert-banner"
+                        >
+                          <div className="flex items-start space-x-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-gold/15 text-brand-gold-dark border border-brand-gold/30">
+                              <CreditCard className="h-5 w-5 animate-pulse" />
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-800">পেমেন্ট পেন্ডিং আছে (Payment Action Required)</h4>
+                              <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
+                                আপনার ভারতীয় ডাবল এন্ট্রি ভিসা এবং দিল্লী ট্রাভেল প্রসেসিং ফি <strong>৳ ১৫,০০০ BDT</strong> অপরিশোধিত রয়েছে। দ্রুত প্রসেসিং শুরু করতে ফি পরিশোধ করুন।
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            id="banner-pay-now-btn"
+                            onClick={() => setActiveTab('payment')}
+                            className="w-full sm:w-auto shrink-0 rounded-lg bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white px-4 py-2.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all text-center border-b border-brand-gold"
+                          >
+                            ফি পরিশোধ করুন ➔
+                          </button>
+                        </motion.div>
                       )}
 
-                      <div className="flex gap-2 pt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Validation checks
-                            if (!editProfileData.fullName.trim() || !editProfileData.passportNumber.trim() || !editProfileData.email.trim() || !editProfileData.phone.trim()) {
-                              setEditProfileError('অনুগ্রহ করে প্রোফাইলের সব তথ্য সঠিকভাবে পূরণ করুন।');
-                              return;
+                      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                        <h3 className="font-display font-bold text-slate-800 text-sm mb-6 border-b border-slate-50 pb-3 text-left">
+                          আপনার আবেদনের বর্তমান অবস্থা (Live Processing Status)
+                        </h3>
+
+                        <div className="relative border-l-2 border-slate-100 pl-6 ml-3 space-y-8 text-left">
+                          {[
+                            {
+                              key: 'Submitted',
+                              title: 'আবেদন ফাইল খোলা হয়েছে',
+                              desc: 'আপনার বেসিক ফাইল এজেন্সিতে রেডি করা হয়েছে।',
+                              time: activeApp.createdAt,
+                              isActive: true,
+                              isCompleted: true
+                            },
+                            {
+                              key: 'Document Verification',
+                              title: 'ডকুমেন্ট ভেরিফিকেশন ও এটেস্টেশন',
+                              desc: 'বাংলাদেশ পররাষ্ট্র মন্ত্রণালয় ও শিক্ষাবোর্ডের সত্যায়ন প্রক্রিয়া চলমান।',
+                              time: activeApp.documents.length > 0 ? activeApp.documents[0].uploadedAt : '',
+                              isActive: activeApp.status === 'Document Verification' || activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued',
+                              isCompleted: activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued'
+                            },
+                            {
+                              key: 'Embassy Processing',
+                              title: 'দিল্লী দূতাবাস প্রসেসিং ও ভারতীয় ভিসা',
+                              desc: 'ভারতীয় ট্রানজিট ভিসা বুকিং সম্পন্ন এবং দিল্লীস্থ দৈনিক দূতাবাসে অ্যাপয়েন্টমেন্ট বুকিং প্রসেস।',
+                              time: activeApp.status === 'Embassy Processing' ? 'চলমান' : (activeApp.status === 'Visa Issued' ? 'সম্পন্ন' : ''),
+                              isActive: activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued',
+                              isCompleted: activeApp.status === 'Visa Issued'
+                            },
+                            {
+                              key: 'Visa Issued',
+                              title: 'বুলগেরিয়া স্টুডেন্ট ভিসা অনুমোদিত',
+                              desc: 'অভিনন্দন! আপনার বুলগেরিয়া স্টুডেন্ট ভিসা সফলভাবে অনুমোদন ও পাসপোর্ট স্ট্যাম্পিং সম্পন্ন হয়েছে।',
+                              time: activeApp.status === 'Visa Issued' ? 'ফ্লাইট প্রিপারেশন' : '',
+                              isActive: activeApp.status === 'Visa Issued',
+                              isCompleted: activeApp.status === 'Visa Issued'
                             }
+                          ].map((step, idx) => (
+                            <div key={idx} className="relative" id={`tracking-step-${idx}`}>
+                              <div className={`absolute -left-[33px] top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                                step.isCompleted 
+                                  ? 'bg-brand-sky border-brand-sky text-white' 
+                                  : (step.isActive ? 'bg-white border-brand-sky text-brand-sky' : 'bg-white border-slate-200 text-slate-400')
+                              }`}>
+                                {step.isCompleted ? (
+                                  <CheckCircle className="h-4 w-4" />
+                                ) : (
+                                  <Clock className="h-3 w-3" />
+                                )}
+                              </div>
 
-                            const cleanPhone = editProfileData.phone.replace(/[\s-]/g, '');
-                            let localPhone = cleanPhone;
-                            if (cleanPhone.startsWith('+880')) {
-                              localPhone = cleanPhone.slice(4);
-                            } else if (cleanPhone.startsWith('880')) {
-                              localPhone = cleanPhone.slice(3);
-                            }
-
-                            if (!/^01[3-9]\d{8}$/.test(localPhone)) {
-                              setEditProfileError('দয়া করে একটি সঠিক ১১ ডিজিটের বাংলাদেশী মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)');
-                              return;
-                            }
-
-                            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editProfileData.email.trim())) {
-                              setEditProfileError('দয়া করে একটি সঠিক ইমেল অ্যাড্রেস প্রদান করুন (যেমন: example@gmail.com)');
-                              return;
-                            }
-
-                            setEditProfileError('');
-                            
-                            // Save profile changes to database (Firestore)
-                            const updatedApp: Application = {
-                              ...activeApp,
-                              fullName: editProfileData.fullName.trim(),
-                              passportNumber: editProfileData.passportNumber.trim().toUpperCase(),
-                              phone: editProfileData.phone.trim(),
-                              email: editProfileData.email.trim()
-                            };
-                            onUpdateApplication(updatedApp);
-                            setIsEditingProfile(false);
-                          }}
-                          className="flex-grow rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white py-2 text-xs font-black text-center transition-all border-b border-emerald-700/50 shadow-sm"
-                        >
-                          সংরক্ষণ করুন
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsEditingProfile(false)}
-                          className="rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 text-xs font-bold text-center transition-all"
-                        >
-                          বাতিল
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. Progress Metric and Bulgaria Intake Countdown */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4" id="progress-intake-countdown-card">
-                  {/* Progress segment */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-500 uppercase tracking-wider">আবেদনের অগ্রগতি (Processing Progress)</span>
-                      <span className="font-black text-brand-sky">
-                        {(() => {
-                          switch (activeApp.status) {
-                            case 'Submitted': return '25%';
-                            case 'Document Verification': return '50%';
-                            case 'Embassy Processing': return '75%';
-                            case 'Visa Issued': return '100%';
-                            case 'Rejected': return '15%';
-                            default: return '20%';
-                          }
-                        })()}
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden relative">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ 
-                          width: (() => {
-                            switch (activeApp.status) {
-                              case 'Submitted': return '25%';
-                              case 'Document Verification': return '50%';
-                              case 'Embassy Processing': return '75%';
-                              case 'Visa Issued': return '100%';
-                              case 'Rejected': return '15%';
-                              default: return '20%';
-                            }
-                          })()
-                        }}
-                        transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="h-full bg-gradient-to-r from-brand-sky via-brand-sky-dark to-brand-gold"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Countdown segment */}
-                  <div className="border-t border-slate-100 pt-3.5 flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="p-2 bg-amber-50 text-brand-gold-dark rounded-xl border border-amber-100/50 shrink-0">
-                        <Flame className="h-4.5 w-4.5 animate-bounce" />
-                      </span>
-                      <div className="text-left">
-                        <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wide">বুলগেরিয়া অক্টোবর ২০২৬ ইনটেক</h4>
-                        <p className="text-[9px] text-slate-400 font-bold">Sofia / Varna Classes Start</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-mono text-xs font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg border border-brand-gold border-b-2">
-                        {(() => {
-                          const targetDate = new Date('2026-10-01T00:00:00');
-                          const currentDate = new Date('2026-07-17T15:46:53-07:00');
-                          const diffTime = targetDate.getTime() - currentDate.getTime();
-                          const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          return daysLeft > 0 ? `${daysLeft} দিন বাকি` : 'ইনটেক শুরু';
-                        })()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Delhi Embassy Visa Interview Study Guide (Interactive Flashcards) */}
-                <div className="rounded-2xl border-2 border-brand-sky/15 bg-white p-5 shadow-md space-y-4" id="embassy-interview-prep-guide">
-                  <div className="border-b border-slate-50 pb-2 flex items-center justify-between">
-                    <div className="flex items-center space-x-1.5 text-left">
-                      <span className="p-1 bg-brand-sky-light text-brand-sky rounded-lg">
-                        <BookOpen className="h-4 w-4" />
-                      </span>
-                      <div>
-                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide">দূতাবাস ইন্টারভিউ প্রস্তুতি (Delhi Visa Q&A)</h3>
-                        <p className="text-[9px] text-slate-400 font-semibold">বুলগেরিয়া স্টুডেন্ট ভিসা ইন্টারভিউ সহায়িকা</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2" id="embassy-qa-accordions">
-                    {[
-                      {
-                        q: "Why did you choose Bulgaria for higher studies?",
-                        a: "Bulgaria offers European Union accredited degrees, highly modern laboratories, and extremely affordable tuition fees & living costs compared to Western Europe. Furthermore, Bulgarian universities like Technical University of Sofia are widely respected globally."
-                      },
-                      {
-                        q: "How will you support yourself financially during your stay?",
-                        a: "My education and living expenses are fully sponsored by my parents. We have maintained a strong bank statement of over 7-8 Lakhs BDT in our sponsor account as required, and my sponsor is capable of supporting any emergency fees."
-                      },
-                      {
-                        q: "Do you plan to return to Bangladesh after graduation?",
-                        a: "Yes, definitely. After completing my degree, I plan to return to Bangladesh to build a career in software engineering/business analytics, utilizing the global European experience and skills gained in Bulgaria to contribute to our local industry."
-                      },
-                      {
-                        q: "Which university and course are you enrolled in?",
-                        a: `I am enrolled in "${activeApp.desiredCourse}". The official language of instruction is English, and my classes are scheduled to begin in October 2026.`
-                      }
-                    ].map((qa, index) => {
-                      const isOpen = activePrepIndex === index;
-                      return (
-                        <div 
-                          key={index} 
-                          className="rounded-xl border border-slate-100 bg-slate-50/50 overflow-hidden transition-all text-left"
-                          id={`qa-block-${index}`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => setActivePrepIndex(isOpen ? null : index)}
-                            className="w-full p-3 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
-                          >
-                            <span className="text-[11px] font-bold text-slate-700 pr-2 leading-snug">{index + 1}. {qa.q}</span>
-                            <ChevronDown className={`h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-sky' : ''}`} />
-                          </button>
-                          
-                          <AnimatePresence>
-                            {isOpen && (
-                              <motion.div
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: "auto", opacity: 1 }}
-                                exit={{ height: 0, opacity: 0 }}
-                                className="border-t border-slate-100 bg-white p-3 text-[11px] text-slate-600 leading-relaxed font-semibold italic border-l-2 border-brand-gold"
-                              >
-                                {qa.a}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center justify-between">
+                                  <h4 className={`text-xs font-bold ${step.isActive ? 'text-slate-800' : 'text-slate-400'}`}>
+                                    {step.title}
+                                  </h4>
+                                  {step.time && (
+                                    <span className="text-[10px] text-slate-400 font-mono">{step.time}</span>
+                                  )}
+                                </div>
+                                <p className={`text-xs ${step.isActive ? 'text-slate-600' : 'text-slate-400'}`}>
+                                  {step.desc}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                      </div>
 
-                {/* 4. Real-time Notifications & SMS History */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-50 pb-3">
-                    <h3 className="font-display font-bold text-slate-800 text-sm flex items-center space-x-1.5">
-                      <Bell className="h-4 w-4 text-brand-sky animate-pulse" />
-                      <span>নোটিফিকেশন ও এসএমএস হিস্ট্রি</span>
-                    </h3>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500">
-                      অটোমেটেড
-                    </span>
-                  </div>
+                      {/* Additional tracking guidance */}
+                      <div className="rounded-xl bg-brand-sky-light p-4 border border-brand-sky/20 flex items-start space-x-3 text-left">
+                        <ShieldAlert className="h-5 w-5 text-brand-sky shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-bold text-brand-sky-dark">জরুরি রিয়েল-тайм নির্দেশনা</h4>
+                          <p className="text-[11px] text-slate-700 leading-relaxed mt-1">
+                            বুলগেরিয়া দূতাবাস দিল্লীতে হওয়ায় আমরা আপনার ভারতীয় ডাবল এন্ট্রি visa এবং দিল্লী ভ্রমণের সমস্ত হোটেল ও কনভেয়েন্স শিডিউল এখান থেকেই কন্ট্রোল করছি। প্রতিটি বড় আপডেটের পর আপনার ফোনে স্বয়ংক্রিয় এসএমএস (SMS) চলে যাবে।
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                  {activeApp.notificationHistory.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-6">এখনো কোনো নোটিফিকেশন পাঠানো হয়নি।</p>
-                  ) : (
-                    <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-1" id="student-notification-list">
-                      {activeApp.notificationHistory.slice().reverse().map((log) => (
-                        <div key={log.id} className="rounded-xl border border-slate-100 bg-slate-50 p-3.5 space-y-1.5" id={`notif-card-${log.id}`}>
-                          <div className="flex items-center justify-between">
-                            <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase ${
-                              log.type === 'sms' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {log.type === 'sms' ? '💬 SMS Sent' : '📧 Email Sent'}
+                    {/* Progress countdown card */}
+                    <div className="space-y-6 lg:col-span-1 text-left">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4" id="progress-intake-countdown-card">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-slate-500 uppercase tracking-wider">আবেদনের অগ্রগতি (Processing Progress)</span>
+                            <span className="font-black text-brand-sky">
+                              {(() => {
+                                switch (activeApp.status) {
+                                  case 'Submitted': return '25%';
+                                  case 'Document Verification': return '50%';
+                                  case 'Embassy Processing': return '75%';
+                                  case 'Visa Issued': return '100%';
+                                  case 'Rejected': return '15%';
+                                  default: return '20%';
+                                }
+                              })()}
                             </span>
-                            <span className="text-[9px] text-slate-400 font-mono">{log.sentAt}</span>
                           </div>
-                          <h4 className="text-xs font-bold text-slate-800">{log.title}</h4>
-                          <p className="text-[11px] text-slate-600 leading-relaxed">{log.body}</p>
-                          <div className="text-[9px] text-slate-400 border-t border-slate-200/50 pt-1">
-                            প্রাপক: <span className="font-mono">{log.recipient}</span>
+                          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden relative">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ 
+                                width: (() => {
+                                  switch (activeApp.status) {
+                                    case 'Submitted': return '25%';
+                                    case 'Document Verification': return '50%';
+                                    case 'Embassy Processing': return '75%';
+                                    case 'Visa Issued': return '100%';
+                                    case 'Rejected': return '15%';
+                                    default: return '20%';
+                                  }
+                                })()
+                              }}
+                              transition={{ duration: 0.8, ease: "easeOut" }}
+                              className="h-full bg-gradient-to-r from-brand-sky via-brand-sky-dark to-brand-gold"
+                            />
                           </div>
                         </div>
-                      ))}
+
+                        <div className="border-t border-slate-100 pt-3.5 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="p-2 bg-amber-50 text-brand-gold-dark rounded-xl border border-amber-100/50 shrink-0">
+                              <Flame className="h-4.5 w-4.5 animate-bounce" />
+                            </span>
+                            <div className="text-left">
+                              <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wide">বুলগেরিয়া অক্টোবর ২০২৬ ইনটেক</h4>
+                              <p className="text-[9px] text-slate-400 font-bold">Sofia / Varna Classes Start</p>
+                            </div>
+                          </div>
+                          <div className="text-right font-mono">
+                            <span className="font-mono text-xs font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg border border-brand-gold border-b-2">
+                              {(() => {
+                                const targetDate = new Date('2026-10-01T00:00:00');
+                                const currentDate = new Date('2026-07-17T15:46:53-07:00');
+                                const diffTime = targetDate.getTime() - currentDate.getTime();
+                                const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? `${daysLeft} দিন বাকি` : 'ইনটেক শুরু';
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
           {/* Tab 2: Document Upload Guidelines */}
           {activeTab === 'documents' && (
@@ -2460,272 +3641,96 @@ export default function StudentDashboard({
             </div>
           )}
 
-          {/* Tab 5: Chat Messaging Support with Admin */}
-          {activeTab === 'messages' && activeApp && (() => {
-            // Auto-mark unread admin replies as read when the student views this tab
-            const unreadAdminMsgs = activeApp.messages?.filter(m => m.sender === 'admin' && !m.read) || [];
-            if (unreadAdminMsgs.length > 0) {
-              setTimeout(() => {
-                const updatedMsgs = activeApp.messages?.map(m => m.sender === 'admin' ? { ...m, read: true } : m) || [];
-                onUpdateApplication({
-                  ...activeApp,
-                  messages: updatedMsgs
-                });
-              }, 60);
-            }
-
-            const handleSendStudentMessage = (e: React.FormEvent) => {
-              e.preventDefault();
-              if (!studentMsgText.trim() && !studentChatFile) return;
-
-              const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
-
-              const newMessage = {
-                id: `msg-${Date.now()}`,
-                sender: 'student' as const,
-                text: studentMsgText.trim(),
-                sentAt: currentTimestamp,
-                read: false,
-                attachments: studentChatFile ? [{ name: studentChatFileName || 'Attachment', url: studentChatFile }] : undefined
-              };
-
-              const updatedApp: Application = {
-                ...activeApp,
-                messages: [...(activeApp.messages || []), newMessage]
-              };
-
-              onUpdateApplication(updatedApp);
-              setStudentMsgText('');
-              setStudentChatFile('');
-              setStudentChatFileName('');
-            };
-
-            return (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6" id="messages-tab-content">
-                <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-gold bg-slate-900 px-2.5 py-1 rounded-full border border-brand-gold/20">
-                      বার্তালাপ ও সরাসরি চ্যাট (Support Chat)
-                    </span>
-                    <h3 className="mt-3 font-display text-lg font-bold text-slate-800">Sodi Euro অ্যাডমিন সাপোর্ট চ্যাট</h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      আপনার ফাইল প্রসেসিং এবং দিল্লী স্লট বুকিং সংক্রান্ত যেকোনো প্রশ্ন সরাসরি অ্যাডমিনকে পাঠান।
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-brand-sky-light px-2.5 py-0.5 text-[10px] font-bold text-brand-sky-dark border border-brand-sky/20 self-start">
-                    সরাসরি লাইভ
-                  </span>
-                </div>
-
-                {/* Message list box */}
-                <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 min-h-[250px] max-h-[380px] overflow-y-auto space-y-3 flex flex-col">
-                  {(!activeApp.messages || activeApp.messages.length === 0) ? (
-                    <div className="my-auto text-center space-y-1 py-12">
-                      <p className="text-slate-400 text-xs font-semibold">অ্যাডমিনের সাথে কোনো পূর্ববর্তী চ্যাট নেই।</p>
-                      <p className="text-[10px] text-slate-400">নিচের মেসেজ বক্সে টাইপ করে প্রথম মেসেজটি পাঠান।</p>
-                    </div>
-                  ) : (
-                    activeApp.messages.map((msg, mIdx) => {
-                      const isStudent = msg.sender === 'student';
-                      return (
-                        <div
-                          key={msg.id || mIdx}
-                          className={`flex flex-col max-w-[80%] ${
-                            isStudent ? 'align-end self-end items-end' : 'align-start self-start items-start'
-                          }`}
-                        >
-                          <div
-                            className={`rounded-2xl px-4 py-2.5 text-xs shadow-sm ${
-                              isStudent
-                                ? 'bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white rounded-tr-none border-b border-brand-gold'
-                                : 'bg-white text-slate-800 rounded-tl-none border border-slate-200'
-                            }`}
-                          >
-                            <p className="leading-relaxed whitespace-pre-line">{msg.text}</p>
-                            {msg.attachments && msg.attachments.length > 0 && (
-                              <div className="mt-2.5 pt-1.5 border-t border-slate-200/20 space-y-1.5">
-                                {msg.attachments.map((file, fIdx) => (
-                                  <a
-                                    key={fIdx}
-                                    href={file.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className={`flex items-center space-x-1.5 hover:underline font-bold text-[10px] p-1.5 rounded-lg ${
-                                      isStudent ? 'bg-slate-800/40 text-brand-gold' : 'bg-slate-100 text-slate-700 border border-slate-200/50'
-                                    }`}
-                                  >
-                                    <Paperclip className="h-3.5 w-3.5 shrink-0" />
-                                    <span className="truncate flex-grow">{file.name}</span>
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <span className="text-[9px] text-slate-400 mt-1 px-1 font-mono">
-                            {isStudent ? 'আমি' : 'অ্যাডমিন সাপোর্ট'} · {msg.sentAt}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Send form with File attachment previews */}
-                <form onSubmit={handleSendStudentMessage} className="space-y-2">
-                  {studentChatFile && (
-                    <div className="flex items-center justify-between bg-slate-50 border border-slate-150 px-3.5 py-2 rounded-xl text-[11px] font-bold text-slate-600 animate-fadeIn">
-                      <div className="flex items-center space-x-2 truncate">
-                        <Paperclip className="h-4 w-4 text-brand-sky shrink-0" />
-                        <span className="truncate">{studentChatFileName}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setStudentChatFile('');
-                          setStudentChatFileName('');
-                        }}
-                        className="text-brand-red hover:text-red-700 text-xs shrink-0 font-extrabold"
-                      >
-                        মুছুন (Remove)
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="flex space-x-2">
-                    {/* Attachment selection trigger */}
-                    <label className="cursor-pointer h-12 w-12 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors shrink-0">
-                      <Paperclip className="h-5 w-5" />
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              if (reader.result) {
-                                setStudentChatFile(reader.result as string);
-                                setStudentChatFileName(file.name);
-                              }
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        }}
-                      />
-                    </label>
-
-                    <input
-                      type="text"
-                      value={studentMsgText}
-                      onChange={(e) => setStudentMsgText(e.target.value)}
-                      placeholder="আপনার বার্তা বা প্রশ্নটি লিখুন..."
-                      className="w-full rounded-xl border border-slate-200 bg-white p-3.5 text-xs focus:outline-none focus:border-brand-sky focus:ring-1 focus:ring-brand-sky text-slate-800"
-                    />
-
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-slate-900 text-white px-5 py-3 text-xs font-bold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 border-b border-brand-gold shrink-0"
-                    >
-                      বার্তা পাঠান
-                    </button>
-                  </div>
-                </form>
-              </div>
-            );
-          })()}
-        </motion.div>
-      )}
-
-      {/* Password Verification Modal for Student List Selection */}
-      <AnimatePresence>
-        {selectedVerifyApp && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
-            id="password-verify-modal-backdrop"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 15, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.95, y: 15, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="bg-white rounded-2xl shadow-2xl border-2 border-brand-gold/25 max-w-md w-full overflow-hidden p-6 space-y-4"
-              id="password-verify-modal"
-            >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center space-x-2">
-                  <span className="p-1.5 bg-brand-sky-light text-brand-sky rounded-lg">
-                    <Lock className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800">লগইন ভেরিফিকেশন (Login Verification)</h3>
-                    <p className="text-[10px] text-slate-500">প্রোফাইল নিরাপত্তা নিশ্চিতকরণ</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedVerifyApp(null)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
+          {/* Password Verification Modal for Student List Selection */}
+          <AnimatePresence>
+            {selectedVerifyApp && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
+                id="password-verify-modal-backdrop"
+              >
+                <motion.div
+                  initial={{ scale: 0.95, y: 15, opacity: 0 }}
+                  animate={{ scale: 1, y: 0, opacity: 1 }}
+                  exit={{ scale: 0.95, y: 15, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="bg-white rounded-2xl shadow-2xl border-2 border-brand-gold/25 max-w-md w-full overflow-hidden p-6 space-y-4"
+                  id="password-verify-modal"
                 >
-                  <XCircle className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
-                  <p className="text-xs text-slate-500">আপনি নিচের শিক্ষার্থীর ড্যাশবোর্ডে প্রবেশের চেষ্টা করছেন:</p>
-                  <h4 className="text-sm font-black text-slate-800 mt-1">{selectedVerifyApp.fullName}</h4>
-                  <p className="text-[10px] text-slate-400 mt-0.5">আইডি: {selectedVerifyApp.id} · পাসপোর্ট: {selectedVerifyApp.passportNumber}</p>
-                </div>
-
-                <form onSubmit={handleVerifySubmit} className="space-y-3.5">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (শিক্ষার্থীর পাসপোর্ট নম্বর):</label>
-                    <div className="relative">
-                      <input
-                        required
-                        autoFocus
-                        type="password"
-                        value={verifyPassword}
-                        onChange={(e) => setVerifyPassword(e.target.value)}
-                        placeholder="পাসপোর্ট নম্বরটি লিখুন"
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
-                        id="verify-password-input"
-                      />
-                      <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="p-1.5 bg-brand-sky-light text-brand-sky rounded-lg">
+                        <Lock className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-800">লগইন ভেরিফিকেশন (Login Verification)</h3>
+                        <p className="text-[10px] text-slate-500">প্রোফাইল নিরাপত্তা নিশ্চিতকরণ</p>
+                      </div>
                     </div>
-                  </div>
-
-                  {verifyError && (
-                    <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2.5 rounded border border-red-100 leading-relaxed" id="verify-error">
-                      {verifyError}
-                    </p>
-                  )}
-
-                  <div className="text-[10.5px] bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-amber-800 leading-relaxed">
-                    <strong>💡 ডেমো ভেরিফিকেশন:</strong> নিরাপত্তার স্বার্থে একজনের ড্যাশবোর্ডে অন্য কেউ সরাসরি ঢুকতে পারবে না। অনুগ্রহ করে উক্ত শিক্ষার্থীর <strong>পাসপোর্ট নম্বরটি ({selectedVerifyApp.passportNumber})</strong> পাসওয়ার্ড হিসেবে টাইপ করে প্রবেশ করুন।
-                  </div>
-
-                  <div className="flex space-x-2 pt-1">
                     <button
-                      type="button"
                       onClick={() => setSelectedVerifyApp(null)}
-                      className="w-1/3 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
+                      className="text-slate-400 hover:text-slate-600 transition-colors"
                     >
-                      বাতিল করুন
-                    </button>
-                    <button
-                      type="submit"
-                      className="w-2/3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                      id="confirm-verify-btn"
-                    >
-                      ভেরিফাই ও প্রবেশ করুন
+                      <XCircle className="h-5 w-5" />
                     </button>
                   </div>
-                </form>
+
+                  <div className="space-y-3">
+                    <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
+                      <p className="text-xs text-slate-500">আপনি নিচের শিক্ষার্থীর ড্যাশবোর্ডে প্রবেশের চেষ্টা করছেন:</p>
+                      <h4 className="text-sm font-black text-slate-800 mt-1">{selectedVerifyApp.fullName}</h4>
+                      <p className="text-[10px] text-slate-400 mt-0.5">আইডি: {selectedVerifyApp.id} · পাসপোর্ট: {selectedVerifyApp.passportNumber}</p>
+                    </div>
+
+                    <form onSubmit={handleVerifySubmit} className="space-y-3.5">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (শিক্ষার্থীর পাসপোর্ট নম্বর):</label>
+                        <div className="relative">
+                          <input
+                            required
+                            autoFocus
+                            type="password"
+                            value={verifyPassword}
+                            onChange={(e) => setVerifyPassword(e.target.value)}
+                            placeholder="পাসপোর্ট নম্বরটি লিখুন"
+                            className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
+                            id="verify-password-input"
+                          />
+                          <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
+
+                      {verifyError && (
+                        <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2.5 rounded border border-red-100 leading-relaxed" id="verify-error">
+                          {verifyError}
+                        </p>
+                      )}
+
+                      <div className="text-[10.5px] bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-amber-800 leading-relaxed">
+                        <strong>💡 ডেমো ভেরিফিকেশন:</strong> নিরাপত্তার স্বার্থে একজনের ড্যাশবোর্ডে অন্য কেউ সরাসরি ঢুকতে পারবে না। অনুগ্রহ করে উক্ত শিক্ষার্থীর <strong>পাসপোর্ট নম্বরটি ({selectedVerifyApp.passportNumber})</strong> পাসওয়ার্ড হিসেবে টাইপ করে প্রবেশ করুন।
+                      </div>
+
+                      <div className="flex space-x-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedVerifyApp(null)}
+                          className="w-1/3 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
+                        >
+                          বাতিল করুন
+                        </button>
+                        <button
+                          type="submit"
+                          className="w-2/3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
+                          id="confirm-verify-btn"
+                        >
+                          ভেরিফাই ও প্রবেশ করুন
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            )}
+          </AnimatePresence>
 
       {/* Step-by-step Popup Payment Modal */}
       <AnimatePresence>
@@ -3320,6 +4325,148 @@ export default function StudentDashboard({
           </div>
         )}
       </AnimatePresence>
+            </>
+          )
+        )}
+
+      {/* Floating Support Chat Widget */}
+      {activeApp && (
+        <div className="fixed bottom-6 right-6 z-40 font-sans" id="floating-support-chat-widget">
+          <AnimatePresence>
+            {isChatWidgetOpen ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-80 sm:w-96 h-[480px] flex flex-col overflow-hidden mb-4"
+                id="chat-widget-panel"
+              >
+                {/* Header */}
+                <div className="bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white p-4 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="h-10 w-10 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center text-brand-gold">
+                        <User className="h-5 w-5 text-brand-gold" />
+                      </div>
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-slate-950"></span>
+                    </div>
+                    <div className="text-left">
+                      <h4 className="text-xs font-black text-white">Sodi Euro Support Team</h4>
+                      <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>অনলাইন (Online & Active)</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsChatWidgetOpen(false)}
+                    className="rounded-full p-1 bg-white/10 hover:bg-white/20 text-slate-300 transition-colors"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Message History area */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/70" id="chat-widget-message-container">
+                  {(!activeApp.messages || activeApp.messages.length === 0) ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                      <div className="text-2xl">👋</div>
+                      <h5 className="text-xs font-bold text-slate-700">হ্যালো! কিভাবে সাহায্য করতে পারি?</h5>
+                      <p className="text-[10px] text-slate-400 leading-relaxed max-w-[200px]">
+                        বুলগেরিয়া স্টুডেন্ট ভিসা ও ফাইল প্রসেসিং সংক্রান্ত যেকোনো প্রশ্ন এখানে লিখুন। আমাদের টিম দ্রুত উত্তর দেবে।
+                      </p>
+                    </div>
+                  ) : (
+                    activeApp.messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex flex-col max-w-[80%] ${
+                          msg.sender === 'student' ? 'ml-auto items-end' : 'mr-auto items-start'
+                        }`}
+                      >
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1 mb-1 flex items-center gap-1">
+                          {msg.sender === 'student' ? (
+                            <span>আমার বার্তা (Student)</span>
+                          ) : (
+                            <>
+                              {msg.adminPhoto && (
+                                <img src={msg.adminPhoto} alt="" className="h-3.5 w-3.5 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
+                              )}
+                              <span>{msg.adminName || 'ম্যানেজার (Admin)'}</span>
+                            </>
+                          )}
+                        </span>
+                        <div
+                          className={`rounded-2xl px-3.5 py-2.5 text-xs font-semibold leading-relaxed ${
+                            msg.sender === 'student'
+                              ? 'bg-slate-900 text-white rounded-br-none'
+                              : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-sm shadow-slate-100/50'
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                        <span className="text-[8px] font-mono font-bold text-slate-400 mt-1 px-1">{msg.sentAt}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Message Input section */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!studentMsgText.trim()) return;
+                    handleSendStudentMessage(studentMsgText);
+                    setStudentMsgText('');
+                  }}
+                  className="p-3 bg-white border-t border-slate-100 flex gap-2 items-center shrink-0"
+                >
+                  <input
+                    type="text"
+                    value={studentMsgText}
+                    onChange={(e) => setStudentMsgText(e.target.value)}
+                    placeholder="আপনার মেসেজটি এখানে লিখুন..."
+                    className="flex-1 rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-semibold focus:outline-none focus:border-brand-sky focus:ring-1 focus:ring-brand-sky/25 bg-slate-50"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!studentMsgText.trim()}
+                    className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 p-2.5 text-xs font-black disabled:bg-slate-100 disabled:text-slate-400 transition-all active:scale-95 flex items-center justify-center shrink-0"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.button
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                type="button"
+                id="live-chat-floating-btn"
+                onClick={() => {
+                  setIsChatWidgetOpen(true);
+                  markMessagesAsRead();
+                }}
+                className="rounded-full bg-slate-900 hover:bg-slate-800 text-white p-4 shadow-2xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all border-2 border-brand-gold group"
+              >
+                <div className="relative">
+                  <MessageCircle className="h-5.5 w-5.5 text-white" />
+                  {(() => {
+                    const unreadCount = activeApp.messages?.filter(m => m.sender === 'admin' && !m.read).length || 0;
+                    return unreadCount > 0 ? (
+                      <span className="absolute -top-2.5 -right-2.5 h-5 w-5 rounded-full bg-rose-600 text-[10px] font-black text-white flex items-center justify-center border-2 border-slate-900 animate-bounce">
+                        {unreadCount}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+                <span className="text-xs font-black tracking-wide pr-1">Live Chat</span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }

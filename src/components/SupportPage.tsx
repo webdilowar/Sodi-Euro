@@ -36,7 +36,8 @@ export const initialSupportMembers: SupportMember[] = [
     btnUrl: "https://wa.me/8801712345678?text=Hello%20Dilowar%20Hosen,%20I%20need%20support%20with%20my%20Bulgaria%20Student%20Visa%20Application.",
     createdAt: "2026-07-10 00:00",
     username: "dilowar",
-    password: "dilowar123"
+    password: "dilowar123",
+    roleType: "administrator"
   },
   {
     id: "sohel_rana",
@@ -46,7 +47,7 @@ export const initialSupportMembers: SupportMember[] = [
     phone: "+880 1987-654321",
     whatsapp: "8801987654321",
     location: "সোফিয়া, বুলগেরিয়া ও ঢাকা অফিস",
-    bio: "বুলগেরিয়ান বিশ্ববিদ্যালয়সমূহের সাথে সরাসরি প্রাতিষ্ঠানিক যোগাযোগ রক্ষা এবং ডক্যুমেন্ট প্রসেসিং-এর মূল দায়িত্বে নিয়োজিত আছেন। তার নিবিড় তত্ত্বাবধানে শিক্ষার্থীদের অফার লেটার এবং মিনিস্ট্রি অফ এডুকেশন (D-Visa) অনুমোদন প্রক্রিয়া দ্রুত সম্পন্ন হয়। দীর্ঘ ৪ বছরের অভিজ্ঞতাসম্পন্ন সোহেল রানা আইনি ও প্রশাসনিক জটিলতা সমাধানে পারদর্শী।",
+    bio: "বুলগেরিয়ান বিশ্ববিদ্যালয়সমূহের সাথে সরাসরি প্রাতিষ্ঠানিক যোগাযোগ রক্ষা এবং ডক্যুমেন্ট প্রসেসিং-এর মূল দায়িত্বে নিয়োজিত আছেন। তার নিবিড় তত্ত্বাবধানে শিক্ষার্থীদের অফার লেটার এবং মিনিস্ট্রি of এডুকেশন (D-Visa) অনুমোদন প্রক্রিয়া দ্রুত সম্পন্ন হয়। দীর্ঘ ৪ বছরের অভিজ্ঞতাসম্পন্ন সোহেল রানা আইনি ও প্রশাসনিক জটিলতা সমাধানে পারদর্শী।",
     badge: "University Liaison & Operations",
     colorClass: "from-brand-gold via-brand-gold-dark to-slate-900",
     accentBorder: "border-brand-gold/30",
@@ -54,7 +55,8 @@ export const initialSupportMembers: SupportMember[] = [
     btnUrl: "https://wa.me/8801987654321?text=Hello%20Sohel%20Rana,%20I%20need%20support%20with%20my%20university%20admission%20status.",
     createdAt: "2026-07-10 00:00",
     username: "sohel",
-    password: "sohel123"
+    password: "sohel123",
+    roleType: "administrator"
   }
 ];
 

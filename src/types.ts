@@ -5,6 +5,8 @@ export interface ChatMessage {
   sentAt: string;
   attachments?: { name: string; url: string }[];
   read?: boolean;
+  adminName?: string;
+  adminPhoto?: string;
 }
 
 export interface AdminUser {
@@ -16,6 +18,7 @@ export interface AdminUser {
 }
 
 export type ApplicationStatus =
+  | 'Registered'
   | 'Submitted'
   | 'Document Verification'
   | 'Embassy Processing'
@@ -32,6 +35,8 @@ export interface UploadedDocument {
   feedback?: string;
   uploadedAt: string;
   fileUrl?: string;
+  actionBy?: string;
+  actionAt?: string;
 }
 
 export interface Application {
@@ -63,6 +68,24 @@ export interface Application {
   }[];
   messages?: ChatMessage[];
   profilePhoto?: string;
+  statusUpdatedBy?: string;
+  statusUpdatedAt?: string;
+  academicHistory?: {
+    sscSchool?: string;
+    sscGpa?: string;
+    sscYear?: string;
+    hscCollege?: string;
+    hscGpa?: string;
+    hscYear?: string;
+    bachelorUni?: string;
+    bachelorCgpa?: string;
+    bachelorYear?: string;
+  };
+  socialMedia?: {
+    facebook?: string;
+    linkedin?: string;
+    whatsapp?: string;
+  };
 }
 
 export interface NotificationLog {
@@ -102,4 +125,17 @@ export interface SupportMember {
   createdAt: string;
   username?: string;
   password?: string;
+  roleType?: 'administrator' | 'moderator' | 'support';
+}
+
+export interface AuditLog {
+  id: string;
+  adminId: string;
+  adminName: string;
+  adminPhoto?: string;
+  actionType: 'message_reply' | 'document_approved' | 'document_rejected' | 'status_updated' | 'notification_sent' | 'payment_updated' | 'member_added' | 'member_updated' | 'student_deleted';
+  studentId: string;
+  studentName: string;
+  details: string;
+  timestamp: string;
 }

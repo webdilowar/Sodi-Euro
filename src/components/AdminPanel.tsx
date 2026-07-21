@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember, ChatMessage } from '../types';
+import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember, ChatMessage, AuditLog } from '../types';
 import { documentRequirements, initialApplications } from '../data';
 import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -35,7 +35,8 @@ import {
   Download,
   Trash2,
   Paperclip,
-  Plus
+  Plus,
+  History
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -71,6 +72,27 @@ function getSafePreviewUrl(dataUrl: string): string {
   }
 }
 
+// MASTER_ADMIN_PROFILE definition
+const MASTER_ADMIN_PROFILE: SupportMember = {
+  id: 'master_admin',
+  name: 'Sodi Euro Admin',
+  role: 'প্রধান প্রশাসক (Master Administrator)',
+  email: 'admin@sodieuro.com',
+  phone: '+880 1712-345678',
+  whatsapp: '8801712345678',
+  location: 'ঢাকা ও সোফিয়া অফিস',
+  bio: 'Master Platform Administrator',
+  badge: 'Platform Administrator',
+  colorClass: 'from-brand-sky via-brand-sky-dark to-slate-950',
+  accentBorder: 'border-brand-sky/30',
+  btnText: 'যোগাযোগ',
+  btnUrl: '',
+  createdAt: '2026-07-10 00:00',
+  username: 'sodieuro',
+  password: 'sodieuro',
+  roleType: 'administrator'
+};
+
 export default function AdminPanel({ applications, onUpdateApplication }: AdminPanelProps) {
   // Admin Authentication States
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
@@ -80,8 +102,44 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   const [adminPassword, setAdminPassword] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // Tab/Navigation State (Applicants vs Support Page Editor vs Messages)
-  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor' | 'messages'>('applicants');
+  const [currentAdmin, setCurrentAdmin] = useState<SupportMember | null>(() => {
+    const cached = localStorage.getItem('sodieuro_current_admin');
+    return cached ? JSON.parse(cached) : null;
+  });
+
+  const isUserAdmin = currentAdmin?.roleType === 'administrator' || currentAdmin?.id === 'master_admin';
+
+  // Audit Logs Live Sync State
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  // Logging utility
+  const logAdminAction = async (
+    actionType: AuditLog['actionType'],
+    studentId: string,
+    studentName: string,
+    details: string
+  ) => {
+    const adminToUse = currentAdmin || MASTER_ADMIN_PROFILE;
+    const newLog: AuditLog = {
+      id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      adminId: adminToUse.id,
+      adminName: adminToUse.name,
+      adminPhoto: adminToUse.photoUrl || '',
+      actionType,
+      studentId,
+      studentName,
+      details,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
+    };
+    try {
+      await setDoc(doc(db, 'audit_logs', newLog.id), newLog);
+    } catch (err) {
+      console.error('Failed to write audit log:', err);
+    }
+  };
+
+  // Tab/Navigation State (Applicants vs Support Page Editor vs Messages vs Activity Log)
+  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor' | 'messages' | 'activity_log'>('applicants');
 
   // Support Editor states
   const [supportMembers, setSupportMembers] = useState<SupportMember[]>([]);
@@ -135,6 +193,37 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     return () => unsubscribe();
   }, [isAdminLoggedIn]);
 
+  // Update currentAdmin if its data is modified in supportMembers list, and sync audit logs from Firestore
+  useEffect(() => {
+    if (!isAdminLoggedIn) return;
+
+    const unsubscribeLogs = onSnapshot(collection(db, 'audit_logs'), (snapshot) => {
+      const list: AuditLog[] = [];
+      snapshot.forEach((doc) => {
+        list.push(doc.data() as AuditLog);
+      });
+      // Sort by timestamp desc
+      list.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+      setAuditLogs(list);
+    }, (error) => {
+      console.error('Audit logs subscription error:', error);
+    });
+
+    return () => unsubscribeLogs();
+  }, [isAdminLoggedIn]);
+
+  useEffect(() => {
+    if (currentAdmin && currentAdmin.id !== 'master_admin' && supportMembers.length > 0) {
+      const updated = supportMembers.find(m => m.id === currentAdmin.id);
+      if (updated) {
+        if (JSON.stringify(updated) !== JSON.stringify(currentAdmin)) {
+          setCurrentAdmin(updated);
+          localStorage.setItem('sodieuro_current_admin', JSON.stringify(updated));
+        }
+      }
+    }
+  }, [supportMembers, currentAdmin]);
+
   // Sync draft when selected member changes or initially loaded, without overwriting draft updates
   useEffect(() => {
     if (supportMembers.length > 0) {
@@ -160,6 +249,10 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   };
 
   const handleAddNewSupportMember = async () => {
+    if (!isUserAdmin) {
+      alert('দুঃখিত, শুধুমাত্র Administrators নতুন মেম্বার তৈরি করতে পারবেন!');
+      return;
+    }
     const newId = `member-${Date.now()}`;
     const newMember: SupportMember = {
       id: newId,
@@ -177,11 +270,13 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
       btnUrl: "https://wa.me/8801712000000",
       createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
       username: `user_${Date.now().toString().slice(-4)}`,
-      password: "password123"
+      password: "password123",
+      roleType: "support"
     };
     
     try {
       await setDoc(doc(db, 'support_members', newId), newMember);
+      logAdminAction('member_added', 'system', newMember.name, `Added new support member: "${newMember.name}" with username: "${newMember.username}"`);
       setSelectedSupportMemberId(newId);
       setSupportDraft(newMember);
       setLastSelectedId(newId);
@@ -192,13 +287,19 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   };
 
   const handleDeleteSupportMember = async (memberId: string) => {
+    if (!isUserAdmin) {
+      alert('দুঃখিত, শুধুমাত্র Administrators সাপোর্ট মেম্বার ডিলিট করতে পারবেন!');
+      return;
+    }
     if (supportMembers.length <= 1) {
       alert("কমপক্ষে একজন সাপোর্ট মেম্বার থাকতে হবে!");
       return;
     }
+    const targetMember = supportMembers.find(m => m.id === memberId);
     if (window.confirm("আপনি কি নিশ্চিতভাবে এই সাপোর্ট মেম্বারের প্রোফাইল সম্পূর্ণভাবে ডিলিট করতে চান?")) {
       try {
         await deleteDoc(doc(db, 'support_members', memberId));
+        logAdminAction('member_updated', 'system', targetMember?.name || 'Unknown', `Deleted support member profile: "${targetMember?.name || 'Unknown'}"`);
         alert("সাপোর্ট মেম্বারের প্রোফাইল সফলভাবে ডিলিট করা হয়েছে।");
         const remaining = supportMembers.filter(m => m.id !== memberId);
         if (remaining.length > 0) {
@@ -271,10 +372,16 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     e.preventDefault();
     if (!supportDraft) return;
 
+    if (!isUserAdmin) {
+      alert('দুঃখিত, শুধুমাত্র Administrators সাপোর্ট মেম্বারদের তথ্য যোগ বা পরিবর্তন করতে পারবেন!');
+      return;
+    }
+
     setIsSavingSupport(true);
     setSupportSuccessMsg('');
     try {
       await setDoc(doc(db, 'support_members', supportDraft.id), supportDraft);
+      logAdminAction('member_updated', 'system', supportDraft.name, `Updated support member profile details for "${supportDraft.name}"`);
       setSupportSuccessMsg('মেম্বারের তথ্য সফলভাবে সেভ করা হয়েছে!');
       setTimeout(() => setSupportSuccessMsg(''), 4000);
     } catch (err) {
@@ -286,12 +393,17 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   };
 
   const handleResetSupportToDefault = async () => {
+    if (!isUserAdmin) {
+      alert('দুঃখিত, শুধুমাত্র Administrators সব তথ্য ডিফল্ট অবস্থায় রিসেট করতে পারবেন!');
+      return;
+    }
     if (window.confirm("আপনি কি নিশ্চিতভাবে সব সাপোর্ট পেজের তথ্য ডিফল্ট অবস্থায় রিসেট করতে চান? এটি আপনার কাস্টম পরিবর্তনগুলো মুছে ফেলবে।")) {
       try {
         setSupportSuccessMsg('ডিফল্ট ডাটা রিসেট করা হচ্ছে...');
         for (const member of initialSupportMembers) {
           await setDoc(doc(db, 'support_members', member.id), member);
         }
+        logAdminAction('member_updated', 'system', 'All Members', 'Reset all support profiles to defaults');
         setSupportSuccessMsg('সফলভাবে রিসেট করা হয়েছে!');
         setTimeout(() => setSupportSuccessMsg(''), 3000);
       } catch (err) {
@@ -323,6 +435,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   const [activeChatAppId, setActiveChatAppId] = useState<string | null>(null);
   const [adminChatFile, setAdminChatFile] = useState<string>('');
   const [adminChatFileName, setAdminChatFileName] = useState<string>('');
+  const [chatSearchTerm, setChatSearchTerm] = useState<string>('');
 
   // Automatically mark student messages as read when admin views the chat
   useEffect(() => {
@@ -358,23 +471,35 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     const trimmedPass = adminPassword.trim();
     
     const matchedMember = supportMembers.find(
-      m => m.username?.toLowerCase() === trimmedUser && m.password === trimmedPass
+      m => (m.username?.toLowerCase() === trimmedUser || m.email?.toLowerCase() === trimmedUser) && m.password === trimmedPass
     );
 
-    if ((trimmedUser === 'sodieuro' && trimmedPass === 'sodieuro') || matchedMember) {
+    if (trimmedUser === 'sodieuro' && trimmedPass === 'sodieuro') {
       setIsAdminLoggedIn(true);
       localStorage.setItem('sodieuro_admin_logged_in', 'true');
-      const displayName = matchedMember ? matchedMember.name : 'Master Admin';
-      localStorage.setItem('sodieuro_admin_display_name', displayName);
+      const adminProfile = MASTER_ADMIN_PROFILE;
+      setCurrentAdmin(adminProfile);
+      localStorage.setItem('sodieuro_current_admin', JSON.stringify(adminProfile));
+      localStorage.setItem('sodieuro_admin_display_name', adminProfile.name);
+      setLoginError('');
+    } else if (matchedMember) {
+      setIsAdminLoggedIn(true);
+      localStorage.setItem('sodieuro_admin_logged_in', 'true');
+      setCurrentAdmin(matchedMember);
+      localStorage.setItem('sodieuro_current_admin', JSON.stringify(matchedMember));
+      localStorage.setItem('sodieuro_admin_display_name', matchedMember.name);
       setLoginError('');
     } else {
-      setLoginError('ভুল আইডি অথবা পাসওয়ার্ড! শুধুমাত্র অথরাইজড এডমিন প্রবেশ করতে পারবেন।');
+      setLoginError('ভুল ইউজারনেম/ইমেইল অথবা পাসওয়ার্ড! শুধুমাত্র অথরাইজড এডমিন প্রবেশ করতে পারবেন।');
     }
   };
 
   const handleAdminLogout = () => {
     setIsAdminLoggedIn(false);
+    setCurrentAdmin(null);
     localStorage.removeItem('sodieuro_admin_logged_in');
+    localStorage.removeItem('sodieuro_current_admin');
+    localStorage.removeItem('sodieuro_admin_display_name');
   };
 
   const handleSendAdminMessage = (e: React.FormEvent) => {
@@ -387,7 +512,9 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
       id: `msg-${Date.now()}`,
       sender: 'admin' as const,
       text: adminMessageText.trim(),
-      sentAt: currentTimestamp
+      sentAt: currentTimestamp,
+      adminName: currentAdmin?.name || 'Admin',
+      adminPhoto: currentAdmin?.photoUrl || ''
     };
 
     const updatedApp: Application = {
@@ -396,6 +523,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     };
 
     onUpdateApplication(updatedApp);
+    logAdminAction('message_reply', selectedApp.id, selectedApp.fullName, `Sent message: "${adminMessageText.trim().substring(0, 30)}..."`);
     setAdminMessageText('');
   };
 
@@ -453,26 +581,35 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     const updatedApp: Application = {
       ...selectedApp,
       status: newStatus,
+      statusUpdatedBy: currentAdmin?.name || 'Admin',
+      statusUpdatedAt: currentTimestamp,
       notificationHistory: newLogs
     };
 
     onUpdateApplication(updatedApp);
+    logAdminAction('status_updated', selectedApp.id, selectedApp.fullName, `Updated status to "${newStatus}"`);
   };
 
   // Handle document approval
   const handleApproveDoc = (docId: string) => {
     if (!selectedApp) return;
 
+    const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
     const updatedDocs = selectedApp.documents.map(doc => {
       if (doc.id === docId) {
-        const docCopy = { ...doc, status: 'Approved' as const };
+        const docCopy = { 
+          ...doc, 
+          status: 'Approved' as const,
+          actionBy: currentAdmin?.name || 'Admin',
+          actionAt: currentTimestamp
+        };
         delete docCopy.feedback; // Completely remove feedback key so Firestore doesn't complain about undefined value
         return docCopy;
       }
       return doc;
     });
 
-    const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
     const targetDoc = selectedApp.documents.find(d => d.id === docId);
 
     const updatedApp: Application = {
@@ -492,6 +629,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     };
 
     onUpdateApplication(updatedApp);
+    logAdminAction('document_approved', selectedApp.id, selectedApp.fullName, `Approved document: "${targetDoc?.name}"`);
   };
 
   // Handle document rejection with feedback
@@ -499,14 +637,21 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     e.preventDefault();
     if (!selectedApp || !rejectionFeedback.trim()) return;
 
+    const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
     const updatedDocs = selectedApp.documents.map(doc => {
       if (doc.id === docId) {
-        return { ...doc, status: 'Rejected' as const, feedback: rejectionFeedback };
+        return { 
+          ...doc, 
+          status: 'Rejected' as const, 
+          feedback: rejectionFeedback,
+          actionBy: currentAdmin?.name || 'Admin',
+          actionAt: currentTimestamp
+        };
       }
       return doc;
     });
 
-    const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
     const targetDoc = selectedApp.documents.find(d => d.id === docId);
 
     const updatedApp: Application = {
@@ -534,17 +679,24 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     };
 
     onUpdateApplication(updatedApp);
+    logAdminAction('document_rejected', selectedApp.id, selectedApp.fullName, `Rejected document: "${targetDoc?.name}". Reason: "${rejectionFeedback}"`);
     setActiveReviewDocId(null);
     setRejectionFeedback('');
   };
 
   // Handle student application deletion from Firestore database
   const handleDeleteApplication = async (appId: string) => {
+    if (!isUserAdmin) {
+      alert('দুঃখিত, শুধুমাত্র Administrators আবেদনকারীর সকল তথ্য ডিলিট করতে পারবেন!');
+      return;
+    }
+    const targetApp = applications.find(a => a.id === appId);
     if (!window.confirm("আপনি কি নিশ্চিতভাবে এই আবেদনকারীর সকল তথ্য ডিলিট করতে চান? এই অ্যাকশনটি রিভার্স করা যাবে না!")) {
       return;
     }
     try {
       await deleteDoc(doc(db, 'applications', appId));
+      logAdminAction('student_deleted', appId, targetApp?.fullName || 'Deleted Applicant', `Permanently deleted entire application and records`);
       // Reset selected app id if the deleted application was currently selected
       if (selectedAppId === appId) {
         setSelectedAppId(null);
@@ -631,15 +783,15 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
           <form onSubmit={handleAdminLogin} className="space-y-4" id="admin-login-form">
             <div className="space-y-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">অ্যাডমিন আইডি (Username)</label>
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">অ্যাডমিন আইডি বা ইমেইল (Username or Email)</label>
                 <input
                   required
                   id="admin-username-input"
                   type="text"
-                  placeholder="যেমন: sodieuro"
+                  placeholder="Username or email"
                   value={adminUsername}
                   onChange={(e) => setAdminUsername(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 px-4 text-xs text-slate-800 focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky placeholder:text-slate-400 transition-all"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 px-4 text-xs text-slate-800 focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky placeholder:text-slate-400 transition-all font-mono"
                 />
               </div>
 
@@ -649,7 +801,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   required
                   id="admin-password-input"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Password"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3.5 px-4 text-xs text-slate-800 focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky placeholder:text-slate-400 transition-all"
@@ -681,9 +833,9 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
   return (
     <div className="space-y-8 py-6" id="admin-panel-root">
       {/* Admin Panel Sticky Header with Logout */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gradient-to-r from-slate-900 to-slate-950 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-2xl"></div>
-        <div className="z-10 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 text-left">
+        <div className="z-10 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 text-left mb-4 lg:mb-0">
           <div className="w-12 h-12 rounded-2xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center text-brand-gold shrink-0">
             <Activity className="h-6 w-6 animate-pulse" />
           </div>
@@ -698,12 +850,44 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
             <p className="text-[10px] text-slate-400 font-medium">বুলগেরিয়া স্টুডেন্ট ভিসা রিয়েল-টাইম ডাটাবেজ কন্ট্রোল ড্যাশবোর্ড</p>
           </div>
         </div>
-        <button
-          onClick={handleAdminLogout}
-          className="z-10 rounded-xl bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 px-5 py-2.5 text-xs font-black transition-all border border-slate-700 hover:border-slate-600 active:scale-95"
-        >
-          লগআউট করুন (Logout)
-        </button>
+
+        {/* Right section: Profile display and logout */}
+        <div className="z-10 flex flex-wrap items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
+          {/* Active Profile Widget */}
+          <div className="flex items-center space-x-3 bg-slate-800/40 hover:bg-slate-800/60 p-2 pr-4 rounded-2xl border border-slate-800/60 transition-all">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-800 border border-slate-700/80 shrink-0">
+              {currentAdmin?.photoUrl ? (
+                <img src={currentAdmin.photoUrl} alt={currentAdmin.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-300 font-bold text-xs uppercase">
+                  {(currentAdmin?.name || 'Admin').substring(0, 2)}
+                </div>
+              )}
+            </div>
+            <div className="text-left">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs font-black tracking-wide text-slate-100">{currentAdmin?.name || 'Master Admin'}</span>
+                {currentAdmin?.roleType && (
+                  <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${
+                    currentAdmin.roleType === 'administrator' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                    currentAdmin.roleType === 'moderator' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
+                    'bg-slate-700/50 text-slate-300 border border-slate-600/30'
+                  }`}>
+                    {currentAdmin.roleType}
+                  </span>
+                )}
+              </div>
+              <p className="text-[9px] text-slate-400 font-medium truncate max-w-[140px]">{currentAdmin?.role || 'প্রধান প্রশাসক'}</p>
+            </div>
+          </div>
+
+          <button
+            onClick={handleAdminLogout}
+            className="rounded-xl bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 px-4 py-2.5 text-xs font-black transition-all border border-slate-700 hover:border-slate-600 active:scale-95"
+          >
+            লগআউট করুন (Logout)
+          </button>
+        </div>
       </div>
 
       {/* 1.5 Tab Navigation inside Admin Panel */}
@@ -754,6 +938,18 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
               </span>
             ) : null;
           })()}
+        </button>
+        <button
+          onClick={() => setActiveAdminTab('activity_log')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black rounded-t-2xl transition-all border-b-2 -mb-[2px] ${
+            activeAdminTab === 'activity_log'
+              ? 'border-brand-sky text-brand-sky bg-white shadow-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+          }`}
+          id="admin-tab-btn-activity-log"
+        >
+          <History className="h-4 w-4 text-emerald-500 animate-pulse" />
+          <span>রিয়েল-টাইম অ্যাক্টিভিটি লগ ({auditLogs.length})</span>
         </button>
       </div>
 
@@ -1166,10 +1362,10 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
             <div className="space-y-1 text-left">
               <h3 className="font-display font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
                 <Settings className="h-5 w-5 text-brand-gold" />
-                <span>সাপোর্ট টিম ও পাবলিক পেজ সেটিংস</span>
+                <span>কন্ট্যাক্ট পেইজ ও সাপোর্ট টিম ম্যানেজার (Contact Page Team Editor)</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                এখানে ওনার (Dilowar Hosen) এবং ব্যবস্থাপনা পরিচালকের (Sohel Rana) ফটো, ডেসক্রিপশন এবং যোগাযোগের তথ্য কাস্টমাইজ করুন।
+                এখানে ওনার (Dilowar Hosen) এবং ব্যবস্থাপনা পরিচালক (Sohel Rana) এর মতো কন্ট্যাক্ট পেইজের নতুন মেম্বারদের তথ্য যোগ ও এডিট করতে পারবেন। নতুন মেম্বার যুক্ত করলে সেটি সরাসরি পাবলিক কন্ট্যাক্ট পেইজে অ্যাড হবে।
               </p>
             </div>
             
@@ -1183,6 +1379,13 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
               <span>ডিফল্ট রিসেট (Reset Defaults)</span>
             </button>
           </div>
+
+          {!isUserAdmin && (
+            <div className="bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-bold px-4 py-3 rounded-2xl text-left flex items-center gap-2">
+              <span>⚠️</span>
+              <span>দুঃখিত, আপনি "Moderator" বা "Support" রোলে লগইন করেছেন। শুধুমাত্র <strong>Administrators</strong> মেম্বারদের তথ্য যোগ, পরিবর্তন বা ডিলিট করতে পারবেন।</span>
+            </div>
+          )}
 
           <div className="grid gap-6 lg:grid-cols-12">
             {/* Left Column: Select Member to Edit */}
@@ -1387,7 +1590,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   {/* 2b. Admin Portal Credentials */}
                   <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">অ্যাডমিন লগইন তথ্য (Admin Portal Credentials)</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-500">ইউজারনেম (Username):</label>
                         <input
@@ -1410,8 +1613,20 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                           className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-semibold focus:outline-none focus:border-brand-sky font-mono"
                         />
                       </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500">রোল টাইপ (Role Type):</label>
+                        <select
+                          value={supportDraft.roleType || 'support'}
+                          onChange={(e) => updateDraftField('roleType', e.target.value)}
+                          className="w-full rounded-xl border border-slate-200 bg-white p-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-brand-sky"
+                        >
+                          <option value="administrator">Administrator</option>
+                          <option value="moderator">Moderator</option>
+                          <option value="support">Support</option>
+                        </select>
+                      </div>
                     </div>
-                    <p className="text-[9px] text-slate-400">এই ইউজারনেম এবং পাসওয়ার্ড দিয়ে সংশ্লিষ্ট মেম্বার এডমিন প্যানেলে লগইন করতে পারবেন।</p>
+                    <p className="text-[9px] text-slate-400">এই ইউজারনেম, পাসওয়ার্ড এবং রোল টাইপ দিয়ে সংশ্লিষ্ট মেম্বার এডমিন প্যানেলে লগইন করতে পারবেন এবং তার এক্সেস লেভেল নির্ধারিত হবে।</p>
                   </div>
 
                   {/* 3. Contact & Location Info */}
@@ -1508,8 +1723,9 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                     {supportDraft.id !== 'dilowar_hosen' && supportDraft.id !== 'sohel_rana' ? (
                       <button
                         type="button"
+                        disabled={!isUserAdmin}
                         onClick={() => handleDeleteSupportMember(supportDraft.id)}
-                        className="flex items-center space-x-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-brand-red px-4 py-2.5 text-[11px] font-black shadow-sm transition-all active:scale-95"
+                        className="flex items-center space-x-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-brand-red disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 text-[11px] font-black shadow-sm transition-all active:scale-95"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         <span>প্রোফাইলটি ডিলিট করুন</span>
@@ -1520,8 +1736,8 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                     
                     <button
                       type="submit"
-                      disabled={isSavingSupport}
-                      className="flex items-center space-x-1.5 rounded-xl bg-slate-900 text-white px-6 py-3 text-xs font-black hover:bg-slate-800 disabled:bg-slate-400 shadow-md transition-all active:scale-95"
+                      disabled={isSavingSupport || !isUserAdmin}
+                      className="flex items-center space-x-1.5 rounded-xl bg-slate-900 text-white disabled:bg-slate-300 disabled:cursor-not-allowed px-6 py-3 text-xs font-black hover:bg-slate-800 disabled:text-slate-500 shadow-md transition-all active:scale-95"
                     >
                       <Save className="h-4 w-4 text-brand-gold" />
                       <span>{isSavingSupport ? 'সংরক্ষণ করা হচ্ছে...' : 'পরিবর্তনগুলো সংরক্ষণ করুন'}</span>
@@ -1538,6 +1754,168 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
         </div>
       )}
 
+      {/* 4. Real-time Activity Logs / Audit Trail */}
+      {activeAdminTab === 'activity_log' && (
+        <div className="space-y-6" id="activity-log-container">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm">
+            <div className="space-y-1 text-left">
+              <h3 className="font-display font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
+                <History className="h-5 w-5 text-emerald-500" />
+                <span>রিয়েল-টাইম অ্যাক্টিভিটি ট্র্যাকার (Real-Time System Audit Log)</span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                সকল এডমিন, মডারেটর এবং ম্যানেজারদের কাজের রিয়েল-টাইম আপডেট ও সিকিউরিটি লগ ট্র্যাকিং। যেকোনো মেসেজ রিপ্লাই, ফাইল অনুমোদন বা স্ট্যাটাস আপডেট এখানে ট্র্যাকিং হয়।
+              </p>
+            </div>
+          </div>
+
+          {/* Stat summary inside audit logs */}
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">মোট লগ সংখ্যা</span>
+              <span className="text-lg font-black font-mono text-slate-800">{auditLogs.length}</span>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">বার্তা রিপ্লাই</span>
+              <span className="text-lg font-black font-mono text-indigo-600">
+                {auditLogs.filter(l => l.actionType === 'message_reply').length}
+              </span>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">ফাইল অনুমোদিত</span>
+              <span className="text-lg font-black font-mono text-emerald-600">
+                {auditLogs.filter(l => l.actionType === 'document_approved').length}
+              </span>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">ফাইল রিজেক্ট</span>
+              <span className="text-lg font-black font-mono text-rose-600">
+                {auditLogs.filter(l => l.actionType === 'document_rejected').length}
+              </span>
+            </div>
+          </div>
+
+          {/* Audit Trail List Card */}
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden text-left">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h4 className="text-xs font-black text-slate-800 font-sans">সর্বশেষ অ্যাক্টিভিটি টাইমলাইন (Audit Timeline)</h4>
+                <p className="text-[10px] text-slate-400 font-medium">নিচে রিয়েল-টাইমে সর্টকৃত সর্বশেষ মেম্বারদের অ্যাকশন লিস্ট দেওয়া হল।</p>
+              </div>
+              <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-bold bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>অটো-সিঙ্ক সক্রিয়</span>
+              </div>
+            </div>
+
+            {auditLogs.length === 0 ? (
+              <div className="p-12 text-center text-slate-400 space-y-3">
+                <div className="text-3xl">📭</div>
+                <h5 className="text-xs font-bold text-slate-700">কোনো অ্যাক্টিভিটি লগ পাওয়া যায়নি</h5>
+                <p className="text-[10px] text-slate-400 max-w-sm mx-auto">এডমিন বা মডারেটর কোনো ফাইল অ্যাপ্রুভ/রিজেক্ট করলে অথবা স্টুডেন্টদের মেসেজে রিপ্লাই দিলে এখানে স্বয়ংক্রিয়ভাবে ট্র্যাকিং ডেটা যুক্ত হবে।</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                      <th className="py-3 px-5 text-left font-bold w-1/4">এডমিন / মডারেটর (Actor)</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/6">অ্যাকশন টাইপ (Action)</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/4">শিক্ষার্থী (Student Target)</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/3">বিস্তারিত বিবরণ (Details)</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/12">সময় (Timestamp)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {auditLogs.map((log) => {
+                      // Get a nice color and tag for specific actionType
+                      let actionBadgeClass = '';
+                      let actionText = '';
+                      switch (log.actionType) {
+                        case 'message_reply':
+                          actionBadgeClass = 'bg-blue-50 text-blue-600 border border-blue-100';
+                          actionText = 'মেসেজ রিপ্লাই';
+                          break;
+                        case 'document_approved':
+                          actionBadgeClass = 'bg-emerald-50 text-emerald-600 border border-emerald-100';
+                          actionText = 'ডকুমেন্ট অনুমোদন';
+                          break;
+                        case 'document_rejected':
+                          actionBadgeClass = 'bg-rose-50 text-rose-600 border border-rose-100';
+                          actionText = 'ডকুমেন্ট রিজেক্ট';
+                          break;
+                        case 'status_updated':
+                          actionBadgeClass = 'bg-amber-50 text-amber-600 border border-amber-100';
+                          actionText = 'স্ট্যাটাস আপডেট';
+                          break;
+                        case 'member_added':
+                          actionBadgeClass = 'bg-purple-50 text-purple-600 border border-purple-100';
+                          actionText = 'নতুন এডমিন যোগ';
+                          break;
+                        case 'member_updated':
+                          actionBadgeClass = 'bg-slate-100 text-slate-700 border border-slate-200';
+                          actionText = 'প্রোফাইল আপডেট';
+                          break;
+                        case 'student_deleted':
+                          actionBadgeClass = 'bg-red-50 text-red-600 border border-red-100';
+                          actionText = 'আবেদনকারী ডিলিট';
+                          break;
+                        default:
+                          actionBadgeClass = 'bg-slate-50 text-slate-600 border border-slate-100';
+                          actionText = log.actionType;
+                      }
+
+                      return (
+                        <tr key={log.id} className="hover:bg-slate-50/70 transition-colors font-medium">
+                          <td className="py-4 px-5">
+                            <div className="flex items-center space-x-2.5">
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 border border-slate-200/80 shrink-0">
+                                {log.adminPhoto ? (
+                                  <img src={log.adminPhoto} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-slate-200 text-slate-500 text-[10px] font-black uppercase">
+                                    {(log.adminName || 'AD').substring(0, 2)}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <span className="font-bold text-slate-800 block leading-tight">{log.adminName}</span>
+                                <span className="text-[8px] text-slate-400 font-mono font-bold block">{log.adminId}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-5">
+                            <span className={`inline-block px-2 py-1 rounded-lg text-[9px] font-black tracking-wide ${actionBadgeClass}`}>
+                              {actionText}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5">
+                            {log.studentId === 'system' ? (
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">সিস্টেম ওয়াইড (System Wide)</span>
+                            ) : (
+                              <div>
+                                <span className="font-bold text-slate-700 block leading-tight">{log.studentName}</span>
+                                <span className="text-[9px] text-slate-400 font-mono font-semibold block">ID: {log.studentId}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-4 px-5">
+                            <p className="text-slate-600 font-semibold leading-relaxed break-words pr-2 max-w-[340px]">{log.details}</p>
+                          </td>
+                          <td className="py-4 px-5 text-slate-400 font-mono font-bold text-[10px]">
+                            {log.timestamp}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeAdminTab === 'messages' && (() => {
         // Find all applications that have messages, sorted by latest message sentAt timestamp
         const appsWithMessages = applications
@@ -1547,6 +1925,12 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
             const lastB = b.messages?.[b.messages.length - 1]?.sentAt || '';
             return lastB.localeCompare(lastA);
           });
+
+        const filteredAppsWithMessages = appsWithMessages.filter(app => {
+          if (!chatSearchTerm.trim()) return true;
+          const search = chatSearchTerm.toLowerCase();
+          return app.fullName.toLowerCase().includes(search) || app.id.toLowerCase().includes(search);
+        });
 
         const currentChatApp = applications.find(a => a.id === (activeChatAppId || appsWithMessages[0]?.id));
 
@@ -1579,9 +1963,8 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                     <input
                       type="text"
                       placeholder="শিক্ষার্থীর নাম খুঁজুন..."
-                      onChange={(e) => {
-                        // Dynamic selection from drop-down instead or basic list visual filtering
-                      }}
+                      value={chatSearchTerm}
+                      onChange={(e) => setChatSearchTerm(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs focus:outline-none focus:border-brand-sky focus:bg-white transition-all text-slate-700 font-semibold"
                     />
                     <Search className="absolute left-3 top-3.5 h-3.5 w-3.5 text-slate-400" />
@@ -1611,12 +1994,12 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
                 {/* Scrollable list of threads */}
                 <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-3 space-y-1 bg-slate-50/30">
-                  {appsWithMessages.length === 0 ? (
+                  {filteredAppsWithMessages.length === 0 ? (
                     <div className="text-center py-12 text-slate-400 text-xs font-semibold">
-                      এখনো কোনো মেসেজ থ্রেড নেই।
+                      {chatSearchTerm ? 'কোনো অমিল থ্রেড পাওয়া যায়নি।' : 'এখনো কোনো মেসেজ থ্রেড নেই।'}
                     </div>
                   ) : (
-                    appsWithMessages.map(app => {
+                    filteredAppsWithMessages.map(app => {
                       const isSelected = currentChatApp?.id === app.id;
                       const lastMsg = app.messages?.[app.messages.length - 1];
                       const unreadStudentCount = app.messages?.filter(m => m.sender === 'student' && !m.read).length || 0;
@@ -1734,8 +2117,17 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                               key={msg.id || idx}
                               className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'} space-y-1`}
                             >
-                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1">
-                                {isAdmin ? 'ম্যানেজার (Admin)' : 'শিক্ষার্থী (Student)'}
+                              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-1">
+                                {isAdmin ? (
+                                  <>
+                                    {msg.adminPhoto && (
+                                      <img src={msg.adminPhoto} alt="" className="h-3.5 w-3.5 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
+                                    )}
+                                    <span>{msg.adminName || 'ম্যানেজার (Admin)'}</span>
+                                  </>
+                                ) : (
+                                  <span>শিক্ষার্থী (Student)</span>
+                                )}
                               </span>
                               
                               <div
@@ -1805,7 +2197,9 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                           text: adminMessageText,
                           sentAt: timestamp,
                           read: true,
-                          attachments: adminChatFile ? [{ name: adminChatFileName || 'Attachment', url: adminChatFile }] : undefined
+                          attachments: adminChatFile ? [{ name: adminChatFileName || 'Attachment', url: adminChatFile }] : undefined,
+                          adminName: currentAdmin?.name || 'Admin',
+                          adminPhoto: currentAdmin?.photoUrl || ''
                         };
 
                         const updatedApp: Application = {
@@ -1814,6 +2208,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                         };
 
                         onUpdateApplication(updatedApp);
+                        logAdminAction('message_reply', currentChatApp.id, currentChatApp.fullName, `Sent chat reply: "${adminMessageText.substring(0, 40)}..."`);
                         setAdminMessageText('');
                         setAdminChatFile('');
                         setAdminChatFileName('');

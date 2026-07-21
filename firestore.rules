@@ -20,5 +20,10 @@ service cloud.firestore {
     match /support_members/{memberId} {
       allow read, write: if true;
     }
+
+    // Document rule for audit logs
+    match /audit_logs/{logId} {
+      allow read, write: if true;
+    }
   }
 }
