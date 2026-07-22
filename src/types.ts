@@ -47,10 +47,11 @@ export interface Application {
   phone: string;
   desiredCourse: string;
   status: ApplicationStatus;
-  paymentStatus: 'Unpaid' | 'Partially Paid' | 'Paid';
+  paymentStatus: 'Unpaid' | 'Pending Verification' | 'Partially Paid' | 'Paid';
   paymentAmount: number;
   paymentMethod?: string;
   paymentTxnId?: string;
+  paymentSenderPhone?: string;
   paymentDate?: string;
   documents: UploadedDocument[];
   createdAt: string;
@@ -61,9 +62,10 @@ export interface Application {
   installments?: {
     installmentNumber: number;
     amount: number;
-    status: 'Unpaid' | 'Paid';
+    status: 'Unpaid' | 'Pending Verification' | 'Paid';
     paymentMethod?: string;
     paymentTxnId?: string;
+    paymentSenderPhone?: string;
     paymentDate?: string;
   }[];
   messages?: ChatMessage[];
@@ -86,6 +88,13 @@ export interface Application {
     linkedin?: string;
     whatsapp?: string;
   };
+}
+
+export interface PaymentConfig {
+  bkashNumbers: { id: string; number: string; type: string; name: string }[];
+  nagadNumbers: { id: string; number: string; type: string; name: string }[];
+  rocketNumbers: { id: string; number: string; type: string; name: string }[];
+  bankAccounts: { id: string; bankName: string; accountName: string; accountNumber: string; branch: string }[];
 }
 
 export interface NotificationLog {
@@ -133,7 +142,7 @@ export interface AuditLog {
   adminId: string;
   adminName: string;
   adminPhoto?: string;
-  actionType: 'message_reply' | 'document_approved' | 'document_rejected' | 'status_updated' | 'notification_sent' | 'payment_updated' | 'member_added' | 'member_updated' | 'student_deleted';
+  actionType: 'message_reply' | 'document_approved' | 'document_rejected' | 'status_updated' | 'notification_sent' | 'payment_updated' | 'payment_approved' | 'member_added' | 'member_updated' | 'student_deleted';
   studentId: string;
   studentName: string;
   details: string;

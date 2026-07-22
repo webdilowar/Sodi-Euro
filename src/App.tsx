@@ -5,7 +5,7 @@ import StudentDashboard from './components/StudentDashboard';
 import AdminPanel from './components/AdminPanel';
 import SupportPage from './components/SupportPage';
 import { initialApplications } from './data';
-import { Application } from './types';
+import { Application, PaymentConfig } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Bell, 
@@ -20,7 +20,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from './firebase';
+import { db, handleFirestoreError, OperationType, sanitizeForFirestore } from './firebase';
 
 const triggerRealEmailSend = async (to: string, subject: string, body: string) => {
   try {
@@ -87,6 +87,40 @@ export default function App() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Payment configuration synced with Firestore
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
+    bkashNumbers: [{ id: 'bk-1', number: '01712-345678', type: 'Personal', name: 'Sodi Euro Merchant' }],
+    nagadNumbers: [{ id: 'ng-1', number: '01912-345678', type: 'Personal', name: 'Sodi Euro Nagad' }],
+    rocketNumbers: [{ id: 'rk-1', number: '01812-345678', type: 'Personal', name: 'Sodi Euro Rocket' }],
+    bankAccounts: [{ id: 'bnk-1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro Education', accountNumber: '1231100028392', branch: 'Gulshan Branch, Dhaka' }]
+  });
+
+  useEffect(() => {
+    const docRef = doc(db, 'settings', 'payment_config');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setPaymentConfig(docSnap.data() as PaymentConfig);
+      } else {
+        setDoc(docRef, sanitizeForFirestore({
+          bkashNumbers: [{ id: 'bk-1', number: '01712-345678', type: 'Personal', name: 'Sodi Euro Merchant' }],
+          nagadNumbers: [{ id: 'ng-1', number: '01912-345678', type: 'Personal', name: 'Sodi Euro Nagad' }],
+          rocketNumbers: [{ id: 'rk-1', number: '01812-345678', type: 'Personal', name: 'Sodi Euro Rocket' }],
+          bankAccounts: [{ id: 'bnk-1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro Education', accountNumber: '1231100028392', branch: 'Gulshan Branch, Dhaka' }]
+        })).catch(err => console.error(err));
+      }
+    }, err => console.error(err));
+    return () => unsubscribe();
+  }, []);
+
+  const handleUpdatePaymentConfig = async (newConfig: PaymentConfig) => {
+    try {
+      await setDoc(doc(db, 'settings', 'payment_config'), sanitizeForFirestore(newConfig));
+      setPaymentConfig(newConfig);
+    } catch (err) {
+      console.error('Failed to update payment config:', err);
+    }
+  };
+
   // Track the logged in/selected student application ID in the dashboard
   const [activeAppId, setActiveAppId] = useState<string | null>(() => {
     return localStorage.getItem('bulgaria_active_app_id_v1') || null;
@@ -114,7 +148,7 @@ export default function App() {
       if (snapshot.empty) {
         initialApplications.forEach(async (app) => {
           try {
-            await setDoc(doc(db, 'applications', app.id), app);
+            await setDoc(doc(db, 'applications', app.id), sanitizeForFirestore(app));
           } catch (err) {
             handleFirestoreError(err, OperationType.WRITE, `applications/${app.id}`);
           }
@@ -143,8 +177,8 @@ export default function App() {
   // Callback to add a new application
   const handleAddApplication = async (newApp: Application) => {
     try {
-      await setDoc(doc(db, 'applications', newApp.id), newApp);
-      
+      await setDoc(doc(db, 'applications', newApp.id), sanitizeForFirestore(newApp));
+
       // Trigger live notification alert
       const firstNotif = newApp.notificationHistory[0];
       if (firstNotif) {
@@ -170,7 +204,7 @@ export default function App() {
   // Callback to update an application
   const handleUpdateApplication = async (updatedApp: Application) => {
     try {
-      await setDoc(doc(db, 'applications', updatedApp.id), updatedApp);
+      await setDoc(doc(db, 'applications', updatedApp.id), sanitizeForFirestore(updatedApp));
       
       // Detect if a new notification has been appended to trigger the floating simulated phone notification
       const oldApp = applications.find(a => a.id === updatedApp.id);
@@ -268,6 +302,7 @@ export default function App() {
                     onUpdateApplication={handleUpdateApplication}
                     activeAppId={activeAppId}
                     setActiveAppId={setActiveAppId}
+                    paymentConfig={paymentConfig}
                   />
                 </motion.div>
               )}
@@ -291,6 +326,8 @@ export default function App() {
                   <AdminPanel 
                     applications={applications}
                     onUpdateApplication={handleUpdateApplication}
+                    paymentConfig={paymentConfig}
+                    onUpdatePaymentConfig={handleUpdatePaymentConfig}
                   />
                 </motion.div>
               )}

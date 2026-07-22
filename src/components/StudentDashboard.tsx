@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Application, UploadedDocument } from '../types';
+import { Application, UploadedDocument, PaymentConfig } from '../types';
 import { documentRequirements, serviceOptions } from '../data';
 import { 
   Search, 
@@ -53,6 +53,7 @@ interface StudentDashboardProps {
   onUpdateApplication: (app: Application) => void;
   activeAppId: string | null;
   setActiveAppId: (id: string | null) => void;
+  paymentConfig?: PaymentConfig;
 }
 
 /**
@@ -146,7 +147,8 @@ export default function StudentDashboard({
   onAddApplication,
   onUpdateApplication,
   activeAppId,
-  setActiveAppId
+  setActiveAppId,
+  paymentConfig
 }: StudentDashboardProps) {
   // Navigation inside dashboard
   const [activeTab, setActiveTab] = useState<'tracking' | 'documents' | 'payment' | 'additional-services' | 'messages'>('tracking');
@@ -163,26 +165,21 @@ export default function StudentDashboard({
   // Profile Completion calculator
   const calculateProfileCompletion = (app: Application): number => {
     let percent = 0;
-    if (app.fullName && app.fullName.trim().length > 0) percent += 10;
-    if (app.passportNumber && app.passportNumber.trim().length > 0) percent += 10;
-    if (app.phone && app.phone.trim().length > 0) percent += 10;
-    if (app.email && app.email.trim().length > 0) percent += 10;
-    if (app.profilePhoto && app.profilePhoto.trim().length > 0) percent += 10;
+    if (app.fullName?.trim()) percent += 10;
+    if (app.passportNumber?.trim()) percent += 10;
+    if (app.phone?.trim()) percent += 10;
+    if (app.email?.trim()) percent += 10;
+    if (app.profilePhoto?.trim()) percent += 10;
     
     if (app.academicHistory) {
-      const sscFilled = app.academicHistory.sscSchool && app.academicHistory.sscGpa && app.academicHistory.sscYear;
-      if (sscFilled) percent += 15;
-      
-      const hscFilled = app.academicHistory.hscCollege && app.academicHistory.hscGpa && app.academicHistory.hscYear;
-      if (hscFilled) percent += 15;
-      
-      const bachFilled = app.academicHistory.bachelorUni && app.academicHistory.bachelorCgpa && app.academicHistory.bachelorYear;
-      if (bachFilled) percent += 10;
+      const ssc = app.academicHistory;
+      if (ssc.sscSchool?.trim() && ssc.sscGpa?.trim() && ssc.sscYear?.trim()) percent += 15;
+      if (ssc.hscCollege?.trim() && ssc.hscGpa?.trim() && ssc.hscYear?.trim()) percent += 15;
+      if (ssc.bachelorUni?.trim() && ssc.bachelorCgpa?.trim() && ssc.bachelorYear?.trim()) percent += 10;
     }
     
     if (app.socialMedia) {
-      const socialFilled = app.socialMedia.facebook || app.socialMedia.linkedin || app.socialMedia.whatsapp;
-      if (socialFilled) percent += 10;
+      if (app.socialMedia.facebook?.trim() || app.socialMedia.linkedin?.trim() || app.socialMedia.whatsapp?.trim()) percent += 10;
     }
     
     return percent;
@@ -197,6 +194,13 @@ export default function StudentDashboard({
   const [studentMsgText, setStudentMsgText] = useState('');
   const [studentChatFile, setStudentChatFile] = useState('');
   const [studentChatFileName, setStudentChatFileName] = useState('');
+
+  // Direct Payment Gateway States
+  const [selectedPaymentGateway, setSelectedPaymentGateway] = useState<'bkash' | 'nagad' | 'rocket' | 'bank'>('bkash');
+  const [selectedGatewayAccountIdx, setSelectedGatewayAccountIdx] = useState(0);
+  const [studentSenderPhone, setStudentSenderPhone] = useState('');
+  const [studentTxnId, setStudentTxnId] = useState('');
+  const [studentPaymentSuccessMsg, setStudentPaymentSuccessMsg] = useState('');
 
   // Application Form States (for new applicants)
   const [showApplyForm, setShowApplyForm] = useState(false);
@@ -992,11 +996,6 @@ export default function StudentDashboard({
             ) : (
               /* DIRECT SIGNUP FORM (NO OTP REQUIRED) */
               <form onSubmit={handleDirectSignup} className="space-y-4">
-                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-center mb-4">
-                  <p className="text-xs font-bold text-emerald-800">✓ নতুন অ্যাকাউন্ট তৈরি ও সরাসরি ফাইল ওপেন</p>
-                  <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">কোনো ওটিপি ঝামেলা ছাড়া নিচের তথ্যগুলো দিয়ে সাথে সাথে আপনার অ্যাকাউন্ট খুলে আবেদন শুরু করুন।</p>
-                </div>
-
                 <div className="space-y-3.5">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 block">শিক্ষার্থীর পূর্ণ নাম (পাসপোর্ট অনুযায়ী):</label>
@@ -2546,7 +2545,6 @@ export default function StudentDashboard({
                                   <svg className="w-4 h-4 fill-blue-500 text-white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
                                 </span>
                               )}
-                              <Sparkles className="h-4 w-4 text-brand-gold shrink-0 animate-pulse" />
                             </h3>
                             <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-brand-sky-light/50 border border-brand-sky/15 text-[9px] text-brand-sky-dark font-extrabold">
                               <Compass className="h-3 w-3" /> Bulgaria Student Portal
@@ -3459,86 +3457,273 @@ export default function StudentDashboard({
                   </div>
                 </div>
 
-                {/* Secure Checkout Gateway - Replaced with Popup Trigger & Status Card */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 space-y-6">
+                {/* Direct Interactive Payment Gateway with 1.5% Fee and Account Selection */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 space-y-6 text-left" id="direct-payment-gateway-section">
                   {activeApp.paymentStatus === 'Paid' ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center space-y-4" id="payment-success-full">
+                    <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
                       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
                         <CheckCircle className="h-10 w-10 animate-bounce" />
                       </div>
                       <div className="space-y-1">
                         <h3 className="font-display text-xl font-bold text-slate-800">পেমেন্ট সফলভাবে সম্পন্ন হয়েছে!</h3>
                         <p className="text-xs text-slate-500 max-w-sm">
-                          আপনার নির্বাচিত সকল সার্ভিসের ফি পরিশোধিত হয়েছে এবং আপনার ফাইল সম্পূর্ণ সক্রিয় করা হয়েছে। দিল্লী এমব্যাসি সাবমিশন টিম আপনার সাথে যোগাযোগ করবে।
+                          আপনার পেমেন্ট সফলভাবে যাচাই ও অনুমোদিত হয়েছে। আপনার ফাইল সক্রিয় করা হয়েছে।
                         </p>
                       </div>
-                      <div className="w-full max-w-md bg-slate-50 rounded-xl p-4 border border-slate-200/60 text-left space-y-2 mt-2">
-                        <div className="text-xs font-bold text-slate-700 flex justify-between">
-                          <span>দেশ:</span> <span className="text-slate-900 font-extrabold">বুলগেরিয়া (Bulgaria) 🇧🇬</span>
-                        </div>
-                        <div className="text-xs font-bold text-slate-700 flex justify-between">
-                          <span>বিশ্ববিদ্যালয়:</span> <span className="text-slate-900 font-extrabold">{activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[1].replace(')', '') : activeApp.desiredCourse}</span>
-                        </div>
-                        <div className="text-xs font-bold text-slate-700 flex justify-between">
-                          <span>কোর্স:</span> <span className="text-slate-900 font-extrabold">{activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[0] : activeApp.desiredCourse}</span>
-                        </div>
-                        <div className="text-xs font-bold text-slate-700 flex justify-between">
-                          <span>পরিশোধিত মাধ্যম:</span> <span className="text-slate-900 font-extrabold">{activeApp.paymentMethod}</span>
-                        </div>
-                        <div className="text-xs font-bold text-slate-700 flex justify-between">
-                          <span>ট্রানজেকশন আইডি:</span> <span className="text-slate-900 font-mono font-black text-xs text-brand-sky">{activeApp.paymentTxnId}</span>
-                        </div>
+                    </div>
+                  ) : activeApp.paymentStatus === 'Pending Verification' ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center space-y-4 bg-amber-50/50 rounded-2xl border border-amber-200 p-6">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-700 animate-pulse">
+                        <Clock className="h-8 w-8" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-display text-base font-black text-amber-900">পেমেন্ট ভেরিফিকেশন প্রক্রিয়াধীন (Pending Verification)</h3>
+                        <p className="text-xs text-amber-700 max-w-md">
+                          আপনি ট্রানজেকশন আইডি <strong className="font-mono">{activeApp.paymentTxnId}</strong> জমা দিয়েছেন। এডমিন প্যানেল কর্তৃক যাচাই করার পর আপনার ফাইল আপডেট করা হবে।
+                        </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="py-8 text-center space-y-6" id="checkout-popup-trigger-container">
-                      <div className="mx-auto h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-500 border border-amber-100 flex animate-pulse">
-                        <Coins className="h-9 w-9" />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <h3 className="font-display text-xl font-black text-slate-800">অটোমেটেড পেমেন্ট প্রসেসিং পোর্টাল</h3>
-                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                          বুলগেরিয়া স্টুডেন্ট ভিসা ফাইলিং ও দিল্লী ভিসা প্রসেসিং এর ১ম কিস্তি অথবা এককালীন পরিশোধের জন্য আমাদের নতুন 
-                          <strong className="text-brand-sky"> ৪-ধাপের স্টেপ পেমেন্ট উইজার্ডটি</strong> ব্যবহার করুন।
+                    <div className="space-y-6">
+                      <div className="border-b border-slate-100 pb-4">
+                        <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                          <CreditCard className="h-5 w-5 text-brand-sky" />
+                          <span>সরাসরি পেমেন্ট গেটওয়ে (Direct Payment Gateway - bKash, Nagad, Rocket, Bank)</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          নিচের মাধ্যম থেকে যেকোনো একটি সিলেক্ট করুন, প্রদত্ত নম্বরে বা ব্যাংকে টাকা পাঠিয়ে প্রেরক নম্বর ও ট্রানজেকশন আইডি সাবমিট করুন। <strong className="text-brand-red">(১.৫% সার্ভিস চার্জ প্রযোজ্য)</strong>
                         </p>
                       </div>
 
-                      {/* Explicitly highlight application selection details inside option */}
-                      <div className="max-w-md mx-auto bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5">
-                        <h4 className="text-[11px] font-black uppercase text-brand-sky border-b border-slate-200/60 pb-1">আবেদনকারীর বিবরণ (Application Context)</h4>
-                        <div className="grid grid-cols-3 text-xs gap-y-1">
-                          <span className="text-slate-400 font-bold">১. দেশ:</span>
-                          <span className="col-span-2 text-slate-700 font-extrabold">বুলগেরিয়া (Bulgaria) 🇧🇬</span>
-                          
-                          <span className="text-slate-400 font-bold">২. বিশ্ববিদ্যালয়:</span>
-                          <span className="col-span-2 text-slate-700 font-extrabold">{activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[1].replace(')', '') : activeApp.desiredCourse}</span>
-                          
-                          <span className="text-slate-400 font-bold">৩. কোর্স:</span>
-                          <span className="col-span-2 text-slate-700 font-extrabold">{activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[0] : activeApp.desiredCourse}</span>
+                      {/* Payment Method Selector Tabs */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'bkash', label: 'bKash (বিকাশ)', color: 'border-[#e2136e] text-[#e2136e] bg-pink-50/50' },
+                          { id: 'nagad', label: 'Nagad (নগদ)', color: 'border-[#f26322] text-[#f26322] bg-orange-50/50' },
+                          { id: 'rocket', label: 'Rocket (রকেট)', color: 'border-purple-600 text-purple-700 bg-purple-50/50' },
+                          { id: 'bank', label: 'Bank (ব্যাংক)', color: 'border-slate-800 text-slate-800 bg-slate-50' },
+                        ].map(gateway => (
+                          <button
+                            key={gateway.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPaymentGateway(gateway.id as any);
+                              setSelectedGatewayAccountIdx(0);
+                            }}
+                            className={`p-3 rounded-xl border-2 font-black text-xs transition-all flex items-center justify-center gap-1.5 ${
+                              selectedPaymentGateway === gateway.id ? `${gateway.color} shadow-md scale-[1.02]` : 'border-slate-200 text-slate-500 bg-white hover:bg-slate-50'
+                            }`}
+                          >
+                            <span>{gateway.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Account details box based on selected gateway */}
+                      <div className="rounded-2xl border-2 border-brand-sky/30 bg-slate-50 p-5 space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                            {selectedPaymentGateway === 'bkash' && 'বিকাশ মার্চেন্ট / পার্সোনাল নম্বরসমূহ'}
+                            {selectedPaymentGateway === 'nagad' && 'নগদ পার্সোনাল / মার্চেন্ট নম্বরসমূহ'}
+                            {selectedPaymentGateway === 'rocket' && 'রকেট অ্যাকাউন্ট নম্বরসমূহ'}
+                            {selectedPaymentGateway === 'bank' && 'ব্যাংক অ্যাকাউন্ট বিবরণী (Multiple Banks)'}
+                          </h4>
+                          <span className="text-[10px] bg-brand-sky/10 text-brand-sky font-bold px-2 py-0.5 rounded-full">
+                            টাকা পাঠানোর পর নিচের ফর্ম পূরণ করুন
+                          </span>
                         </div>
+
+                        {/* List of accounts configured by admin */}
+                        <div className="grid gap-2.5">
+                          {selectedPaymentGateway === 'bkash' && ((paymentConfig?.bkashNumbers && paymentConfig.bkashNumbers.length > 0) ? paymentConfig.bkashNumbers : [{ id: '1', number: '01712345678', type: 'Personal', name: 'Sodi Euro' }]).map((item, idx) => (
+                            <div
+                              key={item.id}
+                              onClick={() => setSelectedGatewayAccountIdx(idx)}
+                              className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${
+                                selectedGatewayAccountIdx === idx ? 'border-[#e2136e] bg-pink-50/30 shadow-sm' : 'border-slate-200 bg-white'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-xs font-mono font-black text-slate-900">{item.number} <span className="text-[10px] text-pink-600 font-bold ml-2">({item.type})</span></p>
+                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">অ্যাকাউন্ট নাম: {item.name}</p>
+                              </div>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-[#e2136e] bg-[#e2136e] text-white' : 'border-slate-300'}`}>
+                                {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
+                              </div>
+                            </div>
+                          ))}
+
+                          {selectedPaymentGateway === 'nagad' && ((paymentConfig?.nagadNumbers && paymentConfig.nagadNumbers.length > 0) ? paymentConfig.nagadNumbers : [{ id: '1', number: '01912345678', type: 'Personal', name: 'Sodi Euro Nagad' }]).map((item, idx) => (
+                            <div
+                              key={item.id}
+                              onClick={() => setSelectedGatewayAccountIdx(idx)}
+                              className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${
+                                selectedGatewayAccountIdx === idx ? 'border-[#f26322] bg-orange-50/30 shadow-sm' : 'border-slate-200 bg-white'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-xs font-mono font-black text-slate-900">{item.number} <span className="text-[10px] text-orange-600 font-bold ml-2">({item.type})</span></p>
+                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">অ্যাকাউন্ট নাম: {item.name}</p>
+                              </div>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-[#f26322] bg-[#f26322] text-white' : 'border-slate-300'}`}>
+                                {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
+                              </div>
+                            </div>
+                          ))}
+
+                          {selectedPaymentGateway === 'rocket' && ((paymentConfig?.rocketNumbers && paymentConfig.rocketNumbers.length > 0) ? paymentConfig.rocketNumbers : [{ id: '1', number: '01812345678', type: 'Personal', name: 'Sodi Euro Rocket' }]).map((item, idx) => (
+                            <div
+                              key={item.id}
+                              onClick={() => setSelectedGatewayAccountIdx(idx)}
+                              className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${
+                                selectedGatewayAccountIdx === idx ? 'border-purple-600 bg-purple-50/30 shadow-sm' : 'border-slate-200 bg-white'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-xs font-mono font-black text-slate-900">{item.number} <span className="text-[10px] text-purple-600 font-bold ml-2">({item.type})</span></p>
+                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">অ্যাকাউন্ট নাম: {item.name}</p>
+                              </div>
+                              <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300'}`}>
+                                {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
+                              </div>
+                            </div>
+                          ))}
+
+                          {selectedPaymentGateway === 'bank' && ((paymentConfig?.bankAccounts && paymentConfig.bankAccounts.length > 0) ? paymentConfig.bankAccounts : [{ id: '1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro', accountNumber: '123456789', branch: 'Gulshan' }]).map((bank, idx) => (
+                            <div
+                              key={bank.id}
+                              onClick={() => setSelectedGatewayAccountIdx(idx)}
+                              className={`p-4 rounded-xl border-2 cursor-pointer transition-all space-y-1 ${
+                                selectedGatewayAccountIdx === idx ? 'border-slate-900 bg-slate-100 shadow-sm' : 'border-slate-200 bg-white'
+                              }`}
+                            >
+                              <div className="flex justify-between items-center">
+                                <p className="text-xs font-black text-slate-900">{bank.bankName}</p>
+                                <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300'}`}>
+                                  {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
+                                </div>
+                              </div>
+                              <p className="text-xs font-mono font-bold text-slate-700">অ্যাকাউন্ট নম্বর: {bank.accountNumber}</p>
+                              <p className="text-[11px] text-slate-500">অ্যাকাউন্ট নাম: {bank.accountName} | ব্রাঞ্চ: {bank.branch}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Fee Calculation with +1.5% */}
+                        {(() => {
+                          const base = totalAmt;
+                          const fee = Math.round(base * 0.015);
+                          const total = base + fee;
+                          return (
+                            <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+                              <div className="flex justify-between text-slate-600">
+                                <span>সার্ভিস ফি (Base Amount):</span>
+                                <span className="font-mono font-bold">৳{base.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-slate-600 border-b border-slate-100 pb-2">
+                                <span>ক্যাশআউট/প্রসেসিং ফি (1.5%):</span>
+                                <span className="font-mono font-bold text-amber-600">+ ৳{fee.toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between text-slate-900 font-black text-sm pt-1">
+                                <span>সর্বমোট প্রদেয় পরিমাণ (Total with 1.5%):</span>
+                                <span className="font-mono text-brand-sky">৳{total.toLocaleString()} BDT</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
-                      <div className="max-w-xs mx-auto">
-                        <button
-                          type="button"
-                          id="btn-trigger-payment-modal"
-                          onClick={() => {
-                            setPaymentModalStep(1);
-                            setBkashStep('phone');
-                            setIsPaymentModalOpen(true);
-                          }}
-                          className="w-full flex items-center justify-center space-x-2.5 rounded-2xl bg-gradient-to-r from-[#e2136e] via-brand-sky to-[#f26322] hover:from-[#e2136e]/95 hover:to-[#f26322]/95 text-white py-4 px-6 text-sm font-black transition-all hover:scale-[1.03] active:scale-[0.97] shadow-lg shadow-brand-sky/20 border-b-4 border-brand-gold relative group overflow-hidden"
-                        >
-                          <span className="absolute top-0 left-0 w-full h-full bg-white/10 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out"></span>
-                          <CreditCard className="h-5 w-5 animate-pulse" />
-                          <span>পেমেন্ট করুন (বিকাশ, নগদ, কার্ড)</span>
-                        </button>
-                        <p className="text-[10px] text-slate-400 mt-2.5 flex items-center justify-center gap-1">
-                          <Lock className="h-3 w-3" />
-                          SSL Secure & encrypted authentication protocol.
-                        </p>
-                      </div>
+                      {/* Form submission inputs: Sender Phone and Transaction ID */}
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        if (!studentSenderPhone.trim() || !studentTxnId.trim()) {
+                          alert('অনুগ্রহ করে প্রেরক মোবাইল নম্বর এবং ট্রানজেকশন আইডি (TxnID) দিন।');
+                          return;
+                        }
+                        const base = totalAmt;
+                        const fee = Math.round(base * 0.015);
+                        const total = base + fee;
+
+                        let methodLabel = '';
+                        if (selectedPaymentGateway === 'bkash') {
+                          const acc = paymentConfig?.bkashNumbers?.[selectedGatewayAccountIdx] || { number: '01712345678', type: 'Personal' };
+                          methodLabel = `bKash (${acc.number} - ${acc.type})`;
+                        } else if (selectedPaymentGateway === 'nagad') {
+                          const acc = paymentConfig?.nagadNumbers?.[selectedGatewayAccountIdx] || { number: '01912345678', type: 'Personal' };
+                          methodLabel = `Nagad (${acc.number} - ${acc.type})`;
+                        } else if (selectedPaymentGateway === 'rocket') {
+                          const acc = paymentConfig?.rocketNumbers?.[selectedGatewayAccountIdx] || { number: '01812345678', type: 'Personal' };
+                          methodLabel = `Rocket (${acc.number} - ${acc.type})`;
+                        } else {
+                          const acc = paymentConfig?.bankAccounts?.[selectedGatewayAccountIdx] || { bankName: 'DBBL', accountNumber: '123' };
+                          methodLabel = `Bank (${acc.bankName} - ${acc.accountNumber})`;
+                        }
+
+                        const updatedApp: Application = {
+                          ...activeApp,
+                          paymentStatus: 'Pending Verification',
+                          paymentMethod: methodLabel,
+                          paymentSenderPhone: studentSenderPhone.trim(),
+                          paymentTxnId: studentTxnId.trim(),
+                          paymentAmount: total,
+                          totalAmount: total,
+                          paymentDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                          notificationHistory: [
+                            {
+                              id: `notif-${Date.now()}`,
+                              title: 'পেমেন্ট ইনফরমেশন সাবমিট করা হয়েছে',
+                              body: `আপনার ${methodLabel} পেমেন্ট (TrxID: ${studentTxnId.trim()}) সফলভাবে সাবমিট হয়েছে। এডমিন যাচাই করার পর ফাইল অ্যাপ্রুভ করবেন।`,
+                              sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                              type: 'sms',
+                              recipient: activeApp.phone
+                            },
+                            ...(activeApp.notificationHistory || [])
+                          ]
+                        };
+                        onUpdateApplication(updatedApp);
+                        setStudentPaymentSuccessMsg('আপনার পেমেন্ট ইনফরমেশন সফলভাবে সাবমিট হয়েছে। এডমিন যাচাই করে শীঘ্রই অনুমোদন করবেন।');
+                      }} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700 block">আপনার প্রেরক মোবাইল নম্বর (Sender Phone No):</label>
+                            <input
+                              type="text"
+                              required
+                              value={studentSenderPhone}
+                              onChange={(e) => setStudentSenderPhone(e.target.value)}
+                              placeholder="যেমন: 01711XXXXXX"
+                              className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono font-bold focus:border-brand-sky focus:outline-none"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-700 block">ট্রানজেকশন আইডি (Transaction ID / TrxID):</label>
+                            <input
+                              type="text"
+                              required
+                              value={studentTxnId}
+                              onChange={(e) => setStudentTxnId(e.target.value)}
+                              placeholder="যেমন: 9N74ABC123"
+                              className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono font-bold uppercase focus:border-brand-sky focus:outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {studentPaymentSuccessMsg && (
+                          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl">
+                            {studentPaymentSuccessMsg}
+                          </div>
+                        )}
+
+                        <div className="flex justify-end pt-2">
+                          <button
+                            type="submit"
+                            className="rounded-xl bg-gradient-to-r from-brand-sky to-emerald-600 hover:opacity-95 text-white px-6 py-3 text-xs font-black shadow-md flex items-center gap-2"
+                          >
+                            <Send className="h-4 w-4" />
+                            <span>পেমেন্ট ইনফরমেশন সাবমিট করুন (Submit)</span>
+                          </button>
+                        </div>
+                      </form>
                     </div>
                   )}
                 </div>

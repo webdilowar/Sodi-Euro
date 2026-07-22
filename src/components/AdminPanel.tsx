@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember, ChatMessage, AuditLog } from '../types';
+import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember, ChatMessage, AuditLog, PaymentConfig } from '../types';
 import { documentRequirements, initialApplications } from '../data';
 import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, sanitizeForFirestore } from '../firebase';
 import { initialSupportMembers } from './SupportPage';
 import { 
   Users, 
@@ -42,6 +42,8 @@ import {
 interface AdminPanelProps {
   applications: Application[];
   onUpdateApplication: (app: Application) => void;
+  paymentConfig: PaymentConfig;
+  onUpdatePaymentConfig: (config: PaymentConfig) => void;
 }
 
 /**
@@ -93,7 +95,7 @@ const MASTER_ADMIN_PROFILE: SupportMember = {
   roleType: 'administrator'
 };
 
-export default function AdminPanel({ applications, onUpdateApplication }: AdminPanelProps) {
+export default function AdminPanel({ applications, onUpdateApplication, paymentConfig, onUpdatePaymentConfig }: AdminPanelProps) {
   // Admin Authentication States
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
     return localStorage.getItem('sodieuro_admin_logged_in') === 'true';
@@ -111,6 +113,12 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
 
   // Audit Logs Live Sync State
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  // Payment Form local state for settings tab
+  const [paymentForm, setPaymentForm] = useState<PaymentConfig>(paymentConfig);
+  useEffect(() => {
+    setPaymentForm(paymentConfig);
+  }, [paymentConfig]);
 
   // Logging utility
   const logAdminAction = async (
@@ -132,14 +140,14 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16)
     };
     try {
-      await setDoc(doc(db, 'audit_logs', newLog.id), newLog);
+      await setDoc(doc(db, 'audit_logs', newLog.id), sanitizeForFirestore(newLog));
     } catch (err) {
       console.error('Failed to write audit log:', err);
     }
   };
 
   // Tab/Navigation State (Applicants vs Support Page Editor vs Messages vs Activity Log)
-  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor' | 'messages' | 'activity_log'>('applicants');
+  const [activeAdminTab, setActiveAdminTab] = useState<'applicants' | 'support_editor' | 'payment_settings' | 'messages' | 'activity_log'>('applicants');
 
   // Support Editor states
   const [supportMembers, setSupportMembers] = useState<SupportMember[]>([]);
@@ -171,7 +179,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
         // Seed if empty
         initialSupportMembers.forEach(async (member) => {
           try {
-            await setDoc(doc(db, 'support_members', member.id), member);
+            await setDoc(doc(db, 'support_members', member.id), sanitizeForFirestore(member));
           } catch (err) {
             console.error('Seeding support_members failed:', err);
           }
@@ -275,7 +283,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     };
     
     try {
-      await setDoc(doc(db, 'support_members', newId), newMember);
+      await setDoc(doc(db, 'support_members', newId), sanitizeForFirestore(newMember));
       logAdminAction('member_added', 'system', newMember.name, `Added new support member: "${newMember.name}" with username: "${newMember.username}"`);
       setSelectedSupportMemberId(newId);
       setSupportDraft(newMember);
@@ -380,7 +388,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
     setIsSavingSupport(true);
     setSupportSuccessMsg('');
     try {
-      await setDoc(doc(db, 'support_members', supportDraft.id), supportDraft);
+      await setDoc(doc(db, 'support_members', supportDraft.id), sanitizeForFirestore(supportDraft));
       logAdminAction('member_updated', 'system', supportDraft.name, `Updated support member profile details for "${supportDraft.name}"`);
       setSupportSuccessMsg('মেম্বারের তথ্য সফলভাবে সেভ করা হয়েছে!');
       setTimeout(() => setSupportSuccessMsg(''), 4000);
@@ -401,7 +409,7 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
       try {
         setSupportSuccessMsg('ডিফল্ট ডাটা রিসেট করা হচ্ছে...');
         for (const member of initialSupportMembers) {
-          await setDoc(doc(db, 'support_members', member.id), member);
+          await setDoc(doc(db, 'support_members', member.id), sanitizeForFirestore(member));
         }
         logAdminAction('member_updated', 'system', 'All Members', 'Reset all support profiles to defaults');
         setSupportSuccessMsg('সফলভাবে রিসেট করা হয়েছে!');
@@ -940,6 +948,18 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
           })()}
         </button>
         <button
+          onClick={() => setActiveAdminTab('payment_settings')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-black rounded-t-2xl transition-all border-b-2 -mb-[2px] ${
+            activeAdminTab === 'payment_settings'
+              ? 'border-brand-sky text-brand-sky bg-white shadow-sm'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50/50'
+          }`}
+          id="admin-tab-btn-payment-settings"
+        >
+          <CreditCard className="h-4 w-4 text-emerald-600" />
+          <span>পেমেন্ট গেটওয়ে সেটিংস</span>
+        </button>
+        <button
           onClick={() => setActiveAdminTab('activity_log')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-black rounded-t-2xl transition-all border-b-2 -mb-[2px] ${
             activeAdminTab === 'activity_log'
@@ -1204,6 +1224,74 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                       {selectedApp.paymentStatus}
                     </span>
                   </div>
+                </div>
+
+                {/* Student Submitted Payment Information & Verification Panel */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-left">
+                  <h4 className="text-xs font-black text-slate-800 flex items-center justify-between border-b border-slate-200/60 pb-1.5">
+                    <span className="flex items-center gap-1.5 text-brand-sky"><CreditCard className="h-4 w-4" /> পেমেন্ট ও ট্রানজেকশন তথ্য</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      selectedApp.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
+                      selectedApp.paymentStatus === 'Pending Verification' ? 'bg-amber-100 text-amber-800 animate-pulse' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {selectedApp.paymentStatus}
+                    </span>
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-slate-400 font-semibold block text-[10px]">পেমেন্ট মাধ্যম:</span>
+                      <span className="text-slate-800 font-bold">{selectedApp.paymentMethod || 'প্রযোজ্য নয়'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-semibold block text-[10px]">ট্রানজেকশন আইডি (TrxID):</span>
+                      <span className="text-brand-sky font-mono font-black">{selectedApp.paymentTxnId || 'নেই'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-semibold block text-[10px]">প্রেরক মোবাইল/অ্যাকাউন্ট:</span>
+                      <span className="text-slate-800 font-mono font-bold">{selectedApp.paymentSenderPhone || 'নেই'}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-semibold block text-[10px]">পরিমাণ (Fee + 1.5%):</span>
+                      <span className="text-slate-800 font-mono font-black">৳{(selectedApp.paymentAmount || selectedApp.totalAmount || 15000).toLocaleString()} BDT</span>
+                    </div>
+                  </div>
+
+                  {selectedApp.paymentStatus !== 'Paid' && (
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const totalAmt = selectedApp.totalAmount || selectedApp.paymentAmount || 15000;
+                          const updated = {
+                            ...selectedApp,
+                            paymentStatus: 'Paid' as const,
+                            paidAmount: totalAmt,
+                            statusUpdatedBy: currentAdmin?.name || 'Admin',
+                            statusUpdatedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                            notificationHistory: [
+                              {
+                                id: `notif-${Date.now()}`,
+                                title: 'পেমেন্ট সফলভাবে অনুমোদিত হয়েছে',
+                                body: `আপনার পেমেন্ট (ট্রানজেকশন আইডি: ${selectedApp.paymentTxnId || 'N/A'}) এডমিন কর্তৃক যাচাই ও অনুমোদিত হয়েছে। আপনার ফাইল সক্রিয় করা হয়েছে।`,
+                                sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
+                                type: 'sms' as const,
+                                recipient: selectedApp.phone
+                              },
+                              ...(selectedApp.notificationHistory || [])
+                            ]
+                          };
+                          onUpdateApplication(updated);
+                          await logAdminAction('payment_approved', selectedApp.id, selectedApp.fullName, `Approved payment of ৳${totalAmt} (TrxID: ${selectedApp.paymentTxnId || 'N/A'})`);
+                        }}
+                        className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-black shadow-md flex items-center gap-1.5"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span>পেমেন্ট অনুমোদন ও ভেরিফাই করুন (Approve Payment)</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick Communications Actions Toolbar (Highly Premium & Modern Button System) */}
@@ -1749,6 +1837,326 @@ export default function AdminPanel({ applications, onUpdateApplication }: AdminP
                   মেম্বার সেটিংস লোড করা সম্ভব হয়নি।
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Gateway Settings Tab */}
+      {activeAdminTab === 'payment_settings' && (
+        <div className="space-y-6 animate-fade-in text-left">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-brand-sky" />
+                  <span>পেমেন্ট গেটওয়ে অ্যাকাউন্ট ব্যবস্থাপনা (Payment Gateway Settings)</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  এখানে সেট করা মোবাইল ব্যাংকিং নম্বর এবং ব্যাংক অ্যাকাউন্টগুলো শিক্ষার্থীর ড্যাশবোর্ডের পেমেন্ট পেজে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onUpdatePaymentConfig(paymentForm);
+                  alert('পেমেন্ট গেটওয়ে সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে!');
+                }}
+                className="rounded-xl bg-gradient-to-r from-brand-sky to-emerald-600 text-white px-5 py-2.5 text-xs font-black shadow-md hover:opacity-95 transition-all"
+              >
+                সেটিংস সংরক্ষণ করুন (Save All)
+              </button>
+            </div>
+
+            {/* bKash Numbers Section */}
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-black text-[#e2136e] uppercase flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-[#e2136e]"></span> bKash নম্বরসমূহ
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentForm({
+                      ...paymentForm,
+                      bkashNumbers: [...paymentForm.bkashNumbers, { id: `bk-${Date.now()}`, number: '017XXXXXXXX', type: 'Personal', name: 'Sodi Euro Merchant' }]
+                    });
+                  }}
+                  className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3.5 w-3.5" /> বিকাশ নম্বর যোগ করুন
+                </button>
+              </div>
+              <div className="space-y-2">
+                {paymentForm.bkashNumbers.map((item, idx) => (
+                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-3 rounded-xl border border-slate-200 items-center">
+                    <input
+                      type="text"
+                      value={item.number}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bkashNumbers];
+                        list[idx].number = e.target.value;
+                        setPaymentForm({ ...paymentForm, bkashNumbers: list });
+                      }}
+                      placeholder="নম্বর"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
+                    />
+                    <input
+                      type="text"
+                      value={item.type}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bkashNumbers];
+                        list[idx].type = e.target.value;
+                        setPaymentForm({ ...paymentForm, bkashNumbers: list });
+                      }}
+                      placeholder="ধরণ (Personal/Merchant)"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bkashNumbers];
+                        list[idx].name = e.target.value;
+                        setPaymentForm({ ...paymentForm, bkashNumbers: list });
+                      }}
+                      placeholder="অ্যাকাউন্ট নাম"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = paymentForm.bkashNumbers.filter((_, i) => i !== idx);
+                        setPaymentForm({ ...paymentForm, bkashNumbers: list });
+                      }}
+                      className="text-rose-600 hover:text-rose-800 text-xs font-bold justify-self-end sm:justify-self-center p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Nagad Numbers Section */}
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-black text-[#f26322] uppercase flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-[#f26322]"></span> Nagad নম্বরসমূহ
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentForm({
+                      ...paymentForm,
+                      nagadNumbers: [...paymentForm.nagadNumbers, { id: `ng-${Date.now()}`, number: '019XXXXXXXX', type: 'Personal', name: 'Sodi Euro Nagad' }]
+                    });
+                  }}
+                  className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3.5 w-3.5" /> নগদ নম্বর যোগ করুন
+                </button>
+              </div>
+              <div className="space-y-2">
+                {paymentForm.nagadNumbers.map((item, idx) => (
+                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-3 rounded-xl border border-slate-200 items-center">
+                    <input
+                      type="text"
+                      value={item.number}
+                      onChange={(e) => {
+                        const list = [...paymentForm.nagadNumbers];
+                        list[idx].number = e.target.value;
+                        setPaymentForm({ ...paymentForm, nagadNumbers: list });
+                      }}
+                      placeholder="নম্বর"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
+                    />
+                    <input
+                      type="text"
+                      value={item.type}
+                      onChange={(e) => {
+                        const list = [...paymentForm.nagadNumbers];
+                        list[idx].type = e.target.value;
+                        setPaymentForm({ ...paymentForm, nagadNumbers: list });
+                      }}
+                      placeholder="ধরণ (Personal)"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => {
+                        const list = [...paymentForm.nagadNumbers];
+                        list[idx].name = e.target.value;
+                        setPaymentForm({ ...paymentForm, nagadNumbers: list });
+                      }}
+                      placeholder="অ্যাকাউন্ট নাম"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = paymentForm.nagadNumbers.filter((_, i) => i !== idx);
+                        setPaymentForm({ ...paymentForm, nagadNumbers: list });
+                      }}
+                      className="text-rose-600 hover:text-rose-800 text-xs font-bold justify-self-end sm:justify-self-center p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rocket Numbers Section */}
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-black text-purple-700 uppercase flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-purple-600"></span> Rocket নম্বরসমূহ
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentForm({
+                      ...paymentForm,
+                      rocketNumbers: [...paymentForm.rocketNumbers, { id: `rk-${Date.now()}`, number: '018XXXXXXXX', type: 'Personal', name: 'Sodi Euro Rocket' }]
+                    });
+                  }}
+                  className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3.5 w-3.5" /> রকেট নম্বর যোগ করুন
+                </button>
+              </div>
+              <div className="space-y-2">
+                {paymentForm.rocketNumbers.map((item, idx) => (
+                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-white p-3 rounded-xl border border-slate-200 items-center">
+                    <input
+                      type="text"
+                      value={item.number}
+                      onChange={(e) => {
+                        const list = [...paymentForm.rocketNumbers];
+                        list[idx].number = e.target.value;
+                        setPaymentForm({ ...paymentForm, rocketNumbers: list });
+                      }}
+                      placeholder="নম্বর"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
+                    />
+                    <input
+                      type="text"
+                      value={item.type}
+                      onChange={(e) => {
+                        const list = [...paymentForm.rocketNumbers];
+                        list[idx].type = e.target.value;
+                        setPaymentForm({ ...paymentForm, rocketNumbers: list });
+                      }}
+                      placeholder="ধরণ (Personal)"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => {
+                        const list = [...paymentForm.rocketNumbers];
+                        list[idx].name = e.target.value;
+                        setPaymentForm({ ...paymentForm, rocketNumbers: list });
+                      }}
+                      placeholder="অ্যাকাউন্ট নাম"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = paymentForm.rocketNumbers.filter((_, i) => i !== idx);
+                        setPaymentForm({ ...paymentForm, rocketNumbers: list });
+                      }}
+                      className="text-rose-600 hover:text-rose-800 text-xs font-bold justify-self-end sm:justify-self-center p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Multiple Bank Accounts Section */}
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-black text-slate-800 uppercase flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-slate-800"></span> ব্যাংক অ্যাকাউন্টসমূহ (Multiple Bank Accounts)
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaymentForm({
+                      ...paymentForm,
+                      bankAccounts: [...paymentForm.bankAccounts, { id: `bnk-${Date.now()}`, bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro Education', accountNumber: '123XXXXXXXX', branch: 'Gulshan Branch, Dhaka' }]
+                    });
+                  }}
+                  className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3.5 w-3.5" /> ব্যাংক অ্যাকাউন্ট যোগ করুন
+                </button>
+              </div>
+              <div className="space-y-3">
+                {paymentForm.bankAccounts.map((bank, idx) => (
+                  <div key={bank.id} className="grid grid-cols-1 sm:grid-cols-5 gap-2 bg-white p-3 rounded-xl border border-slate-200 items-center">
+                    <input
+                      type="text"
+                      value={bank.bankName}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bankAccounts];
+                        list[idx].bankName = e.target.value;
+                        setPaymentForm({ ...paymentForm, bankAccounts: list });
+                      }}
+                      placeholder="ব্যাংকের নাম"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={bank.accountName}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bankAccounts];
+                        list[idx].accountName = e.target.value;
+                        setPaymentForm({ ...paymentForm, bankAccounts: list });
+                      }}
+                      placeholder="অ্যাকাউন্ট নাম"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <input
+                      type="text"
+                      value={bank.accountNumber}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bankAccounts];
+                        list[idx].accountNumber = e.target.value;
+                        setPaymentForm({ ...paymentForm, bankAccounts: list });
+                      }}
+                      placeholder="অ্যাকাউন্ট নম্বর"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
+                    />
+                    <input
+                      type="text"
+                      value={bank.branch}
+                      onChange={(e) => {
+                        const list = [...paymentForm.bankAccounts];
+                        list[idx].branch = e.target.value;
+                        setPaymentForm({ ...paymentForm, bankAccounts: list });
+                      }}
+                      placeholder="ব্রাঞ্চের নাম"
+                      className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = paymentForm.bankAccounts.filter((_, i) => i !== idx);
+                        setPaymentForm({ ...paymentForm, bankAccounts: list });
+                      }}
+                      className="text-rose-600 hover:text-rose-800 text-xs font-bold justify-self-end sm:justify-self-center p-1"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
