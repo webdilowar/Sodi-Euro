@@ -126,6 +126,42 @@ export default function App() {
     return localStorage.getItem('bulgaria_active_app_id_v1') || null;
   });
 
+  // 30-minute student auto-logout on inactivity
+  useEffect(() => {
+    let studentTimer: NodeJS.Timeout;
+
+    const resetStudentTimer = () => {
+      if (studentTimer) clearTimeout(studentTimer);
+      if (activeAppId) {
+        studentTimer = setTimeout(() => {
+          setActiveAppId(null);
+          localStorage.removeItem('bulgaria_active_app_id_v1');
+          alert('দীর্ঘক্ষণ নিষ্ক্রিয় থাকার কারণে আপনার স্টুডেন্ট সেশনটি অটো-লগআউট হয়েছে।');
+        }, 30 * 60 * 1000); // 30 minutes
+      }
+    };
+
+    const handleActivity = () => {
+      resetStudentTimer();
+    };
+
+    if (activeAppId) {
+      window.addEventListener('mousemove', handleActivity);
+      window.addEventListener('keydown', handleActivity);
+      window.addEventListener('click', handleActivity);
+      window.addEventListener('touchstart', handleActivity);
+      resetStudentTimer();
+    }
+
+    return () => {
+      if (studentTimer) clearTimeout(studentTimer);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+    };
+  }, [activeAppId]);
+
   // Keep track of the last simulated notification sent to show a floating real-time preview (SMS/Email simulation)
   const [liveNotification, setLiveNotification] = useState<{
     id: string;

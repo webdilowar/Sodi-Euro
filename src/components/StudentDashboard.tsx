@@ -173,16 +173,26 @@ export default function StudentDashboard({
     
     if (app.academicHistory) {
       const ssc = app.academicHistory;
-      if (ssc.sscSchool?.trim() && ssc.sscGpa?.trim() && ssc.sscYear?.trim()) percent += 15;
-      if (ssc.hscCollege?.trim() && ssc.hscGpa?.trim() && ssc.hscYear?.trim()) percent += 15;
-      if (ssc.bachelorUni?.trim() && ssc.bachelorCgpa?.trim() && ssc.bachelorYear?.trim()) percent += 10;
+      if (ssc.sscSchool?.trim()) percent += 5;
+      if (ssc.sscYear?.trim()) percent += 5;
+      if (ssc.sscGpa?.trim()) percent += 5;
+      
+      if (ssc.hscCollege?.trim()) percent += 5;
+      if (ssc.hscYear?.trim()) percent += 5;
+      if (ssc.hscGpa?.trim()) percent += 5;
+      
+      if (ssc.bachelorUni?.trim()) percent += 4;
+      if (ssc.bachelorYear?.trim()) percent += 3;
+      if (ssc.bachelorCgpa?.trim()) percent += 3;
     }
     
     if (app.socialMedia) {
-      if (app.socialMedia.facebook?.trim() || app.socialMedia.linkedin?.trim() || app.socialMedia.whatsapp?.trim()) percent += 10;
+      if (app.socialMedia.facebook?.trim()) percent += 4;
+      if (app.socialMedia.linkedin?.trim()) percent += 3;
+      if (app.socialMedia.whatsapp?.trim()) percent += 3;
     }
     
-    return percent;
+    return Math.min(100, percent);
   };
 
   // Login / Track Search states (using Passport Number as Username and Password)
@@ -460,6 +470,14 @@ export default function StudentDashboard({
 
     if (!selectedApplyUni || !selectedApplyCourse) {
       setFormError('অনুগ্রহ করে "ইউনিভার্সিটি ও কোর্স" ধাপে গিয়ে একটি বিশ্ববিদ্যালয় এবং প্রোগ্রাম সিলেক্ট করুন।');
+      return;
+    }
+
+    // Check if email already exists
+    const emailLower = email.trim().toLowerCase();
+    const emailExists = applications.find(a => a.email.toLowerCase() === emailLower);
+    if (emailExists) {
+      setFormError('এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
       return;
     }
 
@@ -778,20 +796,24 @@ export default function StudentDashboard({
 
   // Live Chat helpers
   const handleSendStudentMessage = (text: string) => {
-    if (!activeApp || !text.trim()) return;
+    if (!activeApp || (!text.trim() && !studentChatFile)) return;
     const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
     const newMessage = {
       id: `msg-${Date.now()}`,
       sender: 'student' as const,
       text: text.trim(),
       sentAt: currentTimestamp,
-      read: false
+      read: false,
+      attachments: studentChatFile ? [{ name: studentChatFileName || 'Attachment', url: studentChatFile }] : undefined
     };
     const updatedApp: Application = {
       ...activeApp,
       messages: [...(activeApp.messages || []), newMessage]
     };
     onUpdateApplication(updatedApp);
+    setStudentMsgText('');
+    setStudentChatFile('');
+    setStudentChatFileName('');
   };
 
   const markMessagesAsRead = () => {
@@ -843,6 +865,13 @@ export default function StudentDashboard({
     const exists = applications.find(a => a.passportNumber.toUpperCase() === passportUpper);
     if (exists) {
       setSignupError('এই পাসপোর্ট নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
+      return;
+    }
+
+    const emailLower = signupEmail.trim().toLowerCase();
+    const emailExists = applications.find(a => a.email.toLowerCase() === emailLower);
+    if (emailExists) {
+      setSignupError('এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
       return;
     }
 
@@ -1049,9 +1078,10 @@ export default function StudentDashboard({
                       <input
                         required
                         type="text"
+                        maxLength={11}
                         placeholder="যেমন: 017XXXXXXXX"
                         value={signupPhone}
-                        onChange={(e) => setSignupPhone(e.target.value)}
+                        onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
                       />
                       <Phone className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
@@ -1216,9 +1246,10 @@ export default function StudentDashboard({
                             <input
                               required
                               type="tel"
+                              maxLength={11}
                               placeholder="যেমন: 01712345678"
                               value={formData.phone}
-                              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                              onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                               className="w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold focus:border-brand-sky focus:outline-none"
                             />
                           </div>
@@ -1662,37 +1693,36 @@ export default function StudentDashboard({
       ) : (
         activeApp.status === 'Registered' ? (
             <div className="space-y-6 animate-fade-in" id="registered-profile-completion-dashboard">
-              {/* Global Student Dashboard Logout Bar */}
-              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mb-6" id="student-logout-bar">
-                <div className="flex items-center space-x-3 text-left w-full sm:w-auto">
-                  <div className="h-10 w-10 rounded-xl bg-brand-sky/10 border border-brand-sky/20 text-brand-sky flex items-center justify-center font-black shrink-0">
-                    {activeApp.fullName.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-800">{activeApp.fullName}</span>
-                      {calculateProfileCompletion(activeApp) >= 70 && (
-                        <span className="inline-flex items-center text-blue-500" title="Verified Profile (70%+ Complete)">
-                          <svg className="w-3.5 h-3.5 fill-blue-500 text-white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                        </span>
-                      )}
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
-                  </div>
-                </div>
+              {/* Global Student Dashboard Profile Header & Logout */}
+              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-6 shadow-sm text-center relative mb-6" id="student-profile-header-card">
                 <button
                   type="button"
                   onClick={() => setActiveAppId(null)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 rounded-xl bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all shrink-0"
+                  title="Logout"
+                  className="absolute top-4 right-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
                   id="student-logout-btn"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
-                  <span>Logout</span>
+                  <LogOut className="h-4 w-4" />
                 </button>
+
+                <div className="flex flex-col items-center space-y-3 pt-2">
+                  <div className="h-16 w-16 rounded-2xl bg-brand-sky/10 border-2 border-brand-sky/30 text-brand-sky flex items-center justify-center font-black text-xl overflow-hidden shadow-sm">
+                    {activeApp.profilePhoto ? (
+                      <img src={activeApp.profilePhoto} alt={activeApp.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      activeApp.fullName.charAt(0)
+                    )}
+                  </div>
+                  <div className="space-y-1 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-sm font-black text-slate-900">{activeApp.fullName}</span>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-mono">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
+                  </div>
+                </div>
               </div>
-              {/* Profile Completion progress card */}
-              <div className="rounded-2xl border-2 border-brand-gold/15 bg-white p-6 shadow-sm space-y-4">
+
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="text-left">
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
@@ -1738,7 +1768,6 @@ export default function StudentDashboard({
                     </div>
                   </div>
                 )}
-              </div>
 
               {showApplyFormInDashboard ? (
                 /* INLINE UNIVERSITY/COURSE FILING WIZARD */
@@ -2313,11 +2342,12 @@ export default function StudentDashboard({
                               <label className="text-[11px] font-bold text-slate-600 block">মোবাইল নম্বর:</label>
                               <input
                                 type="text"
+                                maxLength={11}
                                 value={activeApp.phone || ''}
                                 onChange={(e) => {
                                   onUpdateApplication({
                                     ...activeApp,
-                                    phone: e.target.value
+                                    phone: e.target.value.replace(/\D/g, '').slice(0, 11)
                                   });
                                 }}
                                 className="w-full rounded-lg border border-slate-200 p-2 text-xs font-bold focus:border-brand-sky focus:outline-none"
@@ -2326,8 +2356,21 @@ export default function StudentDashboard({
                           </div>
                         </div>
 
-                        <div className="bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100 p-3.5 text-xs text-left font-bold">
-                          💡 প্রোফাইলের প্রতিটি নতুন ফিল্ড সেভ বা আপডেট করার পর আপনার প্রোফাইল প্রোগ্রেস পারসেন্টেজ সরাসরি বৃদ্ধি পাবে।
+                        <div className="bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100 p-3.5 text-xs text-left font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                          <div>
+                            💡 প্রোফাইলের প্রতিটি নতুন ফিল্ড আপডেট করার পর নিচের বাটনে ক্লিক করে সেভ করুন। প্রোগ্রেস পারসেন্টেজ সাথে সাথে বৃদ্ধি পাবে।
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onUpdateApplication(activeApp);
+                              alert('প্রোফাইল তথ্য সফলভাবে সংরক্ষণ করা হয়েছে!');
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-black text-white hover:bg-slate-800 transition-all shadow-md border-b-2 border-brand-gold shrink-0"
+                          >
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                            <span>প্রোফাইল আপডেট করুন (Save)</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -2389,34 +2432,34 @@ export default function StudentDashboard({
             </div>
           ) : (
             <>
-              {/* Global Student Dashboard Logout Bar */}
-              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mb-6" id="student-logout-bar">
-                <div className="flex items-center space-x-3 text-left w-full sm:w-auto">
-                  <div className="h-10 w-10 rounded-xl bg-brand-sky/10 border border-brand-sky/20 text-brand-sky flex items-center justify-center font-black shrink-0">
-                    {activeApp.fullName.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-black text-slate-800">{activeApp.fullName}</span>
-                      {calculateProfileCompletion(activeApp) >= 70 && (
-                        <span className="inline-flex items-center text-blue-500" title="Verified Profile (70%+ Complete)">
-                          <svg className="w-3.5 h-3.5 fill-blue-500 text-white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                        </span>
-                      )}
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
-                    </div>
-                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
-                  </div>
-                </div>
+              {/* Global Student Dashboard Profile Header & Logout */}
+              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-6 shadow-sm text-center relative mb-6" id="student-profile-header-card">
                 <button
                   type="button"
                   onClick={() => setActiveAppId(null)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 rounded-xl bg-rose-50 border border-rose-200 px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-100 transition-all shrink-0"
+                  title="Logout"
+                  className="absolute top-4 right-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
                   id="student-logout-btn"
                 >
-                  <LogOut className="h-3.5 w-3.5" />
-                  <span>Logout</span>
+                  <LogOut className="h-4 w-4" />
                 </button>
+
+                <div className="flex flex-col items-center space-y-3 pt-2">
+                  <div className="h-16 w-16 rounded-2xl bg-brand-sky/10 border-2 border-brand-sky/30 text-brand-sky flex items-center justify-center font-black text-xl overflow-hidden shadow-sm">
+                    {activeApp.profilePhoto ? (
+                      <img src={activeApp.profilePhoto} alt={activeApp.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      activeApp.fullName.charAt(0)
+                    )}
+                  </div>
+                  <div className="space-y-1 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-sm font-black text-slate-900">{activeApp.fullName}</span>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-mono">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
+                  </div>
+                </div>
               </div>
 
               {/* Sub Navigation Tabs */}
@@ -4589,7 +4632,24 @@ export default function StudentDashboard({
                               : 'bg-white border border-slate-100 text-slate-800 rounded-bl-none shadow-sm shadow-slate-100/50'
                           }`}
                         >
-                          {msg.text}
+                          {msg.text && <p className="whitespace-pre-line text-left">{msg.text}</p>}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-slate-700/20 space-y-1">
+                              <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">সংযুক্ত ফাইলসমূহ:</span>
+                              {msg.attachments.map((file, fIdx) => (
+                                <a
+                                  key={fIdx}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center space-x-1.5 hover:underline text-brand-gold font-bold text-[10px] bg-slate-800/40 p-2 rounded-xl text-left"
+                                >
+                                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                                  <span className="truncate flex-grow">{file.name}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <span className="text-[8px] font-mono font-bold text-slate-400 mt-1 px-1">{msg.sentAt}</span>
                       </div>
@@ -4601,26 +4661,66 @@ export default function StudentDashboard({
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (!studentMsgText.trim()) return;
+                    if (!studentMsgText.trim() && !studentChatFile) return;
                     handleSendStudentMessage(studentMsgText);
-                    setStudentMsgText('');
                   }}
-                  className="p-3 bg-white border-t border-slate-100 flex gap-2 items-center shrink-0"
+                  className="p-3 bg-white border-t border-slate-100 space-y-2 shrink-0"
                 >
-                  <input
-                    type="text"
-                    value={studentMsgText}
-                    onChange={(e) => setStudentMsgText(e.target.value)}
-                    placeholder="আপনার মেসেজটি এখানে লিখুন..."
-                    className="flex-1 rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-semibold focus:outline-none focus:border-brand-sky focus:ring-1 focus:ring-brand-sky/25 bg-slate-50"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!studentMsgText.trim()}
-                    className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 p-2.5 text-xs font-black disabled:bg-slate-100 disabled:text-slate-400 transition-all active:scale-95 flex items-center justify-center shrink-0"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
+                  {studentChatFile && (
+                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-[10px] font-bold text-slate-700">
+                      <div className="flex items-center space-x-1.5 truncate">
+                        <Paperclip className="h-3.5 w-3.5 text-brand-sky shrink-0" />
+                        <span className="truncate">{studentChatFileName}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStudentChatFile('');
+                          setStudentChatFileName('');
+                        }}
+                        className="text-rose-600 hover:text-rose-700 text-xs font-black shrink-0"
+                      >
+                        মুছুন
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 items-center">
+                    <label className="cursor-pointer h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                      <Paperclip className="h-4 w-4" />
+                      <input
+                        type="file"
+                        accept="image/*,video/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setStudentChatFile(reader.result as string);
+                              setStudentChatFileName(file.name);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+
+                    <input
+                      type="text"
+                      value={studentMsgText}
+                      onChange={(e) => setStudentMsgText(e.target.value)}
+                      placeholder="আপনার মেসেজ বা ফাইল এখানে লিখুন..."
+                      className="flex-1 rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-semibold focus:outline-none focus:border-brand-sky focus:ring-1 focus:ring-brand-sky/25 bg-slate-50"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!studentMsgText.trim() && !studentChatFile}
+                      className="rounded-xl bg-slate-900 text-white hover:bg-slate-800 p-2.5 text-xs font-black disabled:bg-slate-100 disabled:text-slate-400 transition-all active:scale-95 flex items-center justify-center shrink-0"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
                 </form>
               </motion.div>
             ) : (

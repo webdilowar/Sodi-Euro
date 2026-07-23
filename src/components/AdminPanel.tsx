@@ -109,6 +109,44 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
     return cached ? JSON.parse(cached) : null;
   });
 
+  // 1-hour admin auto-logout on inactivity
+  useEffect(() => {
+    let adminTimer: NodeJS.Timeout;
+
+    const resetAdminTimer = () => {
+      if (adminTimer) clearTimeout(adminTimer);
+      if (isAdminLoggedIn) {
+        adminTimer = setTimeout(() => {
+          setIsAdminLoggedIn(false);
+          setCurrentAdmin(null);
+          localStorage.removeItem('sodieuro_admin_logged_in');
+          localStorage.removeItem('sodieuro_current_admin');
+          alert('দীর্ঘক্ষণ নিষ্ক্রিয় থাকার কারণে অ্যাডমিন সেশনটি অটো-লগআউট হয়েছে।');
+        }, 60 * 60 * 1000); // 1 hour
+      }
+    };
+
+    const handleActivity = () => {
+      resetAdminTimer();
+    };
+
+    if (isAdminLoggedIn) {
+      window.addEventListener('mousemove', handleActivity);
+      window.addEventListener('keydown', handleActivity);
+      window.addEventListener('click', handleActivity);
+      window.addEventListener('touchstart', handleActivity);
+      resetAdminTimer();
+    }
+
+    return () => {
+      if (adminTimer) clearTimeout(adminTimer);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('touchstart', handleActivity);
+    };
+  }, [isAdminLoggedIn]);
+
   const isUserAdmin = currentAdmin?.roleType === 'administrator' || currentAdmin?.id === 'master_admin';
 
   // Audit Logs Live Sync State
@@ -512,7 +550,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
   const handleSendAdminMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedApp || !adminMessageText.trim()) return;
+    if (!selectedApp || (!adminMessageText.trim() && !adminChatFile)) return;
 
     const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
@@ -522,7 +560,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       text: adminMessageText.trim(),
       sentAt: currentTimestamp,
       adminName: currentAdmin?.name || 'Admin',
-      adminPhoto: currentAdmin?.photoUrl || ''
+      adminPhoto: currentAdmin?.photoUrl || '',
+      attachments: adminChatFile ? [{ name: adminChatFileName || 'Attachment', url: adminChatFile }] : undefined
     };
 
     const updatedApp: Application = {
@@ -533,6 +572,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
     onUpdateApplication(updatedApp);
     logAdminAction('message_reply', selectedApp.id, selectedApp.fullName, `Sent message: "${adminMessageText.trim().substring(0, 30)}..."`);
     setAdminMessageText('');
+    setAdminChatFile('');
+    setAdminChatFileName('');
   };
 
   // Handle application status updates (This triggers automatic email/sms log generation)
@@ -2705,13 +2746,13 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       <AnimatePresence>
         {/* 1. Live Chat Modal Popup */}
         {isChatModalOpen && selectedApp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" id="chat-modal-overlay">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm" id="chat-modal-overlay">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="max-w-2xl w-full bg-white rounded-none sm:rounded-3xl border border-slate-200/80 shadow-2xl overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[85vh] relative text-left"
+              className="max-w-2xl w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xl overflow-hidden flex flex-col h-[82vh] sm:h-auto sm:max-h-[85vh] relative text-left"
               id="admin-chat-modal-box"
             >
               {/* Modal Header */}
@@ -2776,7 +2817,24 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                               : 'bg-white text-slate-800 rounded-tl-none border border-slate-200/70'
                           }`}
                         >
-                          <p className="leading-relaxed font-semibold">{msg.text}</p>
+                          {msg.text && <p className="leading-relaxed font-semibold">{msg.text}</p>}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-slate-700/20 space-y-1">
+                              <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">সংযুক্ত ফাইলসমূহ:</span>
+                              {msg.attachments.map((file, fIdx) => (
+                                <a
+                                  key={fIdx}
+                                  href={file.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center space-x-1.5 hover:underline text-brand-gold font-bold text-[10px] bg-slate-800/40 p-2 rounded-xl text-left"
+                                >
+                                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                                  <span className="truncate flex-grow">{file.name}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <span className="text-[9px] text-slate-400 mt-1 px-1 font-mono font-semibold">
                           {isAdmin ? 'অ্যাডমিন (আপনি)' : 'শিক্ষার্থী'} · {msg.sentAt}
@@ -2811,14 +2869,51 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 </div>
               </div>
 
+              {/* Attached File Preview Badge */}
+              {adminChatFile && (
+                <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0">
+                  <div className="flex items-center space-x-2 truncate">
+                    <Paperclip className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                    <span className="font-bold text-amber-900 truncate">{adminChatFileName || 'সংযুক্ত ফাইল'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setAdminChatFile(''); setAdminChatFileName(''); }}
+                    className="text-rose-600 font-bold hover:underline text-[11px] shrink-0 ml-2"
+                  >
+                    বাতিল
+                  </button>
+                </div>
+              )}
+
               {/* Message input area */}
               <form onSubmit={handleSendAdminMessage} className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 flex gap-2 sm:gap-2.5 items-center shrink-0">
+                {/* File Upload Button */}
+                <label className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-brand-sky transition-all cursor-pointer shrink-0" title="ফাইল বা ছবি যুক্ত করুন (PDF, Image, Video)">
+                  <Paperclip className="h-4 w-4" />
+                  <input
+                    type="file"
+                    accept="image/*,video/*,.pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setAdminChatFile(reader.result as string);
+                          setAdminChatFileName(file.name);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </label>
+
                 <input
-                  required
                   type="text"
                   value={adminMessageText}
                   onChange={(e) => setAdminMessageText(e.target.value)}
-                  placeholder="মেসেজ লিখুন..."
+                  placeholder="মেসেজ বা ফাইল পাঠান..."
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all shadow-inner"
                 />
                 <button
@@ -2835,13 +2930,13 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
         {/* 2. Custom Notifications (Email/SMS) Modal Popup */}
         {isNotificationModalOpen && selectedApp && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" id="notification-modal-overlay">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm" id="notification-modal-overlay">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="max-w-xl w-full bg-white rounded-none sm:rounded-3xl border border-slate-200/80 shadow-2xl p-5 sm:p-6 relative text-left space-y-4 h-full sm:h-auto overflow-y-auto flex flex-col sm:block"
+              className="max-w-xl w-full bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xl p-5 sm:p-6 relative text-left space-y-4 max-h-[85vh] overflow-y-auto flex flex-col"
               id="admin-notification-modal-box"
             >
               {/* Modal Close */}
