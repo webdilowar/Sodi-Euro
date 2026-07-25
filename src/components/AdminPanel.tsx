@@ -39,7 +39,8 @@ import {
   Trash2,
   Paperclip,
   Plus,
-  History
+  History,
+  LogOut
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -485,24 +486,37 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
   const [adminChatFile, setAdminChatFile] = useState<string>('');
   const [adminChatFileName, setAdminChatFileName] = useState<string>('');
   const [chatSearchTerm, setChatSearchTerm] = useState<string>('');
+  const [mobileChatView, setMobileChatView] = useState<'chat' | 'threads'>('chat');
+  const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto scroll to bottom of chat messages
+  useEffect(() => {
+    if (chatMessagesEndRef.current) {
+      chatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeChatAppId, applications, mobileChatView]);
 
   // Automatically mark student messages as read when admin views the chat
   useEffect(() => {
-    if (activeAdminTab === 'messages' && activeChatAppId) {
-      const app = applications.find(a => a.id === activeChatAppId);
-      if (app) {
-        const hasUnread = app.messages?.some(m => m.sender === 'student' && !m.read);
-        if (hasUnread) {
-          const updatedMessages = app.messages?.map(m => {
-            if (m.sender === 'student' && !m.read) {
-              return { ...m, read: true };
-            }
-            return m;
-          }) || [];
-          onUpdateApplication({
-            ...app,
-            messages: updatedMessages
-          });
+    if (activeAdminTab === 'messages') {
+      const appsWithMessages = applications.filter(a => a.messages && a.messages.length > 0);
+      const effectiveId = activeChatAppId || appsWithMessages[0]?.id || applications[0]?.id;
+      if (effectiveId) {
+        const app = applications.find(a => a.id === effectiveId);
+        if (app) {
+          const hasUnread = app.messages?.some(m => m.sender === 'student' && !m.read);
+          if (hasUnread) {
+            const updatedMessages = app.messages?.map(m => {
+              if (m.sender === 'student' && !m.read) {
+                return { ...m, read: true };
+              }
+              return m;
+            }) || [];
+            onUpdateApplication({
+              ...app,
+              messages: updatedMessages
+            });
+          }
         }
       }
     }
@@ -738,22 +752,24 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
   // Handle student application deletion from Firestore database
   const handleDeleteApplication = async (appId: string) => {
-    if (!isUserAdmin) {
-      alert('দুঃখিত, শুধুমাত্র Administrators আবেদনকারীর সকল তথ্য ডিলিট করতে পারবেন!');
+    if (!isAdminLoggedIn) {
+      alert('দুঃখিত, শুধুমাত্র লগইন করা অ্যাডমিন স্টুডেন্ট তথ্য ডিলিট করতে পারবেন!');
       return;
     }
     const targetApp = applications.find(a => a.id === appId);
-    if (!window.confirm("আপনি কি নিশ্চিতভাবে এই আবেদনকারীর সকল তথ্য ডিলিট করতে চান? এই অ্যাকশনটি রিভার্স করা যাবে না!")) {
+    const studentName = targetApp?.fullName || 'এই শিক্ষার্থী';
+    if (!window.confirm(`আপনি কি নিশ্চিতভাবে "${studentName}" (ID: ${appId}) এর সকল তথ্য ডাটাবেজ থেকে ডিলিট করতে চান? এই অ্যাকশনটি রিভার্স করা যাবে না!`)) {
       return;
     }
     try {
       await deleteDoc(doc(db, 'applications', appId));
-      logAdminAction('student_deleted', appId, targetApp?.fullName || 'Deleted Applicant', `Permanently deleted entire application and records`);
+      logAdminAction('student_deleted', appId, studentName, `Permanently deleted entire application and records`);
       // Reset selected app id if the deleted application was currently selected
       if (selectedAppId === appId) {
-        setSelectedAppId(null);
+        const remaining = applications.filter(a => a.id !== appId);
+        setSelectedAppId(remaining.length > 0 ? remaining[0].id : null);
       }
-      alert("আবেদনকারীর তথ্য সফলভাবে ডাটাবেজ থেকে ডিলিট করা হয়েছে।");
+      alert(`"${studentName}" এর তথ্য সফলভাবে ডাটাবেজ থেকে ডিলিট করা হয়েছে।`);
     } catch (err) {
       console.error("Error deleting application: ", err);
       alert("আবেদনকারী ডিলিট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
@@ -884,60 +900,37 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
   return (
     <div className="space-y-8 py-6" id="admin-panel-root">
-      {/* Admin Panel Sticky Header with Logout */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/5 rounded-full blur-2xl"></div>
-        <div className="z-10 flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 text-left mb-4 lg:mb-0">
-          <div className="w-12 h-12 rounded-2xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center text-brand-gold shrink-0">
-            <Activity className="h-6 w-6 animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h2 className="font-sans font-black text-sm sm:text-base tracking-wider text-brand-gold">SODI EURO CONTROL PANEL</h2>
-              <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-[8px] font-bold text-emerald-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>LIVE CORE ENGINE</span>
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium">বুলগেরিয়া স্টুডেন্ট ভিসা রিয়েল-টাইম ডাটাবেজ কন্ট্রোল ড্যাশবোর্ড</p>
-          </div>
-        </div>
+      {/* Admin Panel Modernized cPanel Header */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-950 border border-slate-800/90 p-4 sm:p-5 shadow-xl" id="admin-control-panel-header">
+        {/* Subtle Background Lighting */}
+        <div className="absolute top-0 right-1/4 w-72 h-32 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute bottom-0 left-10 w-64 h-32 bg-sky-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        {/* Right section: Profile display and logout */}
-        <div className="z-10 flex flex-wrap items-center gap-4 w-full lg:w-auto justify-between lg:justify-end">
-          {/* Active Profile Widget */}
-          <div className="flex items-center space-x-3 bg-slate-800/40 hover:bg-slate-800/60 p-2 pr-4 rounded-2xl border border-slate-800/60 transition-all">
-            <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-800 border border-slate-700/80 shrink-0">
-              {currentAdmin?.photoUrl ? (
-                <img src={currentAdmin.photoUrl} alt={currentAdmin.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-slate-700 text-slate-300 font-bold text-xs uppercase">
-                  {(currentAdmin?.name || 'Admin').substring(0, 2)}
-                </div>
-              )}
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          {/* Left: Brand / Title & Student Count in One Line */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-gradient-to-br from-amber-400/20 via-amber-500/10 to-slate-900 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 shadow-md">
+              <ShieldCheck className="h-5 w-5 text-amber-400" />
             </div>
-            <div className="text-left">
-              <div className="flex items-center space-x-1.5">
-                <span className="text-xs font-black tracking-wide text-slate-100">{currentAdmin?.name || 'Master Admin'}</span>
-                {currentAdmin?.roleType && (
-                  <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${
-                    currentAdmin.roleType === 'administrator' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                    currentAdmin.roleType === 'moderator' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' :
-                    'bg-slate-700/50 text-slate-300 border border-slate-600/30'
-                  }`}>
-                    {currentAdmin.roleType}
-                  </span>
-                )}
-              </div>
-              <p className="text-[9px] text-slate-400 font-medium truncate max-w-[140px]">{currentAdmin?.role || 'প্রধান প্রশাসক'}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left min-w-0">
+              <h2 className="font-sans font-black text-sm sm:text-base md:text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 uppercase whitespace-nowrap">
+                SODI EURO cPanel
+              </h2>
+              <span className="hidden sm:inline text-slate-700 font-bold">•</span>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold flex items-center gap-1.5 whitespace-nowrap">
+                <Users className="h-3.5 w-3.5 text-amber-400/90 shrink-0" />
+                <span>রেজিস্টার্ড শিক্ষার্থী: <span className="text-amber-300 font-extrabold">{applications.length} জন</span></span>
+              </p>
             </div>
           </div>
 
+          {/* Right: Clean Logout Icon-only Button Aligned Top Right */}
           <button
             onClick={handleAdminLogout}
-            className="rounded-xl bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 px-4 py-2.5 text-xs font-black transition-all border border-slate-700 hover:border-slate-600 active:scale-95"
+            title="লগআউট (Logout)"
+            className="p-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/30 transition-all active:scale-90 shadow-sm shrink-0 flex items-center justify-center"
           >
-            লগআউট করুন (Logout)
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
       </div>
@@ -1163,7 +1156,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       </div>
                     </div>
 
-                    <div className="shrink-0 pl-2">
+                    <div className="shrink-0 pl-2 flex items-center gap-1.5">
                       <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${
                         app.status === 'Visa Issued' ? 'bg-emerald-100 text-emerald-800' :
                         app.status === 'Submitted' ? 'bg-blue-100 text-blue-800' :
@@ -1171,6 +1164,18 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       }`}>
                         {app.status}
                       </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteApplication(app.id);
+                        }}
+                        title="স্টুডেন্ট ডাটাবেজ থেকে ডিলিট করুন"
+                        className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200/80 transition-all active:scale-95 shrink-0"
+                        id={`admin-btn-delete-list-item-${app.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))
@@ -1236,11 +1241,12 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       <button
                         type="button"
                         onClick={() => handleDeleteApplication(selectedApp.id)}
-                        className="p-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-brand-red hover:text-red-700 transition-all shadow-sm shrink-0 flex items-center justify-center"
+                        className="px-3 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-red-700 transition-all shadow-sm shrink-0 flex items-center justify-center gap-1.5 font-bold text-xs"
                         title="আবেদনকারীর সকল তথ্য ডাটাবেজ থেকে ডিলিট করুন"
                         id={`admin-btn-delete-app-${selectedApp.id}`}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-rose-600" />
+                        <span>ডিলিট করুন</span>
                       </button>
                     </div>
                   </div>
@@ -2392,89 +2398,113 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       )}
 
       {activeAdminTab === 'messages' && (() => {
-        // Find all applications that have messages, sorted by latest message sentAt timestamp
-        const appsWithMessages = applications
-          .filter(app => app.messages && app.messages.length > 0)
+        // Filter and sort ALL registered applications for the support chat list
+        const allFilteredApplications = applications
+          .filter(app => {
+            if (!chatSearchTerm.trim()) return true;
+            const search = chatSearchTerm.toLowerCase();
+            return (
+              app.fullName.toLowerCase().includes(search) ||
+              app.id.toLowerCase().includes(search) ||
+              (app.passportNumber && app.passportNumber.toLowerCase().includes(search)) ||
+              (app.phone && app.phone.toLowerCase().includes(search))
+            );
+          })
           .sort((a, b) => {
+            // 1. Unread messages on top
+            const unreadA = a.messages?.some(m => m.sender === 'student' && !m.read) ? 1 : 0;
+            const unreadB = b.messages?.some(m => m.sender === 'student' && !m.read) ? 1 : 0;
+            if (unreadB !== unreadA) return unreadB - unreadA;
+
+            // 2. Latest message date
             const lastA = a.messages?.[a.messages.length - 1]?.sentAt || '';
             const lastB = b.messages?.[b.messages.length - 1]?.sentAt || '';
-            return lastB.localeCompare(lastA);
+            if (lastA || lastB) return lastB.localeCompare(lastA);
+
+            // 3. Fallback alphabetical
+            return a.fullName.localeCompare(b.fullName);
           });
 
-        const filteredAppsWithMessages = appsWithMessages.filter(app => {
-          if (!chatSearchTerm.trim()) return true;
-          const search = chatSearchTerm.toLowerCase();
-          return app.fullName.toLowerCase().includes(search) || app.id.toLowerCase().includes(search);
-        });
-
-        const currentChatApp = applications.find(a => a.id === (activeChatAppId || appsWithMessages[0]?.id));
+        // Ensure currentChatApp is always resolved if applications exist
+        const effectiveChatAppId = activeChatAppId || allFilteredApplications[0]?.id || applications[0]?.id;
+        const currentChatApp = applications.find(a => a.id === effectiveChatAppId);
 
         return (
           <div className="space-y-6 text-left" id="admin-messages-tab-root">
             {/* Header section with total metrics */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="space-y-1 text-left">
                 <h3 className="text-sm sm:text-base font-black text-slate-800 flex items-center gap-2">
                   <MessageSquare className="h-5 w-5 text-brand-sky" />
-                  <span>শিক্ষার্থী সহায়তা মেসেজ সেন্টার (Message Center)</span>
+                  <span>শিক্ষার্থী সহায়তা মেসেজ সেন্টার (Support Message Center)</span>
                 </h3>
                 <p className="text-[11px] text-slate-400">রিয়েল-টাইম মেসেজ আদান-প্রদান এবং শিক্ষার্থী সমস্যা সমাধান হাব</p>
               </div>
               <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-100 font-mono text-[11px] font-bold text-slate-600">
-                <span>সক্রিয় চ্যাট থ্রেড: {appsWithMessages.length} টি</span>
+                <span>মোট রেজিস্টার্ড শিক্ষার্থী: {applications.length} জন</span>
               </div>
             </div>
 
-            {/* Main responsive grid: 2 Columns on desktop, single column on mobile */}
-            <div className="grid grid-cols-12 gap-6 bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden h-[620px]" id="admin-chat-grid-container">
+            {/* Mobile View Toggle Buttons */}
+            <div className="lg:hidden flex border border-slate-200 bg-slate-100/80 p-1.5 rounded-2xl gap-1.5">
+              <button
+                type="button"
+                onClick={() => setMobileChatView('chat')}
+                className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  mobileChatView === 'chat'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white text-slate-600 border border-slate-200/60'
+                }`}
+              >
+                <MessageSquare className="h-3.5 w-3.5 text-brand-sky" />
+                <span>মেসেজ বক্স {currentChatApp ? `(${currentChatApp.fullName.split(' ')[0]})` : ''}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileChatView('threads')}
+                className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                  mobileChatView === 'threads'
+                    ? 'bg-slate-900 text-white shadow-md'
+                    : 'bg-white text-slate-600 border border-slate-200/60'
+                }`}
+              >
+                <Users className="h-3.5 w-3.5 text-emerald-500" />
+                <span>সকল শিক্ষার্থী তালিকা ({applications.length})</span>
+              </button>
+            </div>
+
+            {/* Main responsive grid: 2 Columns on desktop, responsive tab-switch on mobile */}
+            <div className="grid grid-cols-12 gap-0 lg:gap-6 bg-white rounded-3xl border border-slate-200/80 shadow-xl overflow-hidden h-[480px] sm:h-[560px] lg:h-[620px] max-h-[80vh]" id="admin-chat-grid-container">
               
-              {/* Left Column (Threads list / sidebar): span 4 on desktop, hide on mobile if a thread is open */}
-              <div className={`col-span-12 lg:col-span-4 border-r border-slate-100 flex flex-col h-full bg-slate-50/40 ${
-                activeChatAppId ? 'hidden lg:flex' : 'flex'
+              {/* Left Column (Threads list / sidebar): span 4 on desktop */}
+              <div className={`col-span-12 lg:col-span-4 border-r border-slate-100 flex flex-col h-full min-h-0 bg-slate-50/40 ${
+                mobileChatView === 'threads' ? 'flex' : 'hidden lg:flex'
               }`}>
                 {/* Search / Filter threads */}
-                <div className="p-4 border-b border-slate-100 bg-white space-y-3 text-left">
+                <div className="p-3.5 border-b border-slate-100 bg-white space-y-2 text-left shrink-0">
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="শিক্ষার্থীর নাম খুঁজুন..."
+                      placeholder="শিক্ষার্থীর নাম / পাসপোর্ট / ID দিয়ে খুঁজুন..."
                       value={chatSearchTerm}
                       onChange={(e) => setChatSearchTerm(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs focus:outline-none focus:border-brand-sky focus:bg-white transition-all text-slate-700 font-semibold"
                     />
                     <Search className="absolute left-3 top-3.5 h-3.5 w-3.5 text-slate-400" />
                   </div>
-
-                  {/* Start new chat selector */}
-                  <div className="space-y-1 text-left">
-                    <label className="text-[9px] font-black text-slate-400 block uppercase">নতুন চ্যাট শুরু করুন (New Thread):</label>
-                    <select
-                      value={currentChatApp?.id || ''}
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          setActiveChatAppId(e.target.value);
-                        }
-                      }}
-                      className="w-full text-xs font-bold text-slate-700 rounded-xl border border-slate-200 p-2 bg-white focus:outline-none focus:border-brand-sky"
-                    >
-                      <option value="" disabled>শিক্ষার্থী বাছাই করুন...</option>
-                      {applications.map(app => (
-                        <option key={app.id} value={app.id}>
-                          {app.fullName} (ID: {app.id})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <p className="text-[10px] text-slate-400 font-bold px-1">
+                    মোট {allFilteredApplications.length} জন শিক্ষার্থী প্রদর্শিত হচ্ছে:
+                  </p>
                 </div>
 
-                {/* Scrollable list of threads */}
-                <div className="flex-1 overflow-y-auto divide-y divide-slate-100 p-3 space-y-1 bg-slate-50/30">
-                  {filteredAppsWithMessages.length === 0 ? (
-                    <div className="text-center py-12 text-slate-400 text-xs font-semibold">
-                      {chatSearchTerm ? 'কোনো অমিল থ্রেড পাওয়া যায়নি।' : 'এখনো কোনো মেসেজ থ্রেড নেই।'}
+                {/* Scrollable list of ALL students */}
+                <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-100 p-2.5 sm:p-3 space-y-1.5 bg-slate-50/30">
+                  {allFilteredApplications.length === 0 ? (
+                    <div className="p-6 text-center text-slate-400 text-xs font-semibold">
+                      কোনো অমিল শিক্ষার্থী পাওয়া যায়নি।
                     </div>
                   ) : (
-                    filteredAppsWithMessages.map(app => {
+                    allFilteredApplications.map(app => {
                       const isSelected = currentChatApp?.id === app.id;
                       const lastMsg = app.messages?.[app.messages.length - 1];
                       const unreadStudentCount = app.messages?.filter(m => m.sender === 'student' && !m.read).length || 0;
@@ -2482,7 +2512,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       return (
                         <button
                           key={app.id}
-                          onClick={() => setActiveChatAppId(app.id)}
+                          onClick={() => {
+                            setActiveChatAppId(app.id);
+                            setMobileChatView('chat');
+                          }}
                           className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border ${
                             isSelected
                               ? 'bg-slate-900 text-white border-slate-950 shadow-md scale-[1.01]'
@@ -2508,11 +2541,17 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             <div className="flex items-center justify-between">
                               <span className="text-xs font-black truncate block pr-2">{app.fullName}</span>
                               <span className={`text-[8px] font-mono shrink-0 ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
-                                {lastMsg ? lastMsg.sentAt.split(' ')[1] || lastMsg.sentAt : ''}
+                                {lastMsg ? (lastMsg.sentAt.split(' ')[1] || lastMsg.sentAt) : `#${app.id}`}
                               </span>
                             </div>
-                            <span className={`text-[10px] truncate block ${isSelected ? 'text-slate-300' : 'text-slate-400'}`}>
-                              {lastMsg ? lastMsg.text : 'কোনো মেসেজ নেই'}
+                            <span className={`text-[10px] truncate block ${
+                              isSelected
+                                ? 'text-slate-300'
+                                : lastMsg
+                                ? 'text-slate-500 font-medium'
+                                : 'text-brand-sky font-bold'
+                            }`}>
+                              {lastMsg ? (lastMsg.text || '📷 ফাইল/ছবি') : 'নতুন চ্যাট শুরু করতে চাপুন 💬'}
                             </span>
                           </div>
                         </button>
@@ -2522,66 +2561,64 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 </div>
               </div>
 
-              {/* Right Column (Chat screen): span 8 on desktop, full screen on mobile if a thread is open */}
+              {/* Right Column (Chat screen): span 8 on desktop */}
               <div className={`col-span-12 lg:col-span-8 flex flex-col h-full bg-white relative ${
-                activeChatAppId ? 'flex' : 'hidden lg:flex'
+                mobileChatView === 'chat' ? 'flex' : 'hidden lg:flex'
               }`}>
                 {currentChatApp ? (
                   <>
-                    {/* Header */}
-                    <div className="bg-slate-900 text-white p-4 flex items-center justify-between border-b border-slate-800 shrink-0">
-                      <div className="flex items-center gap-3 text-left">
-                        {/* Mobile back button */}
-                        <button
-                          type="button"
-                          onClick={() => setActiveChatAppId(null)}
-                          className="lg:hidden rounded-lg p-2 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors mr-1"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="19" y1="12" x2="5" y2="12"></line>
-                            <polyline points="12 19 5 12 12 5"></polyline>
-                          </svg>
-                        </button>
-
-                        <div className="h-10 w-10 rounded-full border border-slate-800 overflow-hidden shrink-0 bg-slate-800">
+                    {/* Responsive Header with Student Selector */}
+                    <div className="bg-slate-900 text-white p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 shrink-0">
+                      <div className="flex items-center gap-3 text-left min-w-0 w-full sm:w-auto">
+                        <div className="h-10 w-10 rounded-full border border-slate-700 overflow-hidden shrink-0 bg-slate-800">
                           {currentChatApp.profilePhoto ? (
                             <img src={currentChatApp.profilePhoto} alt={currentChatApp.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
                           ) : (
-                            <div className="h-full w-full flex items-center justify-center text-slate-400 font-bold text-xs">
+                            <div className="h-full w-full flex items-center justify-center text-slate-300 font-bold text-xs">
                               {currentChatApp.fullName.substring(0, 2)}
                             </div>
                           )}
                         </div>
-                        <div>
-                          <h4 className="text-xs sm:text-sm font-black tracking-wider text-brand-gold uppercase">{currentChatApp.fullName}</h4>
-                          <p className="text-[9px] sm:text-[10px] text-slate-300 font-medium">Passport: {currentChatApp.passportNumber} · Course: {currentChatApp.desiredCourse}</p>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs sm:text-sm font-black tracking-wider text-brand-gold uppercase truncate">{currentChatApp.fullName}</h4>
+                          <p className="text-[9px] sm:text-[10px] text-slate-300 font-medium truncate">Passport: {currentChatApp.passportNumber} · Phone: {currentChatApp.phone}</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="hidden sm:inline text-[9px] bg-slate-800 border border-slate-700 text-slate-300 font-mono px-2.5 py-1.5 rounded-xl font-bold">
-                          ID: {currentChatApp.id}
-                        </span>
-                        <span className={`text-[9px] font-black uppercase px-2.5 py-1.5 rounded-xl ${
-                          currentChatApp.status === 'Visa Issued' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                          currentChatApp.status === 'Submitted' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                          currentChatApp.status === 'Document Verification' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                        }`}>
-                          {currentChatApp.status}
-                        </span>
+                      {/* Dropdown for Switching Students on any device */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800">
+                        <span className="text-[10px] font-bold text-slate-300 shrink-0 hidden sm:inline">শিক্ষার্থী পরিবর্তন:</span>
+                        <select
+                          value={currentChatApp.id}
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setActiveChatAppId(e.target.value);
+                            }
+                          }}
+                          className="w-full sm:w-auto text-xs font-bold text-slate-900 bg-white rounded-xl border border-slate-300 p-2 focus:outline-none focus:border-brand-sky shadow-sm"
+                        >
+                          {applications.map(app => {
+                            const unread = app.messages?.filter(m => m.sender === 'student' && !m.read).length || 0;
+                            return (
+                              <option key={app.id} value={app.id}>
+                                {unread > 0 ? `🔴 [${unread}] ` : ''}{app.fullName} (ID: {app.id})
+                              </option>
+                            );
+                          })}
+                        </select>
                       </div>
                     </div>
 
                     {/* Messages list */}
-                    <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+                    <div className="flex-1 overflow-y-auto min-h-0 p-3.5 sm:p-5 space-y-4 bg-slate-50/50">
                       {(!currentChatApp.messages || currentChatApp.messages.length === 0) ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-3 py-16">
+                        <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 space-y-3 py-12">
                           <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 animate-bounce">
                             <MessageSquare className="h-5 w-5" />
                           </div>
                           <div className="space-y-1">
-                            <span className="text-xs font-black text-slate-700 block">কোনো পূর্ববর্তী কথোপকথন পাওয়া যায়নি</span>
-                            <span className="text-[10px] text-slate-400 block">নিচের মেসেজ বক্সের মাধ্যমে প্রথম মেসেজ পাঠান।</span>
+                            <span className="text-xs font-black text-slate-700 block">কোনো পূর্ববর্তী মেসেজ ইতিহাস নেই</span>
+                            <span className="text-[10px] text-slate-400 block">নিচের টেক্সট বক্সে টাইপ করে প্রথম মেসেজ ও প্রয়োজনীয় ফাইল পাঠাতে পারেন।</span>
                           </div>
                         </div>
                       ) : (
@@ -2601,12 +2638,12 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                     <span>{msg.adminName || 'ম্যানেজার (Admin)'}</span>
                                   </>
                                 ) : (
-                                  <span>শিক্ষার্থী (Student)</span>
+                                  <span>শিক্ষার্থী ({currentChatApp.fullName})</span>
                                 )}
                               </span>
                               
                               <div
-                                className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed break-words shadow-sm ${
+                                className={`max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed break-words shadow-sm ${
                                   isAdmin
                                     ? 'bg-slate-900 text-white rounded-tr-none'
                                     : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
@@ -2637,9 +2674,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                           );
                         })
                       )}
+                      <div ref={chatMessagesEndRef} />
                     </div>
 
-                    {/* Quick Response Templates / Recommendations for speed */}
+                    {/* Quick Response Templates */}
                     <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none">
                       <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0 pl-2">কুইক রিপ্লাই:</span>
                       {[
@@ -2659,7 +2697,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       ))}
                     </div>
 
-                    {/* Footer Input Area */}
+                    {/* Footer Input Area with Input Field & Send Button */}
                     <form
                       onSubmit={(e) => {
                         e.preventDefault();
@@ -2688,7 +2726,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         setAdminChatFile('');
                         setAdminChatFileName('');
                       }}
-                      className="p-3 bg-white border-t border-slate-200/80 space-y-2 shrink-0"
+                      className="p-2.5 sm:p-3 bg-white border-t border-slate-200/80 space-y-2 shrink-0 sticky bottom-0 z-10"
                     >
                       {/* Attached file row */}
                       {adminChatFile && (
@@ -2712,7 +2750,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                       <div className="flex items-center space-x-2">
                         {/* File upload */}
-                        <label className="cursor-pointer h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                        <label className="cursor-pointer h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="ফাইল বা ছবি যুক্ত করুন">
                           <Paperclip className="h-4 w-4" />
                           <input
                             type="file"
@@ -2739,22 +2777,22 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                         <button
                           type="submit"
-                          className="bg-slate-900 text-white rounded-xl h-10 px-4.5 text-xs font-black flex items-center justify-center space-x-1.5 hover:bg-slate-800 transition-all active:scale-95 shrink-0"
+                          className="bg-slate-900 text-white rounded-xl h-10 px-4 text-xs font-black flex items-center justify-center space-x-1.5 hover:bg-slate-800 transition-all active:scale-95 shrink-0 shadow-md"
                         >
                           <Send className="h-3.5 w-3.5 text-brand-gold" />
-                          <span>পাঠান</span>
+                          <span className="text-xs font-black">পাঠান</span>
                         </button>
                       </div>
                     </form>
                   </>
                 ) : (
-                  <div className="m-auto text-center p-12 text-slate-400 text-xs space-y-3 max-w-sm">
+                  <div className="m-auto text-center p-8 text-slate-400 text-xs space-y-3 max-w-sm">
                     <div className="h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto">
                       <MessageSquare className="h-6 w-6" />
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-700 block">কোনো শিক্ষার্থী নির্বাচিত করা হয়নি</span>
-                      <span className="text-[10px] text-slate-400 block">কথোপকথন শুরু করতে বাম পাশের তালিকা থেকে একটি থ্রেড নির্বাচন করুন অথবা নতুন চ্যাট শুরু করুন।</span>
+                      <span className="text-xs font-black text-slate-700 block">কোনো শিক্ষার্থী পাওয়া যায়নি</span>
+                      <span className="text-[10px] text-slate-400 block">সিস্টেমে শিক্ষার্থী আবেদন যুক্ত হওয়ার পর চ্যাট করা যাবে।</span>
                     </div>
                   </div>
                 )}

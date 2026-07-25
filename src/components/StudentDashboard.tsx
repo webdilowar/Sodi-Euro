@@ -3079,7 +3079,7 @@ export default function StudentDashboard({
                             <span className="font-mono text-xs font-black bg-slate-900 text-white px-2.5 py-1 rounded-lg border border-brand-gold border-b-2">
                               {(() => {
                                 const targetDate = new Date('2026-10-01T00:00:00');
-                                const currentDate = new Date('2026-07-17T15:46:53-07:00');
+                                const currentDate = new Date();
                                 const diffTime = targetDate.getTime() - currentDate.getTime();
                                 const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                                 return daysLeft > 0 ? `${daysLeft} দিন বাকি` : 'ইনটেক শুরু';

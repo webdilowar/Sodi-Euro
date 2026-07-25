@@ -180,16 +180,24 @@ export default function App() {
         list.push(doc.data() as Application);
       });
       
-      // If there are no applications in the DB, seed with initialApplications
+      // If there are no applications in the DB, seed only if not already seeded
       if (snapshot.empty) {
-        initialApplications.forEach(async (app) => {
-          try {
-            await setDoc(doc(db, 'applications', app.id), sanitizeForFirestore(app));
-          } catch (err) {
-            handleFirestoreError(err, OperationType.WRITE, `applications/${app.id}`);
-          }
-        });
+        const isAlreadySeeded = localStorage.getItem('sodieuro_apps_seeded') === 'true';
+        if (!isAlreadySeeded) {
+          localStorage.setItem('sodieuro_apps_seeded', 'true');
+          initialApplications.forEach(async (app) => {
+            try {
+              await setDoc(doc(db, 'applications', app.id), sanitizeForFirestore(app));
+            } catch (err) {
+              handleFirestoreError(err, OperationType.WRITE, `applications/${app.id}`);
+            }
+          });
+        } else {
+          setApplications([]);
+          setIsLoading(false);
+        }
       } else {
+        localStorage.setItem('sodieuro_apps_seeded', 'true');
         // Sort by createdAt desc or ID
         list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         setApplications(list);
@@ -351,14 +359,6 @@ export default function App() {
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <div className="space-y-2 mb-4" id="admin-header-note">
-                    <span className="text-[10px] bg-slate-800 text-white font-bold uppercase tracking-wider px-2.5 py-1 rounded">
-                      প্রশাসনিক ড্যাশবোর্ড (Agency Management Console)
-                    </span>
-                    <p className="text-xs text-slate-500">
-                      এখান থেকে শিক্ষার্থীদের ডকুমেন্ট স্ট্যাটাস অনুমোদন/প্রত্যাখ্যান করুন, অ্যাপ্লিকেশনের লাইভ পজিশন পরিবর্তন করুন এবং কাস্টম নোটিফিকেশন অ্যালার্ট ট্রিগার করুন।
-                    </p>
-                  </div>
                   <AdminPanel 
                     applications={applications}
                     onUpdateApplication={handleUpdateApplication}
