@@ -33,6 +33,7 @@ import {
   Sparkles,
   Settings,
   Camera,
+  Image as ImageIcon,
   Save,
   Download,
   Trash2,
@@ -1296,10 +1297,33 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       <span className="text-slate-800 font-mono font-bold">{selectedApp.paymentSenderPhone || 'নেই'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-semibold block text-[10px]">পরিমাণ (Fee + 1.5%):</span>
+                      <span className="text-slate-400 font-semibold block text-[10px]">পরিমাণ:</span>
                       <span className="text-slate-800 font-mono font-black">৳{(selectedApp.paymentAmount || selectedApp.totalAmount || 15000).toLocaleString()} BDT</span>
                     </div>
                   </div>
+
+                  {selectedApp.paymentScreenshot && (
+                    <div className="pt-2.5 border-t border-slate-100 space-y-1">
+                      <span className="text-slate-500 font-bold block text-[11px] flex items-center gap-1">
+                        <ImageIcon className="h-3.5 w-3.5 text-brand-sky" /> পেমেন্ট স্ক্রিনশট / রসিদের ছবি (Payment Screenshot):
+                      </span>
+                      <a 
+                        href={selectedApp.paymentScreenshot} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="inline-block group relative rounded-xl overflow-hidden border-2 border-brand-sky/30 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <img 
+                          src={selectedApp.paymentScreenshot} 
+                          alt="Payment Receipt Screenshot" 
+                          className="max-h-48 object-contain bg-slate-900/5 group-hover:scale-105 transition-transform duration-300" 
+                        />
+                        <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-xs transition-opacity">
+                          <Eye className="h-4 w-4 mr-1" /> মূল ছবি দেখুন
+                        </div>
+                      </a>
+                    </div>
+                  )}
 
                   {selectedApp.paymentStatus !== 'Paid' && (
                     <div className="pt-2 flex justify-end">

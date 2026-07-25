@@ -46,6 +46,8 @@ import {
   Globe,
   Mail,
   Phone,
+  Trash2,
+  Image as ImageIcon,
   LogOut
 } from 'lucide-react';
 
@@ -212,6 +214,8 @@ export default function StudentDashboard({
   const [selectedGatewayAccountIdx, setSelectedGatewayAccountIdx] = useState(0);
   const [studentSenderPhone, setStudentSenderPhone] = useState('');
   const [studentTxnId, setStudentTxnId] = useState('');
+  const [studentPaymentScreenshot, setStudentPaymentScreenshot] = useState('');
+  const [studentPaymentScreenshotName, setStudentPaymentScreenshotName] = useState('');
   const [studentPaymentSuccessMsg, setStudentPaymentSuccessMsg] = useState('');
 
   // Application Form States (for new applicants)
@@ -1691,37 +1695,7 @@ export default function StudentDashboard({
       ) : (
         activeApp.status === 'Registered' ? (
             <div className="space-y-6 animate-fade-in" id="registered-profile-completion-dashboard">
-              {/* Global Student Dashboard Profile Header & Logout */}
-              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-6 shadow-sm text-center relative mb-6" id="student-profile-header-card">
-                <button
-                  type="button"
-                  onClick={() => setActiveAppId(null)}
-                  title="Logout"
-                  className="absolute top-4 right-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
-                  id="student-logout-btn"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-
-                <div className="flex flex-col items-center space-y-3 pt-2">
-                  <div className="h-16 w-16 rounded-2xl bg-brand-sky/10 border-2 border-brand-sky/30 text-brand-sky flex items-center justify-center font-black text-xl overflow-hidden shadow-sm">
-                    {activeApp.profilePhoto ? (
-                      <img src={activeApp.profilePhoto} alt={activeApp.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      activeApp.fullName.charAt(0)
-                    )}
-                  </div>
-                  <div className="space-y-1 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm font-black text-slate-900">{activeApp.fullName}</span>
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
-                    </div>
-                    <p className="text-xs text-slate-500 font-mono">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
-                  </div>
-                </div>
-              </div>
-
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                   <div className="text-left">
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-brand-gold animate-pulse" />
@@ -1731,9 +1705,21 @@ export default function StudentDashboard({
                       বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের জন্য আপনার প্রোফাইল কমপক্ষে ৫০% সম্পূর্ণ করতে হবে। বর্তমানে আপনার প্রোফাইল সম্পূর্ণতার অগ্রগতি:
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 justify-between md:justify-end">
-                    <span className="text-2xl font-black text-brand-sky">{calculateProfileCompletion(activeApp)}%</span>
-                    <span className="text-xs font-bold text-slate-400">সম্পন্ন (Complete)</span>
+                  <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-2xl font-black text-brand-sky">{calculateProfileCompletion(activeApp)}%</span>
+                      <span className="text-xs font-bold text-slate-400">সম্পন্ন</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveAppId(null)}
+                      title="Logout"
+                      className="p-2 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all text-xs font-bold flex items-center gap-1.5 shrink-0"
+                      id="student-logout-btn"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>লগআউট</span>
+                    </button>
                   </div>
                 </div>
 
@@ -2439,90 +2425,73 @@ export default function StudentDashboard({
             </div>
           ) : (
             <>
-              {/* Global Student Dashboard Profile Header & Logout */}
-              <div className="bg-white border-2 border-brand-gold/20 rounded-2xl p-6 shadow-sm text-center relative mb-6" id="student-profile-header-card">
+              {/* Sub Navigation Tabs with Logout */}
+              <div className="flex items-center justify-between border-b border-slate-200 mb-6 gap-2" id="dashboard-tabs-container">
+                <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory animate-fade-in flex-1" id="dashboard-tabs">
+                  <button
+                    id="tab-tracking"
+                    onClick={() => setActiveTab('tracking')}
+                    className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
+                      activeTab === 'tracking'
+                        ? 'border-brand-sky text-brand-sky'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className="md:inline hidden">রিয়েল-টাইম ট্র্যাকিং (Real-time tracking)</span>
+                    <span className="md:hidden inline">আবেদন ট্র্যাকিং</span>
+                  </button>
+                  <button
+                    id="tab-documents"
+                    onClick={() => setActiveTab('documents')}
+                    className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
+                      activeTab === 'documents'
+                        ? 'border-brand-sky text-brand-sky'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className="md:inline hidden">ডকুমেন্ট আপলোড ও গাইডলাইন (Secure Upload)</span>
+                    <span className="md:hidden inline">কাগজপত্র আপলোড</span>
+                  </button>
+                  <button
+                    id="tab-payment"
+                    onClick={() => setActiveTab('payment')}
+                    className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start relative ${
+                      activeTab === 'payment'
+                        ? 'border-brand-sky text-brand-sky'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span className="md:inline hidden">ফি ও পেমেন্ট গেটওয়ে (Payment Gateway)</span>
+                    <span className="md:hidden inline">ফি ও পেমেন্ট</span>
+                    {activeApp.paymentStatus !== 'Paid' && (
+                      <span className="absolute top-1.5 right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-gold"></span>
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    id="tab-additional-services"
+                    onClick={() => setActiveTab('additional-services')}
+                    className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
+                      activeTab === 'additional-services'
+                        ? 'border-brand-sky text-brand-sky'
+                        : 'border-transparent text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <span>অতিরিক্ত সেবা সমূহ (Services)</span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setActiveAppId(null)}
                   title="Logout"
-                  className="absolute top-4 right-4 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all shadow-sm flex items-center justify-center shrink-0"
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100 transition-all text-xs font-bold flex items-center gap-1.5 shrink-0"
                   id="student-logout-btn"
                 >
-                  <LogOut className="h-4 w-4" />
-                </button>
-
-                <div className="flex flex-col items-center space-y-3 pt-2">
-                  <div className="h-16 w-16 rounded-2xl bg-brand-sky/10 border-2 border-brand-sky/30 text-brand-sky flex items-center justify-center font-black text-xl overflow-hidden shadow-sm">
-                    {activeApp.profilePhoto ? (
-                      <img src={activeApp.profilePhoto} alt={activeApp.fullName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      activeApp.fullName.charAt(0)
-                    )}
-                  </div>
-                  <div className="space-y-1 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-sm font-black text-slate-900">{activeApp.fullName}</span>
-                      <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold border border-emerald-100">লগইনকৃত শিক্ষার্থী</span>
-                    </div>
-                    <p className="text-xs text-slate-500 font-mono">পাসপোর্ট: {activeApp.passportNumber} | আইডি: {activeApp.id}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sub Navigation Tabs */}
-              <div className="flex border-b border-slate-200 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory animate-fade-in" id="dashboard-tabs">
-                <button
-                  id="tab-tracking"
-                  onClick={() => setActiveTab('tracking')}
-                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
-                    activeTab === 'tracking'
-                      ? 'border-brand-sky text-brand-sky'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <span className="md:inline hidden">রিয়েল-টাইম ট্র্যাকিং (Real-time tracking)</span>
-                  <span className="md:hidden inline">আবেদন ট্র্যাকিং</span>
-                </button>
-                <button
-                  id="tab-documents"
-                  onClick={() => setActiveTab('documents')}
-                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
-                    activeTab === 'documents'
-                      ? 'border-brand-sky text-brand-sky'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <span className="md:inline hidden">ডকুমেন্ট আপলোড ও গাইডলাইন (Secure Upload)</span>
-                  <span className="md:hidden inline">কাগজপত্র আপলোড</span>
-                </button>
-                <button
-                  id="tab-payment"
-                  onClick={() => setActiveTab('payment')}
-                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start relative ${
-                    activeTab === 'payment'
-                      ? 'border-brand-sky text-brand-sky'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <span className="md:inline hidden">ফি ও পেমেন্ট গেটওয়ে (Indian Visa Services)</span>
-                  <span className="md:hidden inline">ফি ও পেমেন্ট</span>
-                  {activeApp.paymentStatus !== 'Paid' && (
-                    <span className="absolute top-1.5 right-1 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-gold"></span>
-                    </span>
-                  )}
-                </button>
-                <button
-                  id="tab-additional-services"
-                  onClick={() => setActiveTab('additional-services')}
-                  className={`border-b-2 px-4 sm:px-6 py-3 text-xs font-bold transition-all shrink-0 snap-start ${
-                    activeTab === 'additional-services'
-                      ? 'border-brand-sky text-brand-sky'
-                      : 'border-transparent text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <span>অতিরিক্ত সেবা সমূহ (Services)</span>
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">লগআউট</span>
                 </button>
               </div>
 
@@ -3541,7 +3510,7 @@ export default function StudentDashboard({
                           <span>সরাসরি পেমেন্ট গেটওয়ে (Direct Payment Gateway - bKash, Nagad, Rocket, Bank)</span>
                         </h3>
                         <p className="text-xs text-slate-500 mt-1">
-                          নিচের মাধ্যম থেকে যেকোনো একটি সিলেক্ট করুন, প্রদত্ত নম্বরে বা ব্যাংকে টাকা পাঠিয়ে প্রেরক নম্বর ও ট্রানজেকশন আইডি সাবমিট করুন। <strong className="text-brand-red">(১.৫% সার্ভিস চার্জ প্রযোজ্য)</strong>
+                          নিচের মাধ্যম থেকে যেকোনো একটি সিলেক্ট করুন, প্রদত্ত নম্বরে বা ব্যাংকে টাকা পাঠিয়ে প্রেরক নম্বর, ট্রানজেকশন আইডি ও স্ক্রিনশট সাবমিট করুন। <strong className="text-emerald-700">(ব্যাংক পেমেন্টে কোন চার্জ প্রযোজ্য নয়, অন্যান্য মোবাইল ব্যাংকিংয়ে ১.৫% সার্ভিস চার্জ প্রযোজ্য)</strong>
                         </p>
                       </div>
 
@@ -3659,10 +3628,11 @@ export default function StudentDashboard({
                           ))}
                         </div>
 
-                        {/* Fee Calculation with +1.5% */}
+                        {/* Fee Calculation */}
                         {(() => {
                           const base = totalAmt;
-                          const fee = Math.round(base * 0.015);
+                          const isBank = selectedPaymentGateway === 'bank';
+                          const fee = isBank ? 0 : Math.round(base * 0.015);
                           const total = base + fee;
                           return (
                             <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
@@ -3671,11 +3641,13 @@ export default function StudentDashboard({
                                 <span className="font-mono font-bold">৳{base.toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between text-slate-600 border-b border-slate-100 pb-2">
-                                <span>ক্যাশআউট/প্রসেসিং ফি (1.5%):</span>
-                                <span className="font-mono font-bold text-amber-600">+ ৳{fee.toLocaleString()}</span>
+                                <span>ক্যাশআউট/প্রসেসিং ফি {isBank ? '(ব্যাংক স্থানান্তর - 0% ফ্রি)' : '(1.5%)'}:</span>
+                                <span className={`font-mono font-bold ${isBank ? 'text-emerald-600 font-black' : 'text-amber-600'}`}>
+                                  {isBank ? '৳0 (কোন চার্জ প্রযোজ্য নয়)' : `+ ৳${fee.toLocaleString()}`}
+                                </span>
                               </div>
                               <div className="flex justify-between text-slate-900 font-black text-sm pt-1">
-                                <span>সর্বমোট প্রদেয় পরিমাণ (Total with 1.5%):</span>
+                                <span>সর্বমোট প্রদেয় পরিমাণ:</span>
                                 <span className="font-mono text-brand-sky">৳{total.toLocaleString()} BDT</span>
                               </div>
                             </div>
@@ -3683,7 +3655,7 @@ export default function StudentDashboard({
                         })()}
                       </div>
 
-                      {/* Form submission inputs: Sender Phone and Transaction ID */}
+                      {/* Form submission inputs: Sender Phone, Transaction ID and Screenshot Upload */}
                       <form onSubmit={(e) => {
                         e.preventDefault();
                         if (!studentSenderPhone.trim() || !studentTxnId.trim()) {
@@ -3691,7 +3663,8 @@ export default function StudentDashboard({
                           return;
                         }
                         const base = totalAmt;
-                        const fee = Math.round(base * 0.015);
+                        const isBank = selectedPaymentGateway === 'bank';
+                        const fee = isBank ? 0 : Math.round(base * 0.015);
                         const total = base + fee;
 
                         let methodLabel = '';
@@ -3715,6 +3688,7 @@ export default function StudentDashboard({
                           paymentMethod: methodLabel,
                           paymentSenderPhone: studentSenderPhone.trim(),
                           paymentTxnId: studentTxnId.trim(),
+                          paymentScreenshot: studentPaymentScreenshot || undefined,
                           paymentAmount: total,
                           totalAmount: total,
                           paymentDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -3756,6 +3730,61 @@ export default function StudentDashboard({
                               className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono font-bold uppercase focus:border-brand-sky focus:outline-none"
                             />
                           </div>
+                        </div>
+
+                        {/* Payment Screenshot Upload Option */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                            <span>পেমেন্ট রসিদ / স্ক্রিনশট আপলোড (Payment Screenshot):</span>
+                            <span className="text-[10px] text-slate-400 font-normal">(বিকাশ, নগদ, রকেট স্ক্রিনশট বা ব্যাংক ডিপোজিট স্লিপ)</span>
+                          </label>
+                          
+                          {studentPaymentScreenshot ? (
+                            <div className="flex items-center gap-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50/50">
+                              <div className="h-12 w-12 rounded-lg border border-emerald-200 overflow-hidden bg-white shrink-0">
+                                <img src={studentPaymentScreenshot} alt="Payment Screenshot" className="h-full w-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0 text-left">
+                                <p className="text-xs font-bold text-slate-800 truncate">{studentPaymentScreenshotName || 'payment_screenshot.jpg'}</p>
+                                <p className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> স্ক্রিনশট যুক্ত করা হয়েছে
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setStudentPaymentScreenshot('');
+                                  setStudentPaymentScreenshotName('');
+                                }}
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100 transition-colors"
+                                title="স্ক্রিনশট মুছুন"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-brand-sky bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all">
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Upload className="h-4 w-4 text-brand-sky" />
+                                <span className="text-xs font-bold">পেমেন্ট স্ক্রিনশট বা জমা রসিদের ছবি সিলেক্ট করুন</span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 mt-1">bKash, Nagad, Rocket স্ক্রিনশট বা ব্যাংক জমার রসিদ আপলোড করুন</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    compressImageFile(file).then((compressedBase64) => {
+                                      setStudentPaymentScreenshot(compressedBase64);
+                                      setStudentPaymentScreenshotName(file.name);
+                                    });
+                                  }
+                                }}
+                              />
+                            </label>
+                          )}
                         </div>
 
                         {studentPaymentSuccessMsg && (

@@ -53,6 +53,7 @@ export interface Application {
   paymentTxnId?: string;
   paymentSenderPhone?: string;
   paymentDate?: string;
+  paymentScreenshot?: string;
   documents: UploadedDocument[];
   createdAt: string;
   notificationHistory: NotificationLog[];
@@ -67,6 +68,7 @@ export interface Application {
     paymentTxnId?: string;
     paymentSenderPhone?: string;
     paymentDate?: string;
+    paymentScreenshot?: string;
   }[];
   messages?: ChatMessage[];
   profilePhoto?: string;
