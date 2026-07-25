@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
+import { optimizeApplicationForFirestore } from './utils/imageCompressor';
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); /* CRITICAL: The app will break without this line */
@@ -49,12 +50,19 @@ export interface FirestoreErrorInfo {
 export function sanitizeForFirestore(obj: any): any {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) {
-    return obj.map(item => sanitizeForFirestore(item));
+
+  // Check if this is an Application document
+  let targetObj = obj;
+  if (obj.passportNumber || obj.documents || obj.messages) {
+    targetObj = optimizeApplicationForFirestore(obj);
+  }
+
+  if (Array.isArray(targetObj)) {
+    return targetObj.map(item => sanitizeForFirestore(item));
   }
   const sanitized: Record<string, any> = {};
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
+  for (const key of Object.keys(targetObj)) {
+    const val = targetObj[key];
     if (val !== undefined) {
       sanitized[key] = sanitizeForFirestore(val);
     } else {

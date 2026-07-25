@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Application, UploadedDocument, PaymentConfig } from '../types';
 import { documentRequirements, serviceOptions } from '../data';
+import { ChatAttachmentList } from './ChatAttachmentList';
+import { compressImageFile } from '../utils/imageCompressor';
 import { 
   Search, 
   User, 
@@ -587,27 +589,23 @@ export default function StudentDashboard({
           uploadedAt: new Date().toISOString().replace('T', ' ').substring(0, 16)
         };
 
-        // If file is an image and under 1MB, let's keep a dataurl reference
-        if (file.size < 1024 * 1024) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            newDoc.fileUrl = reader.result as string;
-            const filteredDocs = activeApp.documents.filter(d => d.category !== currentUploadingCategory);
-            const updatedApp: Application = {
-              ...activeApp,
-              documents: [...filteredDocs, newDoc]
-            };
-            onUpdateApplication(updatedApp);
-          };
-          reader.readAsDataURL(file);
-        } else {
+        // Compress image file or read file securely to avoid huge base64 payloads
+        compressImageFile(file).then((compressedBase64) => {
+          newDoc.fileUrl = compressedBase64;
           const filteredDocs = activeApp.documents.filter(d => d.category !== currentUploadingCategory);
           const updatedApp: Application = {
             ...activeApp,
             documents: [...filteredDocs, newDoc]
           };
           onUpdateApplication(updatedApp);
-        }
+        }).catch(() => {
+          const filteredDocs = activeApp.documents.filter(d => d.category !== currentUploadingCategory);
+          const updatedApp: Application = {
+            ...activeApp,
+            documents: [...filteredDocs, newDoc]
+          };
+          onUpdateApplication(updatedApp);
+        });
 
         setTimeout(() => {
           setUploadingDocCategory('');
@@ -2046,14 +2044,25 @@ export default function StudentDashboard({
                   )}
                 </div>
               ) : (
-                /* TWO COLUMN EDIT PROFILE AND GATE PREVIEW */
                 <div className="grid gap-6 lg:grid-cols-3">
                   {/* Edit Profile Column */}
                   <div className="space-y-6 lg:col-span-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-6">
-                      <div className="text-left border-b border-slate-100 pb-3 flex justify-between items-center">
-                        <h3 className="font-display text-sm md:text-base font-black text-slate-800">প্রোফাইল তথ্য আপডেট করুন (Update Profile Information)</h3>
-                       <div className="space-y-6">
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 md:p-6 shadow-sm space-y-6 text-left">
+                      <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <h3 className="font-display text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
+                            <User className="h-5 w-5 text-brand-sky" />
+                            <span>প্রোফাইল তথ্য আপডেট করুন (Update Profile Information)</span>
+                          </h3>
+                          <p className="text-xs text-slate-500 font-medium mt-1">
+                            আপনার আবেদনের নির্ভুলতা নিশ্চিত করতে সকল তথ্য সতর্কতার সাথে টাইপ করে সেভ করুন।
+                          </p>
+                        </div>
+                        <span className="self-start sm:self-center inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-brand-sky/10 text-brand-sky border border-brand-sky/20 shrink-0">
+                          {calculateProfileCompletion(activeApp)}% সম্পূর্ণ
+                        </span>
+                      </div>
+                      <div className="space-y-6">
                          {/* Profile Photo Capture / Upload */}
                         <div className="space-y-3 text-left">
                           <label className="text-xs font-black text-slate-700 block">১. প্রোফাইল ছবি (Profile Photo):</label>
@@ -2115,7 +2124,7 @@ export default function StudentDashboard({
                             <span>২. শিক্ষাগত যোগ্যতা (Academic History):</span>
                           </h4>
 
-                          <div className="grid gap-4 sm:grid-cols-3">
+                          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                             {/* SSC */}
                             <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
                               <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">SSC স্কুল নাম:</label>
@@ -2374,12 +2383,10 @@ export default function StudentDashboard({
                         </div>
                       </div>
                     </div>
-                  </div>
 
                   {/* Visa Gating preview column */}
                   <div className="space-y-6 lg:col-span-1">
                     {calculateProfileCompletion(activeApp) < 50 ? (
-                      /* LOCKED SIDEBAR PREVIEW */
                       <div className="rounded-2xl border-2 border-slate-200 bg-slate-50 p-6 shadow-sm text-center space-y-4">
                         <div className="h-14 w-14 rounded-full bg-slate-100 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto shadow-inner">
                           <Lock className="h-6 w-6" />
@@ -4634,21 +4641,7 @@ export default function StudentDashboard({
                         >
                           {msg.text && <p className="whitespace-pre-line text-left">{msg.text}</p>}
                           {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-slate-700/20 space-y-1">
-                              <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">সংযুক্ত ফাইলসমূহ:</span>
-                              {msg.attachments.map((file, fIdx) => (
-                                <a
-                                  key={fIdx}
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex items-center space-x-1.5 hover:underline text-brand-gold font-bold text-[10px] bg-slate-800/40 p-2 rounded-xl text-left"
-                                >
-                                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
-                                  <span className="truncate flex-grow">{file.name}</span>
-                                </a>
-                              ))}
-                            </div>
+                            <ChatAttachmentList attachments={msg.attachments} isDarkBubble={msg.sender === 'student'} />
                           )}
                         </div>
                         <span className="text-[8px] font-mono font-bold text-slate-400 mt-1 px-1">{msg.sentAt}</span>
@@ -4695,12 +4688,10 @@ export default function StudentDashboard({
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const reader = new FileReader();
-                            reader.onload = () => {
-                              setStudentChatFile(reader.result as string);
+                            compressImageFile(file).then((compressedBase64) => {
+                              setStudentChatFile(compressedBase64);
                               setStudentChatFileName(file.name);
-                            };
-                            reader.readAsDataURL(file);
+                            });
                           }
                         }}
                       />

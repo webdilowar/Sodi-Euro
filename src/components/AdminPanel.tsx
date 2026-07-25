@@ -5,6 +5,8 @@ import { documentRequirements, initialApplications } from '../data';
 import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, sanitizeForFirestore } from '../firebase';
 import { initialSupportMembers } from './SupportPage';
+import { ChatAttachmentList } from './ChatAttachmentList';
+import { compressImageFile } from '../utils/imageCompressor';
 import { 
   Users, 
   User,
@@ -2694,14 +2696,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  if (reader.result) {
-                                    setAdminChatFile(reader.result as string);
-                                    setAdminChatFileName(file.name);
-                                  }
-                                };
-                                reader.readAsDataURL(file);
+                                compressImageFile(file).then((compressedBase64) => {
+                                  setAdminChatFile(compressedBase64);
+                                  setAdminChatFileName(file.name);
+                                });
                               }
                             }}
                           />
@@ -2819,21 +2817,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         >
                           {msg.text && <p className="leading-relaxed font-semibold">{msg.text}</p>}
                           {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-slate-700/20 space-y-1">
-                              <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">সংযুক্ত ফাইলসমূহ:</span>
-                              {msg.attachments.map((file, fIdx) => (
-                                <a
-                                  key={fIdx}
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex items-center space-x-1.5 hover:underline text-brand-gold font-bold text-[10px] bg-slate-800/40 p-2 rounded-xl text-left"
-                                >
-                                  <Paperclip className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
-                                  <span className="truncate flex-grow">{file.name}</span>
-                                </a>
-                              ))}
-                            </div>
+                            <ChatAttachmentList attachments={msg.attachments} isDarkBubble={isAdmin} />
                           )}
                         </div>
                         <span className="text-[9px] text-slate-400 mt-1 px-1 font-mono font-semibold">
@@ -2898,12 +2882,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setAdminChatFile(reader.result as string);
+                        compressImageFile(file).then((compressedBase64) => {
+                          setAdminChatFile(compressedBase64);
                           setAdminChatFileName(file.name);
-                        };
-                        reader.readAsDataURL(file);
+                        });
                       }
                     }}
                   />
