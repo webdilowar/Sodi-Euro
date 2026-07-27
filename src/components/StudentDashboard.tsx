@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext';
 import { Application, UploadedDocument, PaymentConfig } from '../types';
 import { documentRequirements, serviceOptions } from '../data';
 import { ChatAttachmentList } from './ChatAttachmentList';
@@ -91,58 +92,58 @@ function getSafePreviewUrl(dataUrl: string): string {
 const universityCoursesMap: Record<string, { courses: string[]; logoColor: string; tuitionFee: string; location: string }> = {
   'Technical University of Sofia': {
     courses: [
-      'BSc in Computer Science (কম্পিউটার সায়েন্স)',
-      'BSc in Telecommunications (টেলিকমিউনিকেশন)',
-      'BSc in Aeronautical Engineering (অ্যারোনটিক্যাল ইঞ্জিনিয়ারিং)',
-      'MSc in Cybersecurity (সাইবারসিকিউরিটি)'
+      'BSc in Computer Science',
+      'BSc in Telecommunications',
+      'BSc in Aeronautical Engineering',
+      'MSc in Cybersecurity'
     ],
     logoColor: 'from-blue-500 to-sky-400',
-    tuitionFee: '€৩,০০০ - €৩,৫০০ প্রতি বছর',
-    location: 'সোফিয়া (Sofia)'
+    tuitionFee: '€3,000 - €3,500 / year',
+    location: 'Sofia'
   },
   'Sofia University St. Kliment Ohridski': {
     courses: [
-      'BSc in Software Engineering (সফটওয়্যার ইঞ্জিনিয়ারিং)',
-      'BSc in Information Systems (ইনফরমেশন সিস্টেমস)',
-      'MSc in Artificial Intelligence (আর্টিফিশিয়াল ইন্টেলিজেন্স)',
-      'BSc in Business Administration (বিজনেস অ্যাডমিনিস্ট্রেশন)'
+      'BSc in Software Engineering',
+      'BSc in Information Systems',
+      'MSc in Artificial Intelligence',
+      'BSc in Business Administration'
     ],
     logoColor: 'from-amber-500 to-amber-300',
-    tuitionFee: '€৩,৩০০ - €৩,৮০০ প্রতি বছর',
-    location: 'সোফিয়া (Sofia)'
+    tuitionFee: '€3,300 - €3,800 / year',
+    location: 'Sofia'
   },
   'Medical University of Sofia': {
     courses: [
-      'BSc in Medicine (মেডিসিন/এমবিবিএস)',
-      'BSc in Dentistry (ডেন্টিস্ট্রি)',
-      'BSc in Pharmacy (ফার্মেসি)',
-      'MSc in Public Health (পাবলিক হেলথ)'
+      'BSc in Medicine (MBBS)',
+      'BSc in Dentistry',
+      'BSc in Pharmacy',
+      'MSc in Public Health'
     ],
     logoColor: 'from-teal-500 to-emerald-400',
-    tuitionFee: '€৪,০০০ - €৮,০০০ প্রতি বছর',
-    location: 'সোফিয়া (Sofia)'
+    tuitionFee: '€4,000 - €8,000 / year',
+    location: 'Sofia'
   },
   'Varna University of Management': {
     courses: [
-      'MSc in International Business (ইন্টারন্যাশনাল বিজনেস)',
-      'BSc in International Hospitality Management (হসপিটালিটি)',
-      'MBA (গ্লোবাল এমবিএ)',
-      'BSc in Software Systems Development (সফটওয়্যার ডেভেলপমেন্ট)'
+      'MSc in International Business',
+      'BSc in International Hospitality Management',
+      'MBA (Global MBA)',
+      'BSc in Software Systems Development'
     ],
     logoColor: 'from-purple-500 to-indigo-400',
-    tuitionFee: '€৩,০০০ - €৪,৫০০ প্রতি বছর',
-    location: 'ভার্না (Varna)'
+    tuitionFee: '€3,000 - €4,500 / year',
+    location: 'Varna'
   },
   'Technical University of Varna': {
     courses: [
-      'MBA (বিজনেস অ্যাডমিনিস্ট্রেশন)',
-      'BSc in Marine Engineering (মেরিন ইঞ্জিনিয়ারিং)',
-      'BSc in Electrical Engineering (ইলেকট্রিক্যাল ইঞ্জিনিয়ারিং)',
-      'MSc in Software Engineering (সফটওয়্যার ইঞ্জিনিয়ারিং)'
+      'MBA (Business Administration)',
+      'BSc in Marine Engineering',
+      'BSc in Electrical Engineering',
+      'MSc in Software Engineering'
     ],
     logoColor: 'from-sky-500 to-blue-400',
-    tuitionFee: '€২,৮০০ - €৩,২০০ প্রতি বছর',
-    location: 'ভার্না (Varna)'
+    tuitionFee: '€2,800 - €3,200 / year',
+    location: 'Varna'
   }
 };
 
@@ -154,6 +155,7 @@ export default function StudentDashboard({
   setActiveAppId,
   paymentConfig
 }: StudentDashboardProps) {
+  const { language, t } = useLanguage();
   // Navigation inside dashboard
   const [activeTab, setActiveTab] = useState<'tracking' | 'documents' | 'payment' | 'additional-services' | 'messages'>('tracking');
   
@@ -342,12 +344,12 @@ export default function StudentDashboard({
     e.preventDefault();
     setSearchError('');
     if (!searchQuery.trim() || !studentPassword.trim()) {
-      setSearchError('অনুগ্রহ করে পাসপোর্ট নম্বর এবং পাসওয়ার্ড উভয়ই প্রদান করুন।');
+      setSearchError('Please provide both passport number and password.');
       return;
     }
 
     if (searchQuery.trim().toUpperCase() !== studentPassword.trim().toUpperCase()) {
-      setSearchError('ভুল পাসওয়ার্ড! ড্যাশবোর্ডে প্রবেশের জন্য আপনার পাসপোর্ট নম্বরটি একইসাথে ইউজারনেম এবং পাসওয়ার্ড হিসেবে ব্যবহার করুন।');
+      setSearchError('Incorrect password! Use your passport number as both username and password.');
       return;
     }
 
@@ -361,7 +363,7 @@ export default function StudentDashboard({
       setSearchQuery('');
       setStudentPassword('');
     } else {
-      setSearchError('দুঃখিত! এই পাসপোর্ট নম্বর দিয়ে কোনো স্টুডেন্ট প্রোফাইল খুঁজে পাওয়া যায়নি। নিচে "নতুন আবেদন করুন" বাটনে ক্লিক করে ফাইল প্রসেসিং শুরু করুন।');
+      setSearchError('No student record found with this passport number. Click "Apply New Student File" below to begin.');
     }
   };
 
@@ -387,7 +389,7 @@ export default function StudentDashboard({
       setSelectedVerifyApp(null);
       setVerifyPassword('');
     } else {
-      setVerifyError('ভুল পাসওয়ার্ড! ড্যাশবোর্ডে প্রবেশের জন্য এই শিক্ষার্থীর সঠিক পাসপোর্ট নম্বরটি পাসওয়ার্ড হিসেবে টাইপ করুন।');
+      setVerifyError('Incorrect password! Enter the student passport number as password.');
     }
   };
 
@@ -399,7 +401,7 @@ export default function StudentDashboard({
     // If we have an active logged-in application that is in 'Registered' status
     if (activeApp && activeApp.status === 'Registered') {
       if (!selectedApplyUni || !selectedApplyCourse) {
-        setFormError('অনুগ্রহ করে একটি বিশ্ববিদ্যালয় এবং প্রোগ্রাম সিলেক্ট করুন।');
+        setFormError('Please select a university and program.');
         return;
       }
 
@@ -433,8 +435,8 @@ export default function StudentDashboard({
           ...activeApp.notificationHistory,
           {
             id: `not-${Math.random()}`,
-            title: 'ভিসা আবেদন সফলভাবে জমা হয়েছে',
-            body: `প্রিয় ${activeApp.fullName}, আপনার বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনটি সফলভাবে সিস্টেমে যুক্ত করা হয়েছে। আপনার নির্বাচিত সার্ভিস ফি: ৳${calculatedTotal.toLocaleString()} BDT। আপনি এখন ফি পরিশোধ করতে পারবেন এবং কাগজপত্র আপলোড সেকশন সচল হয়েছে।`,
+            title: 'Visa Application Submitted Successfully',
+            body: `Dear ${activeApp.fullName}, your student visa application was created successfully. Total fee: ৳${calculatedTotal.toLocaleString()} BDT. Payments and document uploads are now active.`,
             type: activeApp.phone ? 'sms' : 'email',
             sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
             recipient: activeApp.phone || activeApp.email
@@ -452,7 +454,7 @@ export default function StudentDashboard({
 
     const { fullName, passportNumber, email, phone } = formData;
     if (!fullName || !passportNumber || !email || !phone) {
-      setFormError('অনুগ্রহ করে সব তথ্য সঠিকভাবে পূরণ করুন।');
+      setFormError('Please fill in all details correctly.');
       return;
     }
 
@@ -465,17 +467,17 @@ export default function StudentDashboard({
     }
 
     if (!/^01[3-9]\d{8}$/.test(localPhone)) {
-      setFormError('দয়া করে একটি সঠিক ১১ ডিজিটের বাংলাদেশী মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)');
+      setFormError('Please enter a valid 11-digit mobile number.');
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setFormError('দয়া করে একটি সঠিক ইমেল অ্যাড্রেস প্রদান করুন (যেমন: example@gmail.com)');
+      setFormError('Please enter a valid email address (e.g. example@gmail.com)');
       return;
     }
 
     if (!selectedApplyUni || !selectedApplyCourse) {
-      setFormError('অনুগ্রহ করে "ইউনিভার্সিটি ও কোর্স" ধাপে গিয়ে একটি বিশ্ববিদ্যালয় এবং প্রোগ্রাম সিলেক্ট করুন।');
+      setFormError('Please select a university and program from the University & Course step.');
       return;
     }
 
@@ -483,14 +485,14 @@ export default function StudentDashboard({
     const emailLower = email.trim().toLowerCase();
     const emailExists = applications.find(a => a.email.toLowerCase() === emailLower);
     if (emailExists) {
-      setFormError('এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
+      setFormError('An account with this email already exists! Please log in.');
       return;
     }
 
     // Check if passport already exists
     const exists = applications.find(a => a.passportNumber.toUpperCase() === passportNumber.toUpperCase());
     if (exists) {
-      setFormError('এই পাসপোর্ট নম্বর দিয়ে ইতিমধ্যে একটি আবেদন করা হয়েছে!');
+      setFormError('An application with this passport number already exists!');
       return;
     }
 
@@ -531,8 +533,8 @@ export default function StudentDashboard({
       notificationHistory: [
         {
           id: `not-${Math.random()}`,
-          title: 'আবেদন সফলভাবে তৈরি হয়েছে',
-          body: `প্রিয় ${fullName}, বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের পোর্টাল অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। আইডি: ${newId}। আপনার নির্বাচিত সার্ভিস ফি: ৳${calculatedTotal.toLocaleString()} BDT। আপনি এটি ড্যাশবোর্ড থেকে এককালীন বা দুই কিস্তিতে (Split Payment) পরিশোধ করতে পারবেন।`,
+          title: 'Application Created Successfully',
+          body: `Dear ${fullName}, your student portal account has been created. ID: ${newId}. Total fee: ৳${calculatedTotal.toLocaleString()} BDT.`,
           type: 'sms',
           sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
           recipient: phone
@@ -547,7 +549,7 @@ export default function StudentDashboard({
     setWizardStep(1);
     setMaxStepReached(1);
     setSelectedApplyUni('Technical University of Sofia');
-    setSelectedApplyCourse('BSc in Computer Science (কম্পিউটার সায়েন্স)');
+    setSelectedApplyCourse('BSc in Computer Science');
     setIsUniDropdownOpen(false);
     setFormData({
       fullName: '',
@@ -646,16 +648,16 @@ export default function StudentDashboard({
           ...activeApp.notificationHistory,
           {
             id: `not-pay-cart-${Date.now()}`,
-            title: `অতিরিক্ত সার্ভিস পেমেন্ট সফল - ৳${cartTotal.toLocaleString()} BDT`,
-            body: `প্রিয় ${activeApp.fullName}, আপনার নির্বাচিত সার্ভিসসমূহ (${serviceNames}) বাবদ ৳${cartTotal.toLocaleString()} BDT সফলভাবে পরিশোধ করা হয়েছে। ট্রানজেকশন আইডি: ${txnId}।`,
+            title: `Additional Service Payment Successful - ৳${cartTotal.toLocaleString()} BDT`,
+            body: `Dear ${activeApp.fullName}, your payment of ৳${cartTotal.toLocaleString()} BDT for selected services (${serviceNames}) was successful. TrxID: ${txnId}.`,
             type: 'email' as const,
             sentAt: currentTimestamp,
             recipient: activeApp.email
           },
           {
             id: `not-pay-cart-sms-${Date.now()}`,
-            title: `সার্ভিস ফি প্রাপ্তি নিশ্চিতকরণ`,
-            body: `আপনার বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের অতিরিক্ত সার্ভিসসমূহ (${serviceNames}) বাবদ BDT ৳${cartTotal.toLocaleString()} পরিশোধিত হয়েছে। ট্রানজেকশন আইডি: ${txnId}`,
+            title: `Service Fee Payment Confirmed`,
+            body: `Payment of ৳${cartTotal.toLocaleString()} BDT for additional services (${serviceNames}) confirmed. TrxID: ${txnId}.`,
             type: 'sms' as const,
             sentAt: currentTimestamp,
             recipient: activeApp.phone
@@ -715,20 +717,20 @@ export default function StudentDashboard({
       payingAmount = totalAmt;
       nextPaidAmount = totalAmt;
       nextStatus = 'Paid';
-      paymentOptionLabel = 'এককালীন সম্পূর্ণ ফি (Full Payment)';
+      paymentOptionLabel = 'Full Payment';
       nextInstallments[0].status = 'Paid';
       nextInstallments[1].status = 'Paid';
     } else if (selectedInstallmentChoice === 'inst1') {
       payingAmount = inst1Amt;
       nextPaidAmount = inst1Amt;
       nextStatus = 'Partially Paid';
-      paymentOptionLabel = '১ম কিস্তি (1st Installment)';
+      paymentOptionLabel = '1st Installment';
       nextInstallments[0].status = 'Paid';
     } else if (selectedInstallmentChoice === 'inst2') {
       payingAmount = inst2Amt;
       nextPaidAmount = totalAmt;
       nextStatus = 'Paid';
-      paymentOptionLabel = '২য় কিস্তি (2nd Installment)';
+      paymentOptionLabel = '2nd Installment';
       nextInstallments[1].status = 'Paid';
     }
 
@@ -743,16 +745,16 @@ export default function StudentDashboard({
         ...activeApp.notificationHistory,
         {
           id: `not-pay-${Date.now()}`,
-          title: `পেমেন্ট সফল হয়েছে - ${paymentOptionLabel}`,
-          body: `প্রিয় ${activeApp.fullName}, আপনার ${paymentOptionLabel} বাবদ ৳${payingAmount.toLocaleString()} BDT সফলভাবে পরিশোধ করা হয়েছে। ট্রানজেকশন আইডি: ${txnId}।`,
+          title: `Payment Successful - ${paymentOptionLabel}`,
+          body: `Dear ${activeApp.fullName}, your payment of ৳${payingAmount.toLocaleString()} BDT (${paymentOptionLabel}) was successful. TrxID: ${txnId}.`,
           type: 'email' as const,
           sentAt: currentTimestamp,
           recipient: activeApp.email
         },
         {
           id: `not-pay-sms-${Date.now()}`,
-          title: `ফি প্রাপ্তি নিশ্চিতকরণ (${paymentOptionLabel})`,
-          body: `আপনার বুলগেরিয়া স্টুডেন্ট visa আবেদনের ${paymentOptionLabel} বাবদ ৳${payingAmount.toLocaleString()} BDT পরিশোধিত হয়েছে। ট্রানজেকশন আইডি: ${txnId}`,
+          title: `Payment Received (${paymentOptionLabel})`,
+          body: `Payment of ৳${payingAmount.toLocaleString()} BDT (${paymentOptionLabel}) confirmed. TrxID: ${txnId}.`,
           type: 'sms' as const,
           sentAt: currentTimestamp,
           recipient: activeApp.phone
@@ -841,15 +843,15 @@ export default function StudentDashboard({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Submitted':
-        return <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600 border border-blue-100">আবেদন জমা হয়েছে</span>;
+        return <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-600 border border-blue-100">Application Submitted</span>;
       case 'Document Verification':
-        return <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-600 border border-amber-100">কাগজপত্র যাচাইকরণ</span>;
+        return <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-600 border border-amber-100">Document Verification</span>;
       case 'Embassy Processing':
-        return <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-600 border border-purple-100">দিল্লী দূতাবাস প্রসেসিং</span>;
+        return <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-600 border border-purple-100">Delhi Embassy Processing</span>;
       case 'Visa Issued':
-        return <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 border border-emerald-100">ভিসা স্ট্যাম্পড (অনুমোদিত)</span>;
+        return <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 border border-emerald-100">Visa Stamped (Approved)</span>;
       case 'Rejected':
-        return <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600 border border-rose-100">বাতিল করা হয়েছে</span>;
+        return <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-600 border border-rose-100">Rejected</span>;
       default:
         return null;
     }
@@ -859,21 +861,21 @@ export default function StudentDashboard({
     e.preventDefault();
     setSignupError('');
     if (!signupName.trim() || !signupPassport.trim() || !signupEmail.trim() || !signupPhone.trim()) {
-      setSignupError('অনুগ্রহ করে সব তথ্য সঠিকভাবে পূরণ করুন।');
+      setSignupError('Please fill in all information correctly.');
       return;
     }
 
     const passportUpper = signupPassport.trim().toUpperCase();
     const exists = applications.find(a => a.passportNumber.toUpperCase() === passportUpper);
     if (exists) {
-      setSignupError('এই পাসপোর্ট নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
+      setSignupError('An account with this passport number already exists! Please log in.');
       return;
     }
 
     const emailLower = signupEmail.trim().toLowerCase();
     const emailExists = applications.find(a => a.email.toLowerCase() === emailLower);
     if (emailExists) {
-      setSignupError('এই ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে! দয়া করে লগইন করুন।');
+      setSignupError('An account with this email address already exists! Please log in.');
       return;
     }
 
@@ -894,8 +896,8 @@ export default function StudentDashboard({
       notificationHistory: [
         {
           id: `not-${Math.random()}`,
-          title: 'অ্যাকাউন্ট নিবন্ধন ও ফাইল ওপেন সফল',
-          body: `প্রিয় ${signupName.trim()}, আপনার Sodi Euro স্টুডেন্ট পোর্টাল অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। আইডি: ${newId}। বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের জন্য আপনার প্রোফাইল সম্পূর্ণ করুন।`,
+          title: 'Account Registration & File Opened Successfully',
+          body: `Dear ${signupName.trim()}, your NOVENTRA student portal account has been created successfully. ID: ${newId}. Please complete your profile for student visa application.`,
           type: 'email',
           sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
           recipient: signupEmail.trim()
@@ -931,12 +933,15 @@ export default function StudentDashboard({
           id="portal-login-screen"
         >
           <div className="text-center space-y-3">
-            <span className="font-display font-black text-brand-sky bg-brand-sky-light border border-brand-sky/20 px-3 py-1 rounded-full text-xs">
-              Sodi Euro স্টুডেন্ট পোর্টাল
+            <div className="w-20 h-20 rounded-full bg-white border-2 border-amber-500/30 text-slate-900 flex items-center justify-center mx-auto shadow-lg overflow-hidden p-1">
+              <img src="/logo.png" alt="NOVENTRA Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            </div>
+            <span className="font-sans font-black text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-xs uppercase tracking-wider inline-block">
+              NOVENTRA Student Portal
             </span>
-            <h1 className="font-display text-2xl md:text-3xl font-extrabold text-slate-800">বুলগেরিয়া স্টুডেন্ট ভিসা ফাইলিং ও ট্র্যাকিং</h1>
-            <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-              Sodi Euro ডিজিটাল পোর্টালে নিবন্ধন করুন, আপনার প্রোফাইল সম্পূর্ণ করুন এবং আপনার স্টুডেন্ট ভিসা প্রসেসের প্রতিটি আপডেট রিয়েল-টাইমে ট্র্যাক করুন।
+            <h1 className="font-sans text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Global Education & Student Visa Portal</h1>
+            <p className="text-xs font-bold text-slate-500 max-w-md mx-auto leading-relaxed">
+              Gateway to Global Education • SINCE : 2026
             </p>
           </div>
 
@@ -954,7 +959,7 @@ export default function StudentDashboard({
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              লগইন (Login)
+              Login
             </button>
             <button
               type="button"
@@ -968,7 +973,7 @@ export default function StudentDashboard({
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              নতুন নিবন্ধন (Sign Up)
+              Sign Up
             </button>
           </div>
 
@@ -978,7 +983,7 @@ export default function StudentDashboard({
               <form onSubmit={handleStudentLogin} className="space-y-4" id="track-form">
                 <div className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">পাসপোর্ট নম্বর (Passport Number):</label>
+                    <label className="text-xs font-bold text-slate-700 block">Passport Number:</label>
                     <div className="relative">
                       <input
                         id="track-search-input"
@@ -986,7 +991,7 @@ export default function StudentDashboard({
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="যেমন: EF0129384"
+                        placeholder="e.g., EF0129384"
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold uppercase"
                       />
                       <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
@@ -994,19 +999,19 @@ export default function StudentDashboard({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (Password):</label>
+                    <label className="text-xs font-bold text-slate-700 block">Password:</label>
                     <div className="relative">
                       <input
                         required
                         type="password"
-                        placeholder="লগইন পাসওয়ার্ড (আপনার পাসপোর্ট নম্বর)"
+                        placeholder="Login password (your passport number)"
                         value={studentPassword}
                         onChange={(e) => setStudentPassword(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold font-mono"
                       />
                       <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1 font-semibold">ড্যাশবোর্ডে প্রবেশের জন্য আপনার পাসপোর্ট নম্বরটি একইসাথে ইউজারনেম এবং পাসওয়ার্ড হিসেবে টাইপ করুন।</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-semibold">Type your passport number as both username and password to log in to dashboard.</p>
                   </div>
                 </div>
 
@@ -1021,7 +1026,7 @@ export default function StudentDashboard({
                   type="submit"
                   className="w-full rounded-xl bg-slate-900 py-3 text-xs font-black text-white hover:bg-slate-800 transition-all border-b border-brand-gold"
                 >
-                  লগইন ও ট্র্যাকিং করুন
+                  Login & Track
                 </button>
               </form>
             ) : (
@@ -1029,12 +1034,12 @@ export default function StudentDashboard({
               <form onSubmit={handleDirectSignup} className="space-y-4">
                 <div className="space-y-3.5">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">শিক্ষার্থীর পূর্ণ নাম (পাসপোর্ট অনুযায়ী):</label>
+                    <label className="text-xs font-bold text-slate-700 block">Student Full Name (as in passport):</label>
                     <div className="relative">
                       <input
                         required
                         type="text"
-                        placeholder="যেমন: MD KAMRUL HASAN"
+                        placeholder="e.g., MD KAMRUL HASAN"
                         value={signupName}
                         onChange={(e) => setSignupName(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
@@ -1044,28 +1049,28 @@ export default function StudentDashboard({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">পাসপোর্ট নম্বর (Passport Number):</label>
+                    <label className="text-xs font-bold text-slate-700 block">Passport Number:</label>
                     <div className="relative">
                       <input
                         required
                         type="text"
-                        placeholder="যেমন: EF0129384"
+                        placeholder="e.g., EF0129384"
                         value={signupPassport}
                         onChange={(e) => setSignupPassport(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold uppercase"
                       />
                       <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">* এটিই হবে আপনার ট্র্যাকিং ড্যাশবোর্ডে লগইন করার পাসওয়ার্ড।</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">* This will be your password to log in to your tracking dashboard.</p>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">ইমেইল অ্যাড্রেস:</label>
+                    <label className="text-xs font-bold text-slate-700 block">Email Address:</label>
                     <div className="relative">
                       <input
                         required
                         type="email"
-                        placeholder="যেমন: student@gmail.com"
+                        placeholder="e.g., student@gmail.com"
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
@@ -1075,13 +1080,13 @@ export default function StudentDashboard({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-700 block">মোবাইল নম্বর (বাংলাদেশী):</label>
+                    <label className="text-xs font-bold text-slate-700 block">Mobile Number:</label>
                     <div className="relative">
                       <input
                         required
                         type="text"
                         maxLength={11}
-                        placeholder="যেমন: 017XXXXXXXX"
+                        placeholder="e.g., 017XXXXXXXX"
                         value={signupPhone}
                         onChange={(e) => setSignupPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
                         className="w-full rounded-xl border border-slate-200 py-3 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
@@ -1102,7 +1107,7 @@ export default function StudentDashboard({
                   type="submit"
                   className="w-full rounded-xl bg-emerald-600 py-3 text-xs font-black text-white hover:bg-emerald-700 transition-all shadow-md active:scale-95"
                 >
-                  সরাসরি অ্যাকাউন্ট তৈরি করুন ও ফাইল ওপেন করুন
+                  Create Account & Open File Directly
                 </button>
               </form>
             )}
@@ -1126,12 +1131,12 @@ export default function StudentDashboard({
                 <div>
                   <h3 className="font-display font-black text-slate-800 text-base md:text-lg flex items-center gap-1.5">
                     <Sparkles className="h-5 w-5 text-brand-gold animate-pulse" />
-                    <span>বুলগেরিয়া স্টুডেন্ট ভিসা ফাইলিং পোর্টাল</span>
+                    <span>Bulgaria Student Visa Filing Portal</span>
                   </h3>
-                  <p className="text-[10px] md:text-xs text-slate-500">সহজ এবং স্বয়ংক্রিয় ধাপে আপনার ফাইল ওপেন করার প্রসেস সম্পন্ন করুন।</p>
+                  <p className="text-[10px] md:text-xs text-slate-500">Complete your file opening process in easy and automated steps.</p>
                 </div>
                 <span className="text-xs font-black px-2.5 py-1 bg-brand-sky-light text-brand-sky border border-brand-sky/25 rounded-lg shrink-0">
-                  ধাপ {wizardStep} / ৪
+                  Step {wizardStep} / 4
                 </span>
               </div>
 
@@ -1145,10 +1150,10 @@ export default function StudentDashboard({
                 
                 <div className="relative flex justify-between z-10">
                   {[
-                    { step: 1, label: "ব্যক্তিগত তথ্য" },
-                    { step: 2, label: "ইউনিভার্সিটি ও কোর্স" },
-                    { step: 3, label: "সার্ভিসসমূহ" },
-                    { step: 4, label: "রিভিউ ও সাবমিট" }
+                    { step: 1, label: "Personal Info" },
+                    { step: 2, label: "University & Course" },
+                    { step: 3, label: "Services" },
+                    { step: 4, label: "Review & Submit" }
                   ].map((s) => {
                     const isActive = wizardStep === s.step;
                     const isCompleted = wizardStep > s.step;
@@ -1172,7 +1177,7 @@ export default function StudentDashboard({
                                   ? "bg-white border-brand-sky/60 text-brand-sky cursor-pointer hover:bg-brand-sky/5"
                                   : "bg-white border-slate-200 text-slate-400 cursor-not-allowed"
                           }`}
-                          title={`${s.label} ধাপে যান`}
+                          title={`Go to step ${s.step}`}
                         >
                           {isCompleted ? <span className="text-[10px]">✔</span> : s.step}
                         </button>
@@ -1205,51 +1210,51 @@ export default function StudentDashboard({
                         <div className="bg-brand-sky-light/10 p-3 rounded-xl border border-brand-sky/10 flex items-center space-x-2.5 mb-4">
                           <User className="h-4 w-4 text-brand-sky shrink-0" />
                           <p className="text-[11px] font-bold text-brand-sky-dark leading-tight">
-                            আপনার পাসপোর্ট এবং যোগাযোগের সঠিক তথ্য দিন। এই তথ্যের ভিত্তিতে আপনার ড্যাশবোর্ড অ্যাকাউন্ট তৈরি হবে।
+                            Please provide your accurate passport and contact details. Your dashboard account will be created based on this information.
                           </p>
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700 block">পূর্ণ নাম (পাসপোর্ট অনুযায়ী):</label>
+                            <label className="text-[11px] font-bold text-slate-700 block">Full Name (as in passport):</label>
                             <input
                               required
                               type="text"
-                              placeholder="যেমন: MD KAMRUL HASAN"
+                              placeholder="e.g., MD KAMRUL HASAN"
                               value={formData.fullName}
                               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                               className="w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold focus:border-brand-sky focus:outline-none"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700 block">পাসপোর্ট নম্বর:</label>
+                            <label className="text-[11px] font-bold text-slate-700 block">Passport Number:</label>
                             <input
                               required
                               type="text"
-                              placeholder="যেমন: EF0129384"
+                              placeholder="e.g., EF0129384"
                               value={formData.passportNumber}
                               onChange={(e) => setFormData({ ...formData, passportNumber: e.target.value })}
                               className="w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold focus:border-brand-sky focus:outline-none uppercase"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700 block">ইমেইল ঠিকানা:</label>
+                            <label className="text-[11px] font-bold text-slate-700 block">Email Address:</label>
                             <input
                               required
                               type="email"
-                              placeholder="যেমন: kamrul@example.com"
+                              placeholder="e.g., kamrul@example.com"
                               value={formData.email}
                               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                               className="w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold focus:border-brand-sky focus:outline-none"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-slate-700 block">মোবাইল নম্বর (SMS নোটিফিকেশনের জন্য):</label>
+                            <label className="text-[11px] font-bold text-slate-700 block">Mobile Number (for SMS notifications):</label>
                             <input
                               required
                               type="tel"
                               maxLength={11}
-                              placeholder="যেমন: 01712345678"
+                              placeholder="e.g., 01712345678"
                               value={formData.phone}
                               onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                               className="w-full rounded-lg border border-slate-200 p-2.5 text-xs font-semibold focus:border-brand-sky focus:outline-none"
@@ -1268,7 +1273,7 @@ export default function StudentDashboard({
                             type="button"
                             onClick={() => {
                               if (!formData.fullName.trim() || !formData.passportNumber.trim() || !formData.email.trim() || !formData.phone.trim()) {
-                                setFormError('অনুগ্রহ করে ব্যক্তিগত তথ্যের সব অপশন সঠিকভাবে পূরণ করুন।');
+                                setFormError('Please fill in all personal information fields correctly.');
                                 return;
                               }
 
@@ -1281,12 +1286,12 @@ export default function StudentDashboard({
                               }
 
                               if (!/^01[3-9]\d{8}$/.test(localPhone)) {
-                                setFormError('দয়া করে একটি সঠিক ১১ ডিজিটের বাংলাদেশী মোবাইল নম্বর দিন (যেমন: 017XXXXXXXX)');
+                                setFormError('Please enter a valid 11-digit mobile number (e.g., 017XXXXXXXX)');
                                 return;
                               }
 
                               if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-                                setFormError('দয়া করে একটি সঠিক ইমেল অ্যাড্রেস প্রদান করুন (যেমন: example@gmail.com)');
+                                setFormError('Please enter a valid email address (e.g., example@gmail.com)');
                                 return;
                               }
 
@@ -1296,7 +1301,7 @@ export default function StudentDashboard({
                             }}
                             className="inline-flex items-center space-x-1 rounded-xl bg-brand-sky px-5 py-2.5 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors"
                           >
-                            <span>পরবর্তী ধাপ</span>
+                            <span>Next Step</span>
                             <ChevronRight className="h-4 w-4" />
                           </button>
                         </div>
@@ -1317,7 +1322,7 @@ export default function StudentDashboard({
                         <div className="relative" id="university-dropdown-wrapper">
                           <label className="text-xs font-black text-slate-800 flex items-center gap-1.5 mb-1.5">
                             <School className="h-4 w-4 text-brand-sky" />
-                            <span>১. বুলগেরিয়ার বিশ্ববিদ্যালয় পছন্দ করুন (Select University)</span>
+                            <span>1. Select Bulgarian University</span>
                           </label>
                           
                           <button
@@ -1341,7 +1346,7 @@ export default function StudentDashboard({
                             ) : (
                               <div className="flex items-center space-x-2">
                                 <span className="h-2 w-2 rounded-full bg-brand-sky animate-ping"></span>
-                                <span className="text-xs font-black text-brand-sky">বিশ্ববিদ্যালয় সিলেক্ট করুন</span>
+                                <span className="text-xs font-black text-brand-sky">Select University</span>
                               </div>
                             )}
                             <ChevronDown className={`h-4.5 w-4.5 text-slate-400 transition-transform duration-300 shrink-0 ml-1 ${isUniDropdownOpen ? 'rotate-180 text-brand-sky' : ''}`} />
@@ -1413,9 +1418,9 @@ export default function StudentDashboard({
                               <GraduationCap className="h-4 w-4 text-brand-gold animate-bounce" />
                               <div>
                                 <label className="text-xs font-black text-slate-800 block">
-                                  ২. প্রোগ্রাম ও কোর্স সিলেক্ট করুন (Choose Program & Course)
+                                  2. Choose Program & Course
                                 </label>
-                                <p className="text-[9px] text-slate-400">নির্বাচিত বিশ্ববিদ্যালয়টির জন্য সচল কোর্সসমূহের তালিকা।</p>
+                                <p className="text-[9px] text-slate-400">Available courses for the selected university.</p>
                               </div>
                             </div>
 
@@ -1450,13 +1455,13 @@ export default function StudentDashboard({
                             className="inline-flex items-center space-x-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                           >
                             <ChevronLeft className="h-4 w-4" />
-                            <span>পূর্ববর্তী</span>
+                            <span>Previous</span>
                           </button>
                           <button
                             type="button"
                             onClick={() => {
                               if (!selectedApplyUni || !selectedApplyCourse) {
-                                setFormError('অনুগ্রহ করে একটি বিশ্ববিদ্যালয় ও কোর্স সিলেক্ট করুন।');
+                                setFormError('Please select a university and course.');
                                 return;
                               }
                               setFormError('');
@@ -1465,7 +1470,7 @@ export default function StudentDashboard({
                             }}
                             className="inline-flex items-center space-x-1 rounded-xl bg-brand-sky px-5 py-2.5 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors"
                           >
-                            <span>পরবর্তী ধাপ</span>
+                            <span>Next Step</span>
                             <ChevronRight className="h-4 w-4" />
                           </button>
                         </div>
@@ -1485,9 +1490,9 @@ export default function StudentDashboard({
                         <div>
                           <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                             <Sparkles className="h-4 w-4 text-brand-gold animate-pulse" />
-                            <span>প্রয়োজনীয় সার্ভিসসমূহ নির্বাচন করুন (Select Processing Services)</span>
+                            <span>Select Processing Services</span>
                           </label>
-                          <p className="text-[10px] text-slate-500">আপনার ফাইল ওপেন করতে যে সার্ভিসগুলো প্রয়োজন সেগুলো টিক দিন। মোট ফি স্বয়ংক্রিয়ভাবে হিসাব হবে।</p>
+                          <p className="text-[10px] text-slate-500">Check the services required for your file. Total fee is calculated automatically.</p>
                         </div>
 
                         <div className="space-y-2.5">
@@ -1530,7 +1535,7 @@ export default function StudentDashboard({
                                     ৳{service.price.toLocaleString()}
                                   </span>
                                   {service.isMandatory && (
-                                    <span className="block text-[8px] text-amber-600 font-extrabold bg-amber-50 px-1 rounded border border-amber-100 mt-0.5 text-center">আবশ্যিক</span>
+                                    <span className="block text-[8px] text-amber-600 font-extrabold bg-amber-50 px-1 rounded border border-amber-100 mt-0.5 text-center">Mandatory</span>
                                   )}
                                 </div>
                               </div>
@@ -1540,7 +1545,7 @@ export default function StudentDashboard({
 
                         {/* Running Total Preview */}
                         <div className="flex items-center justify-between border-t border-slate-200/60 pt-3.5 px-1">
-                          <span className="text-xs font-bold text-slate-700">নির্বাচিত সার্ভিস অনুযায়ী মোট প্রসেসিং ফি:</span>
+                          <span className="text-xs font-bold text-slate-700">Total processing fee based on selected services:</span>
                           <motion.div 
                             key={calculatedTotal}
                             initial={{ scale: 0.95 }}
@@ -1558,7 +1563,7 @@ export default function StudentDashboard({
                             className="inline-flex items-center space-x-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                           >
                             <ChevronLeft className="h-4 w-4" />
-                            <span>পূর্ববর্তী</span>
+                            <span>Previous</span>
                           </button>
                           <button
                             type="button"
@@ -1568,7 +1573,7 @@ export default function StudentDashboard({
                             }}
                             className="inline-flex items-center space-x-1 rounded-xl bg-brand-sky px-5 py-2.5 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors"
                           >
-                            <span>রিভিউ ও সাবমিট</span>
+                            <span>Review & Submit</span>
                             <ChevronRight className="h-4 w-4" />
                           </button>
                         </div>
@@ -1588,8 +1593,8 @@ export default function StudentDashboard({
                         <div className="bg-emerald-50 text-emerald-800 p-3.5 rounded-xl border border-emerald-100 flex items-center space-x-2.5">
                           <CheckCircle className="h-5 w-5 text-emerald-500 shrink-0" />
                           <div>
-                            <h4 className="text-xs font-extrabold">সবকিছু ঠিক আছে! অনুগ্রহ করে তথ্যগুলো মিলিয়ে নিন</h4>
-                            <p className="text-[10px] text-emerald-700">নিচের তথ্যগুলো সঠিক থাকলে "ফাইল ওপেন করুন" বাটনে ক্লিক করে অ্যাকাউন্ট চালু করুন।</p>
+                            <h4 className="text-xs font-extrabold">Everything looks good! Please review your details</h4>
+                            <p className="text-[10px] text-emerald-700">If the information below is correct, click "Open File & Submit" to complete account creation.</p>
                           </div>
                         </div>
 
@@ -1599,23 +1604,23 @@ export default function StudentDashboard({
                           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1.5">
                             <h4 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                               <User className="h-3 w-3 text-slate-400" />
-                              <span>ব্যক্তিগত তথ্য</span>
+                              <span>Personal Info</span>
                             </h4>
                             <div className="space-y-1 text-xs text-slate-700 font-semibold">
                               <p className="flex justify-between">
-                                <span className="text-slate-400 font-medium">নাম:</span>
+                                <span className="text-slate-400 font-medium">Name:</span>
                                 <span>{formData.fullName}</span>
                               </p>
                               <p className="flex justify-between">
-                                <span className="text-slate-400 font-medium">পাসপোর্ট:</span>
+                                <span className="text-slate-400 font-medium">Passport:</span>
                                 <span className="uppercase font-mono">{formData.passportNumber}</span>
                               </p>
                               <p className="flex justify-between">
-                                <span className="text-slate-400 font-medium">মোবাইল:</span>
+                                <span className="text-slate-400 font-medium">Mobile:</span>
                                 <span>{formData.phone}</span>
                               </p>
                               <p className="flex justify-between">
-                                <span className="text-slate-400 font-medium">ইমেইল:</span>
+                                <span className="text-slate-400 font-medium">Email:</span>
                                 <span className="truncate max-w-[150px]" title={formData.email}>{formData.email}</span>
                               </p>
                             </div>
@@ -1625,14 +1630,14 @@ export default function StudentDashboard({
                           <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1.5">
                             <h4 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                               <GraduationCap className="h-3 w-3 text-slate-400" />
-                              <span>শিক্ষাপ্রতিষ্ঠান ও কোর্স</span>
+                              <span>Institution & Course</span>
                             </h4>
                             <div className="space-y-1 text-xs text-slate-700 font-semibold">
-                              <p className="text-slate-800 font-bold leading-tight">{selectedApplyUni || 'বিশ্ববিদ্যালয় সিলেক্ট করা হয়নি'}</p>
-                              <p className="text-slate-500 font-medium text-[11px] leading-snug">{selectedApplyCourse || 'কোর্স সিলেক্ট করা হয়নি'}</p>
+                              <p className="text-slate-800 font-bold leading-tight">{selectedApplyUni || 'No university selected'}</p>
+                              <p className="text-slate-500 font-medium text-[11px] leading-snug">{selectedApplyCourse || 'No course selected'}</p>
                               <p className="text-brand-gold-dark text-[10px] pt-1.5 border-t border-slate-200/50 flex items-center">
                                 <Coins className="h-3 w-3 mr-1" />
-                                টিউশন ফি: {selectedApplyUni ? (universityCoursesMap[selectedApplyUni]?.tuitionFee || 'N/A') : 'N/A'}
+                                Tuition Fee: {selectedApplyUni ? (universityCoursesMap[selectedApplyUni]?.tuitionFee || 'N/A') : 'N/A'}
                               </p>
                             </div>
                           </div>
@@ -1642,7 +1647,7 @@ export default function StudentDashboard({
                         <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2">
                           <h4 className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1">
                             <Briefcase className="h-3 w-3 text-slate-400" />
-                            <span>নির্বাচিত সার্ভিস ও খরচের বিবরণ</span>
+                            <span>Selected Services & Fee Details</span>
                           </h4>
                           <div className="space-y-1.5">
                             {serviceOptions
@@ -1651,7 +1656,7 @@ export default function StudentDashboard({
                                 <div key={s.id} className="flex justify-between text-xs font-semibold text-slate-700">
                                   <span className="text-slate-600 flex items-center gap-1">
                                     <span className="h-1.5 w-1.5 rounded-full bg-brand-sky"></span>
-                                    {s.nameEn}
+                                    {s.nameEn || s.name}
                                   </span>
                                   <span className="font-mono text-slate-800">৳{s.price.toLocaleString()}</span>
                                 </div>
@@ -1659,7 +1664,7 @@ export default function StudentDashboard({
                           </div>
                           
                           <div className="border-t border-slate-200 pt-2.5 mt-2.5 flex justify-between items-center">
-                            <span className="text-xs font-black text-slate-800">সর্বমোট প্রসেসিং ফি (Grand Total):</span>
+                            <span className="text-xs font-black text-slate-800">Grand Total Processing Fee:</span>
                             <span className="text-xs font-black bg-brand-gold text-slate-950 px-3 py-1 rounded-lg border border-brand-gold-dark font-mono shadow-sm">
                               ৳{calculatedTotal.toLocaleString()} BDT
                             </span>
@@ -1673,14 +1678,14 @@ export default function StudentDashboard({
                             className="inline-flex items-center space-x-1 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                           >
                             <ChevronLeft className="h-4 w-4" />
-                            <span>পূর্ববর্তী</span>
+                            <span>Previous</span>
                           </button>
                           <button
                             type="button"
                             onClick={(e) => handleApplySubmit(e)}
                             className="inline-flex items-center space-x-1 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-black text-white hover:bg-emerald-700 transition-all shadow-md active:scale-95"
                           >
-                            <span>ফাইল ওপেন ও জমা দিন</span>
+                            <span>Open File & Submit</span>
                             <Send className="h-4 w-4" />
                           </button>
                         </div>
@@ -1699,16 +1704,16 @@ export default function StudentDashboard({
                   <div className="text-left">
                     <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-brand-gold animate-pulse" />
-                      <span>আপনার প্রোফাইল সম্পূর্ণ করুন (Complete Your Profile)</span>
+                      <span>Complete Your Profile</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      বুলগেরিয়া স্টুডেন্ট ভিসা আবেদনের জন্য আপনার প্রোফাইল কমপক্ষে ৫০% সম্পূর্ণ করতে হবে। বর্তমানে আপনার প্রোফাইল সম্পূর্ণতার অগ্রগতি:
+                      Your profile must be at least 50% complete for student visa application. Current profile completion progress:
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end">
                     <div className="flex items-center gap-1.5">
                       <span className="text-2xl font-black text-brand-sky">{calculateProfileCompletion(activeApp)}%</span>
-                      <span className="text-xs font-bold text-slate-400">সম্পন্ন</span>
+                      <span className="text-xs font-bold text-slate-400">Completed</span>
                     </div>
                     <button
                       type="button"
@@ -1718,7 +1723,7 @@ export default function StudentDashboard({
                       id="student-logout-btn"
                     >
                       <LogOut className="h-4 w-4" />
-                      <span>লগআউট</span>
+                      <span>Logout</span>
                     </button>
                   </div>
                 </div>
@@ -1735,9 +1740,9 @@ export default function StudentDashboard({
                   <div className="rounded-xl bg-amber-50 border border-amber-100 p-4 flex items-start gap-3 text-left">
                     <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-amber-800 leading-tight">ভিসা আবেদন লক করা আছে (Visa Application Gated)</p>
+                      <p className="text-xs font-bold text-amber-800 leading-tight">Visa Application Gated</p>
                       <p className="text-[11px] text-amber-600 font-semibold mt-1">
-                        আপনার প্রোফাইল ৫০% সম্পূর্ণ হলেই বুলগেরিয়া স্টুডেন্ট ভিসা আবেদন (বিশ্ববিদ্যালয়, কোর্স ও অতিরিক্ত সেবা নির্বাচন) আনলক হবে। অনুগ্রহ করে নিচে আপনার অ্যাকাডেমিক এবং সোশ্যাল লিংকসমূহ আপডেট করে ৫০% সম্পন্ন করুন।
+                        Once your profile reaches 50% completion, the Bulgaria student visa application (selecting university, course, and additional services) will be unlocked. Please update your academic and social links below to reach 50%.
                       </p>
                     </div>
                   </div>
@@ -1745,9 +1750,9 @@ export default function StudentDashboard({
                   <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 flex items-start gap-3 text-left">
                     <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-xs font-bold text-emerald-800 leading-tight">ভিসা আবেদন সচল হয়েছে! (Visa Application Unlocked)</p>
+                      <p className="text-xs font-bold text-emerald-800 leading-tight">Visa Application Unlocked!</p>
                       <p className="text-[11px] text-emerald-600 font-semibold mt-1">
-                        অভিনন্দন! আপনার প্রোফাইল ৫০% বা তার বেশি সম্পূর্ণ হয়েছে। এখন আপনি বুলগেরিয়া স্টুডেন্ট ভিসা প্রসেস শুরু করতে পারবেন। নিচে ডানদিকের প্যানেলে "স্টুডেন্ট ভিসা আবেদন শুরু করুন" বাটনে ক্লিক করুন।
+                        Congratulations! Your profile is 50% or more complete. You can now start the Bulgaria student visa process. Click "Start Student Visa Application" in the panel below.
                       </p>
                     </div>
                   </div>
@@ -1758,8 +1763,8 @@ export default function StudentDashboard({
                 <div className="rounded-2xl border-2 border-brand-sky/20 bg-white p-5 md:p-6 shadow-xl space-y-6 text-left">
                   <div className="border-b border-slate-100 pb-4 flex justify-between items-center">
                     <div>
-                      <h3 className="font-display font-black text-slate-800 text-base md:text-lg">বুলগেরিয়া স্টুডেন্ট ভিসা প্রসেস শুরু করুন (Visa Application Wizard)</h3>
-                      <p className="text-[10px] md:text-xs text-slate-500">আপনার বিশ্ববিদ্যালয়, প্রোগ্রাম এবং প্রয়োজনীয় সেবা নির্বাচন করুন।</p>
+                      <h3 className="font-display font-black text-slate-800 text-base md:text-lg">Start Bulgaria Student Visa Application</h3>
+                      <p className="text-[10px] md:text-xs text-slate-500">Select your university, program, and required services.</p>
                     </div>
                     <button
                       type="button"
@@ -1769,7 +1774,7 @@ export default function StudentDashboard({
                       }}
                       className="text-xs font-bold text-rose-500 hover:underline bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100"
                     >
-                      বন্ধ করুন (Cancel)
+                      Cancel
                     </button>
                   </div>
 
@@ -1779,7 +1784,7 @@ export default function StudentDashboard({
                       <div className="relative">
                         <label className="text-xs font-black text-slate-800 flex items-center gap-1.5 mb-1.5">
                           <School className="h-4 w-4 text-brand-sky" />
-                          <span>১. বুলগেরিয়ার বিশ্ববিদ্যালয় পছন্দ করুন (Select University)</span>
+                          <span>1. Select Bulgarian University</span>
                         </label>
                         
                         <button
@@ -1802,7 +1807,7 @@ export default function StudentDashboard({
                           ) : (
                             <div className="flex items-center space-x-2">
                               <span className="h-2 w-2 rounded-full bg-brand-sky animate-ping"></span>
-                              <span className="text-xs font-black text-brand-sky">একটি বিশ্ববিদ্যালয় সিলেক্ট করুন (Choose University)</span>
+                              <span className="text-xs font-black text-brand-sky">Choose University</span>
                             </div>
                           )}
                           <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-300 shrink-0 ml-1 ${isUniDropdownOpen ? 'rotate-180 text-brand-sky' : ''}`} />
@@ -1854,7 +1859,7 @@ export default function StudentDashboard({
                       {selectedApplyUni && (
                         <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
                           <label className="text-xs font-black text-slate-800 block">
-                            ২. প্রোগ্রাম ও কোর্স সিলেক্ট করুন (Choose Program & Course):
+                            2. Choose Program & Course:
                           </label>
                           <div className="grid gap-2 sm:grid-cols-2">
                             {universityCoursesMap[selectedApplyUni].courses.map((course) => {
@@ -1885,7 +1890,7 @@ export default function StudentDashboard({
                           onClick={() => setWizardStep(3)}
                           className="rounded-xl bg-slate-900 text-white px-6 py-2.5 text-xs font-black hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-md border-b-2 border-brand-gold"
                         >
-                          <span>পরবর্তী ধাপে যান</span>
+                          <span>Next Step</span>
                           <ArrowRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -1895,7 +1900,7 @@ export default function StudentDashboard({
                   {/* STEP 3: Services Selection */}
                   {wizardStep === 3 && (
                     <div className="space-y-4 animate-fade-in">
-                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">সার্ভিস ও অতিরিক্ত সেবা নির্বাচন করুন (Select Processing Services)</h4>
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">Select Processing Services</h4>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {serviceOptions.map((service) => {
                           const isMandatory = service.isMandatory;
@@ -1920,14 +1925,14 @@ export default function StudentDashboard({
                               <div className="space-y-1">
                                 <div className="flex items-start justify-between">
                                   <h5 className="text-xs font-black text-slate-800">{service.name}</h5>
-                                  {isMandatory && <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded">আবশ্যক</span>}
+                                  {isMandatory && <span className="bg-amber-100 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded">Mandatory</span>}
                                 </div>
                                 <p className="text-[10px] text-slate-500 leading-snug">{service.description}</p>
                               </div>
                               <div className="mt-3 pt-2.5 border-t border-slate-100/70 flex justify-between items-center">
                                 <span className="text-xs font-bold font-mono text-slate-700">৳{service.price.toLocaleString()} BDT</span>
                                 <span className={`text-[10px] font-black ${isSelected ? 'text-brand-sky' : 'text-slate-400'}`}>
-                                  {isSelected ? '✓ সিলেক্টেড' : '+ যোগ করুন'}
+                                  {isSelected ? '✓ Selected' : '+ Add'}
                                 </span>
                               </div>
                             </div>
@@ -1941,14 +1946,14 @@ export default function StudentDashboard({
                           onClick={() => setWizardStep(2)}
                           className="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-600 transition-all"
                         >
-                          পূর্ববর্তী
+                          Previous
                         </button>
                         <button
                           type="button"
                           onClick={() => setWizardStep(4)}
                           className="rounded-xl bg-slate-900 text-white px-6 py-2.5 text-xs font-black hover:bg-slate-800 transition-all flex items-center gap-1.5 shadow-md border-b-2 border-brand-gold"
                         >
-                          <span>রিভিউ করুন</span>
+                          <span>Review</span>
                           <ArrowRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -1959,20 +1964,20 @@ export default function StudentDashboard({
                   {wizardStep === 4 && (
                     <div className="space-y-5 animate-fade-in">
                       <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
-                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b border-slate-200/60 pb-2">আবেদন রিভিউ ও তথ্য যাচাই</h4>
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide border-b border-slate-200/60 pb-2">Application Review & Details Verification</h4>
                         <div className="grid gap-4 sm:grid-cols-2 text-xs">
                           <div>
-                            <span className="text-slate-400 block font-bold uppercase text-[9px]">নির্বাচিত বিশ্ববিদ্যালয়</span>
+                            <span className="text-slate-400 block font-bold uppercase text-[9px]">Selected University</span>
                             <span className="font-bold text-slate-700">{selectedApplyUni}</span>
                           </div>
                           <div>
-                            <span className="text-slate-400 block font-bold uppercase text-[9px]">নির্বাচিত প্রোগ্রাম</span>
+                            <span className="text-slate-400 block font-bold uppercase text-[9px]">Selected Program</span>
                             <span className="font-bold text-slate-700">{selectedApplyCourse}</span>
                           </div>
                         </div>
 
                         <div className="border-t border-slate-200/60 pt-3 space-y-2">
-                          <span className="text-slate-400 block font-bold uppercase text-[9px]">সিলেক্টেড সার্ভিসসমূহ ও ফি বিবরণী</span>
+                          <span className="text-slate-400 block font-bold uppercase text-[9px]">Selected Services & Fee Breakdown</span>
                           <div className="space-y-1.5">
                             {serviceOptions
                               .filter(s => s.isMandatory || selectedServices.includes(s.id))
@@ -1980,7 +1985,7 @@ export default function StudentDashboard({
                                 <div key={s.id} className="flex justify-between text-xs font-semibold text-slate-700">
                                   <span className="text-slate-600 flex items-center gap-1">
                                     <span className="h-1.5 w-1.5 rounded-full bg-brand-sky"></span>
-                                    {s.nameEn}
+                                    {s.nameEn || s.name}
                                   </span>
                                   <span className="font-mono text-slate-800">৳{s.price.toLocaleString()} BDT</span>
                                 </div>
@@ -1988,7 +1993,7 @@ export default function StudentDashboard({
                           </div>
                           
                           <div className="border-t border-slate-200 pt-2.5 mt-2.5 flex justify-between items-center">
-                            <span className="text-xs font-black text-slate-800">সর্বমোট প্রসেসিং ফি (Grand Total):</span>
+                            <span className="text-xs font-black text-slate-800">Grand Total Processing Fee:</span>
                             <span className="text-xs font-black bg-brand-gold text-slate-950 px-3 py-1 rounded-lg border border-brand-gold-dark font-mono shadow-sm">
                               ৳{serviceOptions
                                 .filter(s => s.isMandatory || selectedServices.includes(s.id))
@@ -1997,7 +2002,7 @@ export default function StudentDashboard({
                           </div>
 
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed bg-amber-50/50 p-2.5 rounded-lg border border-amber-100/30 mt-2">
-                            * নিয়মানুযায়ী সর্বমোট ফি-টি ২ টি সমান কিস্তিতে বিভক্ত করা হয়েছে (৫০% প্রথম কিস্তি আবেদন ফাইল তৈরীর পর এবং অবশিষ্টাংশ ভিসা স্ট্যাম্পিং এর সময়)।
+                            * As per regulations, total fee is split into 2 equal installments (50% first installment after file preparation and remaining at visa stamping).
                           </p>
                         </div>
                       </div>
@@ -2014,7 +2019,7 @@ export default function StudentDashboard({
                           onClick={() => setWizardStep(3)}
                           className="rounded-xl border border-slate-200 hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-600 transition-all"
                         >
-                          পূর্ববর্তী
+                          Previous
                         </button>
                         
                         <button
@@ -2022,7 +2027,7 @@ export default function StudentDashboard({
                           onClick={handleApplySubmit}
                           className="rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white px-6 py-2.5 text-xs font-black border-b-2 border-brand-gold shadow-md flex items-center gap-1.5"
                         >
-                          <span>ফাইল ওপেন করুন ও পোর্টাল চালু করুন</span>
+                          <span>Open File & Activate Portal</span>
                           <ArrowRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -2038,20 +2043,20 @@ export default function StudentDashboard({
                         <div>
                           <h3 className="font-display text-base md:text-lg font-black text-slate-900 flex items-center gap-2">
                             <User className="h-5 w-5 text-brand-sky" />
-                            <span>প্রোফাইল তথ্য আপডেট করুন (Update Profile Information)</span>
+                            <span>Update Profile Information</span>
                           </h3>
                           <p className="text-xs text-slate-500 font-medium mt-1">
-                            আপনার আবেদনের নির্ভুলতা নিশ্চিত করতে সকল তথ্য সতর্কতার সাথে টাইপ করে সেভ করুন।
+                            Fill in and save all information accurately to ensure the validity of your application.
                           </p>
                         </div>
                         <span className="self-start sm:self-center inline-flex items-center px-3 py-1 rounded-full text-xs font-black bg-brand-sky/10 text-brand-sky border border-brand-sky/20 shrink-0">
-                          {calculateProfileCompletion(activeApp)}% সম্পূর্ণ
+                          {calculateProfileCompletion(activeApp)}% Completed
                         </span>
                       </div>
                       <div className="space-y-6">
                          {/* Profile Photo Capture / Upload */}
                         <div className="space-y-3 text-left">
-                          <label className="text-xs font-black text-slate-700 block">১. প্রোফাইল ছবি (Profile Photo):</label>
+                          <label className="text-xs font-black text-slate-700 block">1. Profile Photo:</label>
                           <div className="flex flex-col sm:flex-row items-center gap-4">
                             <div className="h-20 w-20 rounded-2xl border-2 border-slate-200 overflow-hidden bg-slate-50 relative shrink-0 flex items-center justify-center">
                               {activeApp.profilePhoto ? (
@@ -2064,7 +2069,7 @@ export default function StudentDashboard({
                               <div className="flex gap-2">
                                 <input
                                   type="text"
-                                  placeholder="ছবির ইউআরএল দিন (Photo URL)"
+                                  placeholder="Photo URL"
                                   value={activeApp.profilePhoto || ''}
                                   onChange={(e) => {
                                     onUpdateApplication({
@@ -2076,7 +2081,7 @@ export default function StudentDashboard({
                                 />
                                 <label className="rounded-lg bg-slate-100 border border-slate-200 text-slate-600 px-3 py-2 text-xs font-bold cursor-pointer hover:bg-slate-200 transition-all shrink-0 flex items-center">
                                   <Camera className="h-4 w-4 mr-1" />
-                                  <span>আপলোড</span>
+                                  <span>Upload</span>
                                   <input 
                                     type="file" 
                                     accept="image/*" 
@@ -2098,7 +2103,7 @@ export default function StudentDashboard({
                                   />
                                 </label>
                               </div>
-                              <p className="text-[10px] text-slate-400 font-semibold">যেমন: https://images.unsplash.com/... অথবা আপনার ছবি ডিরেক্ট আপলোড করুন।</p>
+                              <p className="text-[10px] text-slate-400 font-semibold">e.g. https://images.unsplash.com/... or upload your image directly.</p>
                             </div>
                           </div>
                         </div>
@@ -2107,13 +2112,13 @@ export default function StudentDashboard({
                         <div className="space-y-4 pt-5 border-t border-slate-100 text-left">
                           <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                             <GraduationCap className="h-4.5 w-4.5 text-brand-sky" />
-                            <span>২. শিক্ষাগত যোগ্যতা (Academic History):</span>
+                            <span>2. Academic History:</span>
                           </h4>
 
                           <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                             {/* SSC */}
                             <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">SSC স্কুল নাম:</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">SSC School Name:</label>
                               <input
                                 type="text"
                                 placeholder="High School"
@@ -2130,7 +2135,7 @@ export default function StudentDashboard({
                               <div className="grid grid-cols-2 gap-1.5 mt-1.5">
                                 <input
                                   type="text"
-                                  placeholder="পাসের সাল"
+                                  placeholder="Passing Year"
                                   value={activeApp.academicHistory?.sscYear || ''}
                                   onChange={(e) => {
                                     const acad = activeApp.academicHistory || {};
@@ -2159,7 +2164,7 @@ export default function StudentDashboard({
 
                             {/* HSC */}
                             <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">HSC কলেজ নাম:</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">HSC College Name:</label>
                               <input
                                 type="text"
                                 placeholder="Govt College"
@@ -2176,7 +2181,7 @@ export default function StudentDashboard({
                               <div className="grid grid-cols-2 gap-1.5 mt-1.5">
                                 <input
                                   type="text"
-                                  placeholder="পাসের সাল"
+                                  placeholder="Passing Year"
                                   value={activeApp.academicHistory?.hscYear || ''}
                                   onChange={(e) => {
                                     const acad = activeApp.academicHistory || {};
@@ -2205,7 +2210,7 @@ export default function StudentDashboard({
 
                             {/* Bachelor */}
                             <div className="space-y-1 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">Bachelor বিশ্ববিদ্যালয় (ঐচ্ছিক):</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wide block">Bachelor University (Optional):</label>
                               <input
                                 type="text"
                                 placeholder="National University"
@@ -2222,7 +2227,7 @@ export default function StudentDashboard({
                               <div className="grid grid-cols-2 gap-1.5 mt-1.5">
                                 <input
                                   type="text"
-                                  placeholder="পাসের সাল"
+                                  placeholder="Passing Year"
                                   value={activeApp.academicHistory?.bachelorYear || ''}
                                   onChange={(e) => {
                                     const acad = activeApp.academicHistory || {};
@@ -2256,12 +2261,12 @@ export default function StudentDashboard({
                        <div className="space-y-4 pt-5 border-t border-slate-100 text-left">
                          <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                            <Globe className="h-4.5 w-4.5 text-brand-sky" />
-                           <span>৩. সোশ্যাল মিডিয়া ও যোগাযোগ লিংক (Social Media Links):</span>
+                           <span>3. Social Media & Contact Links:</span>
                          </h4>
 
                          <div className="grid gap-4 sm:grid-cols-3">
                            <div className="space-y-1">
-                             <label className="text-[11px] font-bold text-slate-600 block">ফেসবুক প্রোফাইল লিংক:</label>
+                             <label className="text-[11px] font-bold text-slate-600 block">Facebook Profile Link:</label>
                              <input
                                type="text"
                                placeholder="facebook.com/username"
@@ -2277,7 +2282,7 @@ export default function StudentDashboard({
                              />
                            </div>
                            <div className="space-y-1">
-                             <label className="text-[11px] font-bold text-slate-600 block">লিংকডইন প্রোফাইল লিংক:</label>
+                             <label className="text-[11px] font-bold text-slate-600 block">LinkedIn Profile Link:</label>
                               <input
                                 type="text"
                                 placeholder="linkedin.com/in/username"
@@ -2293,7 +2298,7 @@ export default function StudentDashboard({
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600 block">হোয়াটসঅ্যাপ নম্বর:</label>
+                              <label className="text-[11px] font-bold text-slate-600 block">WhatsApp Number:</label>
                               <input
                                 type="text"
                                 placeholder="017XXXXXXXX"
@@ -2315,12 +2320,12 @@ export default function StudentDashboard({
                         <div className="space-y-4 pt-5 border-t border-slate-100 text-left">
                           <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
                             <User className="h-4.5 w-4.5 text-brand-sky" />
-                            <span>৪. যোগাযোগের তথ্য (Contact Details):</span>
+                            <span>4. Contact Details:</span>
                           </h4>
 
                           <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600 block">ইমেইল ঠিকানা:</label>
+                              <label className="text-[11px] font-bold text-slate-600 block">Email Address:</label>
                               <input
                                 type="email"
                                 value={activeApp.email || ''}
@@ -2334,7 +2339,7 @@ export default function StudentDashboard({
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-600 block">মোবাইল নম্বর:</label>
+                              <label className="text-[11px] font-bold text-slate-600 block">Mobile Number:</label>
                               <input
                                 type="text"
                                 maxLength={11}
@@ -2353,18 +2358,18 @@ export default function StudentDashboard({
 
                         <div className="bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-100 p-3.5 text-xs text-left font-bold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                           <div>
-                            💡 প্রোফাইলের প্রতিটি নতুন ফিল্ড আপডেট করার পর নিচের বাটনে ক্লিক করে সেভ করুন। প্রোগ্রেস পারসেন্টেজ সাথে সাথে বৃদ্ধি পাবে।
+                            💡 Click the button below to save after updating each field in your profile. Your progress percentage will update immediately.
                           </div>
                           <button
                             type="button"
                             onClick={() => {
                               onUpdateApplication(activeApp);
-                              alert('প্রোফাইল তথ্য সফলভাবে সংরক্ষণ করা হয়েছে!');
+                              alert('Profile information saved successfully!');
                             }}
                             className="inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-black text-white hover:bg-slate-800 transition-all shadow-md border-b-2 border-brand-gold shrink-0"
                           >
                             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                            <span>প্রোফাইল আপডেট করুন (Save)</span>
+                            <span>Update Profile (Save)</span>
                           </button>
                         </div>
                       </div>
@@ -2378,15 +2383,15 @@ export default function StudentDashboard({
                           <Lock className="h-6 w-6" />
                         </div>
                         <div>
-                          <h4 className="font-display text-sm font-extrabold text-slate-700">বুলগেরিয়া ভিসা আবেদন লকড (Locked)</h4>
+                          <h4 className="font-display text-sm font-extrabold text-slate-700">Bulgaria Visa Application Locked</h4>
                           <p className="text-[11px] text-slate-500 mt-2 leading-relaxed text-left">
-                            ভিসা আবেদন প্রক্রিয়া শুরু করার জন্য এবং আপনার জন্য সচল বিশ্ববিদ্যালয়সমূহ দেখতে আপনার প্রোফাইলটি কমপক্ষে ৫০% সম্পন্ন করুন। আপনার বামদিকের প্রোফাইল ফর্মে প্রয়োজনীয় তথ্য দিয়ে সংরক্ষণ বাটনে ক্লিক করলেই আপনার প্রোফাইল স্কোর বৃদ্ধি পাবে।
+                            Please complete at least 50% of your profile to unlock available universities and start your visa application process. Fill out the required details in the profile form on the left and click save to increase your profile completion score.
                           </p>
                         </div>
                         <div className="pt-3 border-t border-slate-200">
                           <div className="flex justify-between text-[10px] font-black text-slate-400 mb-1">
-                            <span>আনলক প্রগতি</span>
-                            <span>{calculateProfileCompletion(activeApp)}% / ৫০%</span>
+                            <span>Unlock Progress</span>
+                            <span>{calculateProfileCompletion(activeApp)}% / 50%</span>
                           </div>
                           <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                             <div className="bg-slate-400 h-full transition-all duration-300" style={{ width: `${(calculateProfileCompletion(activeApp) / 50) * 100}%` }} />
@@ -2400,9 +2405,9 @@ export default function StudentDashboard({
                           <Sparkles className="h-6 w-6 text-brand-sky" />
                         </div>
                         <div>
-                          <h4 className="font-display text-sm font-extrabold text-brand-sky-dark">ভিসা আবেদন সচল হয়েছে!</h4>
+                          <h4 className="font-display text-sm font-extrabold text-brand-sky-dark">Visa Application Unlocked!</h4>
                           <p className="text-[11px] text-slate-600 mt-2 leading-relaxed text-left">
-                            অভিনন্দন! আপনি সফলভাবে ৫০% এর বেশি প্রোফাইল সম্পন্ন করেছেন। বুলগেরিয়ার বিভিন্ন বিশ্ববিদ্যালয়ে আপনার ভিসা ফাইলিং ফাইলটি এখন ওপেন করার জন্য আবেদন প্রক্রিয়া শুরু করুন।
+                            Congratulations! You have completed over 50% of your profile. You can now begin your visa filing process.
                           </p>
                         </div>
                         <button
@@ -2414,7 +2419,7 @@ export default function StudentDashboard({
                           }}
                           className="w-full rounded-xl bg-slate-900 py-3 text-xs font-black text-white hover:bg-slate-800 transition-all border-b-2 border-brand-gold shadow-md flex items-center justify-center gap-1.5"
                         >
-                          <span>স্টুডেন্ট ভিসা আবেদন শুরু করুন</span>
+                          <span>Start Student Visa Application</span>
                           <ArrowRight className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -2437,8 +2442,8 @@ export default function StudentDashboard({
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span className="md:inline hidden">রিয়েল-টাইম ট্র্যাকিং (Real-time tracking)</span>
-                    <span className="md:hidden inline">আবেদন ট্র্যাকিং</span>
+                    <span className="md:inline hidden">Real-Time Tracking</span>
+                    <span className="md:hidden inline">Tracking</span>
                   </button>
                   <button
                     id="tab-documents"
@@ -2449,8 +2454,8 @@ export default function StudentDashboard({
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span className="md:inline hidden">ডকুমেন্ট আপলোড ও গাইডলাইন (Secure Upload)</span>
-                    <span className="md:hidden inline">কাগজপত্র আপলোড</span>
+                    <span className="md:inline hidden">Secure Uploads</span>
+                    <span className="md:hidden inline">Uploads</span>
                   </button>
                   <button
                     id="tab-payment"
@@ -2461,8 +2466,8 @@ export default function StudentDashboard({
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span className="md:inline hidden">ফি ও পেমেন্ট গেটওয়ে (Payment Gateway)</span>
-                    <span className="md:hidden inline">ফি ও পেমেন্ট</span>
+                    <span className="md:inline hidden">Fees & Payments</span>
+                    <span className="md:hidden inline">Payments</span>
                     {activeApp.paymentStatus !== 'Paid' && (
                       <span className="absolute top-1.5 right-1 flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
@@ -2479,7 +2484,7 @@ export default function StudentDashboard({
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span>অতিরিক্ত সেবা সমূহ (Services)</span>
+                    <span>Additional Services</span>
                   </button>
                 </div>
 
@@ -2491,7 +2496,7 @@ export default function StudentDashboard({
                   id="student-logout-btn"
                 >
                   <LogOut className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">লগআউট</span>
+                  <span className="hidden sm:inline">Logout</span>
                 </button>
               </div>
 
@@ -2527,7 +2532,7 @@ export default function StudentDashboard({
                           <label 
                             htmlFor="profile-photo-upload-input" 
                             className="absolute bottom-0 right-0 bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white p-1.5 rounded-full shadow-lg border border-white cursor-pointer hover:scale-110 active:scale-95 transition-all"
-                            title="ছবি আপলোড করুন"
+                            title="Upload Photo"
                           >
                             <Camera className="h-3.5 w-3.5" />
                           </label>
@@ -2569,15 +2574,15 @@ export default function StudentDashboard({
                               <Compass className="h-3 w-3" /> Bulgaria Student Portal
                             </div>
                           </div>
-                          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">পাসপোর্ট: <span className="font-mono text-slate-600">{activeApp.passportNumber}</span></p>
+                          <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Passport: <span className="font-mono text-slate-600">{activeApp.passportNumber}</span></p>
                           <div className="text-[11px] text-slate-500 font-medium flex flex-wrap gap-x-3 gap-y-1">
-                            <span>ফোন: {activeApp.phone}</span>
+                            <span>Phone: {activeApp.phone}</span>
                             <span className="text-slate-200">|</span>
-                            <span className="truncate max-w-[220px]" title={activeApp.email}>ইমেইল: {activeApp.email}</span>
+                            <span className="truncate max-w-[220px]" title={activeApp.email}>Email: {activeApp.email}</span>
                           </div>
                           {activeApp.desiredCourse && (
                             <div className="bg-slate-50 border border-slate-100/80 rounded-xl p-2.5 max-w-xl text-[10.5px] leading-relaxed text-slate-600 mt-2">
-                              <span className="font-bold text-slate-700">নির্বাচিত বিশ্ববিদ্যালয় ও কোর্স:</span> {activeApp.desiredCourse}
+                              <span className="font-bold text-slate-700">Selected University & Course:</span> {activeApp.desiredCourse}
                             </div>
                           )}
                         </div>
@@ -2589,7 +2594,7 @@ export default function StudentDashboard({
                         <div className="border border-slate-100 bg-slate-50/50 rounded-xl p-3.5 text-left space-y-1.5 text-[10px] min-w-[220px] flex-1">
                           <h4 className="font-bold text-slate-700 flex items-center gap-1 text-[10px] border-b border-slate-200/60 pb-1">
                             <GraduationCap className="h-3.5 w-3.5 text-brand-sky" />
-                            <span>শিক্ষাগত বিবরণ (Academic Details)</span>
+                            <span>Academic Details</span>
                           </h4>
                           {activeApp.academicHistory && (activeApp.academicHistory.sscSchool || activeApp.academicHistory.hscCollege || activeApp.academicHistory.bachelorUni) ? (
                             <div className="space-y-0.5 text-slate-600">
@@ -2604,7 +2609,7 @@ export default function StudentDashboard({
                               )}
                             </div>
                           ) : (
-                            <p className="text-slate-400 italic text-[9px]">কোনো শিক্ষাগত ইতিহাস সেট করা হয়নি।</p>
+                            <p className="text-slate-400 italic text-[9px]">No academic history provided.</p>
                           )}
                         </div>
 
@@ -2612,7 +2617,7 @@ export default function StudentDashboard({
                         <div className="border border-slate-100 bg-slate-50/50 rounded-xl p-3.5 text-left space-y-2 text-[10px] min-w-[180px]">
                           <h4 className="font-bold text-slate-700 flex items-center gap-1 text-[10px] border-b border-slate-200/60 pb-1">
                             <Globe className="h-3.5 w-3.5 text-brand-sky" />
-                            <span>সোশ্যাল প্রোফাইল (Social Profiles)</span>
+                            <span>Social Profiles</span>
                           </h4>
                           {activeApp.socialMedia && (activeApp.socialMedia.facebook || activeApp.socialMedia.linkedin || activeApp.socialMedia.whatsapp) ? (
                             <div className="flex flex-wrap gap-1.5 pt-0.5">
@@ -2651,7 +2656,7 @@ export default function StudentDashboard({
                               )}
                             </div>
                           ) : (
-                            <p className="text-slate-400 italic text-[9px]">কোনো সোশ্যাল লিংক যুক্ত করা হয়নি।</p>
+                            <p className="text-slate-400 italic text-[9px]">No social links added.</p>
                           )}
                         </div>
                       </div>
@@ -2684,7 +2689,7 @@ export default function StudentDashboard({
                         }}
                         className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-[11px] font-bold text-slate-600 transition-all"
                       >
-                        <span>{isEditingProfile ? 'এডিট ফর্ম বন্ধ করুন (Close Edit Form)' : 'প্রোফাইল সংশোধন করুন (Edit Profile)'}</span>
+                        <span>{isEditingProfile ? 'Close Edit Form' : 'Edit Profile'}</span>
                       </button>
                     </div>
 
@@ -2699,7 +2704,7 @@ export default function StudentDashboard({
                         >
                           <div className="grid gap-4 md:grid-cols-2 text-left">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পূর্ণ নাম (Full Name):</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Full Name:</label>
                               <input
                                 type="text"
                                 value={editProfileData.fullName}
@@ -2709,7 +2714,7 @@ export default function StudentDashboard({
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">পাসপোর্ট নম্বর (Passport Number):</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Passport Number:</label>
                               <input
                                 type="text"
                                 value={editProfileData.passportNumber}
@@ -2719,7 +2724,7 @@ export default function StudentDashboard({
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">মোবাইল নম্বর (Phone Number):</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Phone Number:</label>
                               <input
                                 type="tel"
                                 value={editProfileData.phone}
@@ -2729,7 +2734,7 @@ export default function StudentDashboard({
                             </div>
 
                             <div className="space-y-1">
-                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">ইমেল ঠিকানা (Email Address):</label>
+                              <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Email Address:</label>
                               <input
                                 type="email"
                                 value={editProfileData.email}
@@ -2741,7 +2746,7 @@ export default function StudentDashboard({
 
                           <div className="border-t border-slate-100 mt-4 pt-4 grid gap-4 sm:grid-cols-3 text-left">
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
-                              <h5 className="text-[11px] font-black text-slate-700">SSC বিবরণী</h5>
+                              <h5 className="text-[11px] font-black text-slate-700">SSC Details</h5>
                               <input
                                 placeholder="School Name"
                                 type="text"
@@ -2768,7 +2773,7 @@ export default function StudentDashboard({
                             </div>
 
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
-                              <h5 className="text-[11px] font-black text-slate-700">HSC বিবরণী</h5>
+                              <h5 className="text-[11px] font-black text-slate-700">HSC Details</h5>
                               <input
                                 placeholder="College Name"
                                 type="text"
@@ -2795,7 +2800,7 @@ export default function StudentDashboard({
                             </div>
 
                             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1.5">
-                              <h5 className="text-[11px] font-black text-slate-700">Bachelor বিবরণী (ঐচ্ছিক)</h5>
+                              <h5 className="text-[11px] font-black text-slate-700">Bachelor Details (Optional)</h5>
                               <input
                                 placeholder="University Name"
                                 type="text"
@@ -2863,7 +2868,7 @@ export default function StudentDashboard({
                               type="button"
                               onClick={() => {
                                 if (!editProfileData.fullName.trim() || !editProfileData.passportNumber.trim() || !editProfileData.email.trim() || !editProfileData.phone.trim()) {
-                                  setEditProfileError('অনুগ্রহ করে প্রোফাইলের সব তথ্য সঠিকভাবে পূরণ করুন।');
+                                  setEditProfileError('Please fill out all profile details correctly.');
                                   return;
                                 }
                                 setEditProfileError('');
@@ -2896,14 +2901,14 @@ export default function StudentDashboard({
                               }}
                               className="rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-5 py-2 text-xs font-black transition-all shadow-sm"
                             >
-                              সংরক্ষণ করুন (Save)
+                              Save Profile
                             </button>
                             <button
                               type="button"
                               onClick={() => setIsEditingProfile(false)}
                               className="rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 text-xs font-bold transition-all"
                             >
-                              বাতিল (Cancel)
+                              Cancel (Cancel)
                             </button>
                           </div>
                         </motion.div>
@@ -2926,9 +2931,9 @@ export default function StudentDashboard({
                               <CreditCard className="h-5 w-5 animate-pulse" />
                             </div>
                             <div>
-                              <h4 className="text-xs font-bold text-slate-800">পেমেন্ট পেন্ডিং আছে (Payment Action Required)</h4>
+                              <h4 className="text-xs font-bold text-slate-800">Payment Action Required</h4>
                               <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
-                                আপনার ভারতীয় ডাবল এন্ট্রি ভিসা এবং দিল্লী ট্রাভেল প্রসেসিং ফি <strong>৳ ১৫,০০০ BDT</strong> অপরিশোধিত রয়েছে। দ্রুত প্রসেসিং শুরু করতে ফি পরিশোধ করুন।
+                                Your Indian double-entry visa and Delhi travel processing fee of <strong>৳ 15,000 BDT</strong> is unpaid. Please pay to begin processing.
                               </p>
                             </div>
                           </div>
@@ -2937,47 +2942,47 @@ export default function StudentDashboard({
                             onClick={() => setActiveTab('payment')}
                             className="w-full sm:w-auto shrink-0 rounded-lg bg-gradient-to-r from-brand-sky to-brand-sky-dark text-white px-4 py-2.5 text-xs font-bold shadow-md hover:scale-105 active:scale-95 transition-all text-center border-b border-brand-gold"
                           >
-                            ফি পরিশোধ করুন ➔
+                            Pay Fee Now ➔
                           </button>
                         </motion.div>
                       )}
 
                       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                         <h3 className="font-display font-bold text-slate-800 text-sm mb-6 border-b border-slate-50 pb-3 text-left">
-                          আপনার আবেদনের বর্তমান অবস্থা (Live Processing Status)
+                          Live Processing Status
                         </h3>
 
                         <div className="relative border-l-2 border-slate-100 pl-6 ml-3 space-y-8 text-left">
                           {[
                             {
                               key: 'Submitted',
-                              title: 'আবেদন ফাইল খোলা হয়েছে',
-                              desc: 'আপনার বেসিক ফাইল এজেন্সিতে রেডি করা হয়েছে।',
+                              title: 'Application File Opened',
+                              desc: 'Your basic file has been opened at the agency.',
                               time: activeApp.createdAt,
                               isActive: true,
                               isCompleted: true
                             },
                             {
                               key: 'Document Verification',
-                              title: 'ডকুমেন্ট ভেরিফিকেশন ও এটেস্টেশন',
-                              desc: 'বাংলাদেশ পররাষ্ট্র মন্ত্রণালয় ও শিক্ষাবোর্ডের সত্যায়ন প্রক্রিয়া চলমান।',
+                              title: 'Document Verification & Attestation',
+                              desc: 'Attestation process at the Ministry of Foreign Affairs & Education Board is ongoing.',
                               time: activeApp.documents.length > 0 ? activeApp.documents[0].uploadedAt : '',
                               isActive: activeApp.status === 'Document Verification' || activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued',
                               isCompleted: activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued'
                             },
                             {
                               key: 'Embassy Processing',
-                              title: 'দিল্লী দূতাবাস প্রসেসিং ও ভারতীয় ভিসা',
-                              desc: 'ভারতীয় ট্রানজিট ভিসা বুকিং সম্পন্ন এবং দিল্লীস্থ দৈনিক দূতাবাসে অ্যাপয়েন্টমেন্ট বুকিং প্রসেস।',
-                              time: activeApp.status === 'Embassy Processing' ? 'চলমান' : (activeApp.status === 'Visa Issued' ? 'সম্পন্ন' : ''),
+                              title: 'Delhi Embassy Processing & Indian Visa',
+                              desc: 'Indian transit visa booked and appointment scheduled at the Delhi embassy.',
+                              time: activeApp.status === 'Embassy Processing' ? 'In Progress' : (activeApp.status === 'Visa Issued' ? 'Completed' : ''),
                               isActive: activeApp.status === 'Embassy Processing' || activeApp.status === 'Visa Issued',
                               isCompleted: activeApp.status === 'Visa Issued'
                             },
                             {
                               key: 'Visa Issued',
-                              title: 'বুলগেরিয়া স্টুডেন্ট ভিসা অনুমোদিত',
-                              desc: 'অভিনন্দন! আপনার বুলগেরিয়া স্টুডেন্ট ভিসা সফলভাবে অনুমোদন ও পাসপোর্ট স্ট্যাম্পিং সম্পন্ন হয়েছে।',
-                              time: activeApp.status === 'Visa Issued' ? 'ফ্লাইট প্রিপারেশন' : '',
+                              title: 'Bulgaria Student Visa Approved',
+                              desc: 'Congratulations! Your Bulgaria student visa has been approved and passport stamped.',
+                              time: activeApp.status === 'Visa Issued' ? 'Flight Preparation' : '',
                               isActive: activeApp.status === 'Visa Issued',
                               isCompleted: activeApp.status === 'Visa Issued'
                             }
@@ -3017,9 +3022,9 @@ export default function StudentDashboard({
                       <div className="rounded-xl bg-brand-sky-light p-4 border border-brand-sky/20 flex items-start space-x-3 text-left">
                         <ShieldAlert className="h-5 w-5 text-brand-sky shrink-0 mt-0.5" />
                         <div>
-                          <h4 className="text-xs font-bold text-brand-sky-dark">জরুরি রিয়েল-тайм নির্দেশনা</h4>
+                          <h4 className="text-xs font-bold text-brand-sky-dark">Real-time Directives</h4>
                           <p className="text-[11px] text-slate-700 leading-relaxed mt-1">
-                            বুলগেরিয়া দূতাবাস দিল্লীতে হওয়ায় আমরা আপনার ভারতীয় ডাবল এন্ট্রি visa এবং দিল্লী ভ্রমণের সমস্ত হোটেল ও কনভেয়েন্স শিডিউল এখান থেকেই কন্ট্রোল করছি। প্রতিটি বড় আপডেটের পর আপনার ফোনে স্বয়ংক্রিয় এসএমএস (SMS) চলে যাবে।
+                            Since the Bulgaria Embassy is in Delhi, we manage your Indian double-entry visa, hotel, and travel schedule directly. Automated SMS alerts will be sent upon major status updates.
                           </p>
                         </div>
                       </div>
@@ -3030,7 +3035,7 @@ export default function StudentDashboard({
                       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4" id="progress-intake-countdown-card">
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-slate-500 uppercase tracking-wider">আবেদনের অগ্রগতি (Processing Progress)</span>
+                            <span className="font-bold text-slate-500 uppercase tracking-wider">Processing Progress</span>
                             <span className="font-black text-brand-sky">
                               {(() => {
                                 switch (activeApp.status) {
@@ -3071,7 +3076,7 @@ export default function StudentDashboard({
                               <Flame className="h-4.5 w-4.5 animate-bounce" />
                             </span>
                             <div className="text-left">
-                              <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wide">বুলগেরিয়া অক্টোবর ২০২৬ ইনটেক</h4>
+                              <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-wide">Bulgaria October 2026 Intake</h4>
                               <p className="text-[9px] text-slate-400 font-bold">Sofia / Varna Classes Start</p>
                             </div>
                           </div>
@@ -3082,7 +3087,7 @@ export default function StudentDashboard({
                                 const currentDate = new Date();
                                 const diffTime = targetDate.getTime() - currentDate.getTime();
                                 const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                                return daysLeft > 0 ? `${daysLeft} দিন বাকি` : 'ইনটেক শুরু';
+                                return daysLeft > 0 ? `${daysLeft} days remaining` : 'Intake Started';
                               })()}
                             </span>
                           </div>
@@ -3100,19 +3105,19 @@ export default function StudentDashboard({
               <div className="rounded-2xl border-l-4 border-brand-sky bg-white p-5 shadow-sm space-y-2">
                 <div className="flex items-center space-x-2 text-brand-sky">
                   <Lock className="h-5 w-5 shrink-0" />
-                  <h3 className="font-display font-bold text-slate-800 text-sm">ডকুমেন্ট আপলোডের সিকিউর গাইডলাইন (Secure Document Upload Panel)</h3>
+                  <h3 className="font-display font-bold text-slate-800 text-sm">Secure Document Upload Guidelines</h3>
                 </div>
                 <div className="text-xs text-slate-600 leading-relaxed space-y-1 pl-7">
-                  <p>✓ আপনার সমস্ত ফাইলগুলো ব্যাংকিং স্ট্যান্ডার্ড <strong>SSL 256-bit এনক্রিপশন</strong> দ্বারা সরাসরি আমাদের মূল সার্ভারে সংরক্ষিত হবে।</p>
-                  <p>✓ আপলোড করার আগে অবশ্যই আপনার ডকুমেন্টগুলো হাই-রেজুলেশন কালার স্ক্যান <strong>(PDF বা JPEG)</strong> ফরম্যাটে সেভ করে রাখুন।</p>
-                  <p>✓ প্রতিটি ফাইলের সাইজ সর্বোচ্চ <strong>10MB</strong> হতে পারবে। ঝাপসা বা কাটা পড়া ডকুমেন্ট রিজেক্ট হয়ে যাবে।</p>
+                  <p>✓ All files are encrypted using <strong>banking-grade 256-bit SSL encryption</strong> and stored on our secure servers.</p>
+                  <p>✓ Ensure all documents are high-resolution color scans saved in <strong>PDF or JPEG</strong> format prior to upload.</p>
+                  <p>✓ Maximum file size is <strong>10MB</strong> per file. Blurry or cut-off documents will be rejected.</p>
                 </div>
               </div>
 
               {/* Requirement Items Table */}
               <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                 <div className="p-4 bg-slate-50 border-b border-slate-200">
-                  <h4 className="text-xs font-bold text-slate-700">প্রয়োজনীয় কাগজপত্রের তালিকা ও আপলোড সেকশন</h4>
+                  <h4 className="text-xs font-bold text-slate-700">Required Documents List & Upload Section</h4>
                 </div>
 
                 <div className="divide-y divide-slate-100" id="document-upload-rows">
@@ -3128,50 +3133,50 @@ export default function StudentDashboard({
                             <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                               req.isRequired ? 'bg-red-50 text-brand-red border border-red-100' : 'bg-slate-100 text-slate-500'
                             }`}>
-                              {req.isRequired ? 'অবশ্যই দরকার' : 'ঐচ্ছিক সেবা'}
+                              {req.isRequired ? 'Required' : 'Optional Service'}
                             </span>
                           </div>
                           <p className="text-xs text-slate-500">{req.description}</p>
                           <p className="text-[11px] text-slate-400 bg-slate-50 p-2 rounded-lg border border-slate-100/50">
-                            <strong>সাপোর্ট গাইড:</strong> {req.bangladeshCollectionGuide}
+                            <strong>Support Guide:</strong> {req.bangladeshCollectionGuide}
                           </p>
 
                           {/* Approved/Feedback State */}
                           {uploaded && (
                             <div className="mt-2 flex flex-wrap gap-2 items-center">
-                              <span className="text-[10px] text-slate-400">আপলোড করা ফাইল: <strong className="text-slate-600 font-mono">{uploaded.fileName} ({uploaded.fileSize})</strong></span>
+                              <span className="text-[10px] text-slate-400">Uploaded File: <strong className="text-slate-600 font-mono">{uploaded.fileName} ({uploaded.fileSize})</strong></span>
                               {uploaded.fileUrl && (
                                 <button
                                   type="button"
                                   onClick={() => setPreviewDoc(uploaded)}
                                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-[9px] font-black transition-all border border-slate-200"
-                                  title="ফাইল প্রিভিউ করুন"
+                                  title="Preview File"
                                 >
                                   <Eye className="h-3 w-3 text-brand-sky" />
-                                  <span>প্রিভিউ করুন</span>
+                                  <span>Preview</span>
                                 </button>
                               )}
                               {uploaded.status === 'Approved' && (
                                 <span className="inline-flex items-center space-x-1 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 border border-emerald-100">
                                   <CheckCircle className="h-3 w-3" />
-                                  <span>অনুমোদিত (Approved)</span>
+                                  <span>Approved</span>
                                 </span>
                               )}
                               {uploaded.status === 'Pending' && (
                                 <span className="inline-flex items-center space-x-1 rounded bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-600 border border-amber-100">
                                   <Clock className="h-3 w-3" />
-                                  <span>যাচাইকরণাধীন (Pending Verification)</span>
+                                  <span>Pending Verification</span>
                                 </span>
                               )}
                               {uploaded.status === 'Rejected' && (
                                 <div className="space-y-1 w-full">
                                   <span className="inline-flex items-center space-x-1 rounded bg-rose-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-red border border-rose-100">
                                     <XCircle className="h-3 w-3" />
-                                    <span>প্রত্যাখ্যাত (Rejected)</span>
+                                    <span>Rejected</span>
                                   </span>
                                   {uploaded.feedback && (
                                     <p className="text-[10px] text-brand-red bg-rose-50/50 p-1.5 rounded border border-brand-red/10">
-                                      <strong>কারণ:</strong> {uploaded.feedback}
+                                      <strong>Reason:</strong> {uploaded.feedback}
                                     </p>
                                   )}
                                 </div>
@@ -3185,7 +3190,7 @@ export default function StudentDashboard({
                           {uploadingDocCategory === req.id ? (
                             <div className="w-40 space-y-1.5">
                               <div className="flex justify-between text-[10px] font-semibold text-brand-sky">
-                                <span>এনক্রিপ্ট আপলোড...</span>
+                                <span>Encrypting & Uploading...</span>
                                 <span>{uploadProgress}%</span>
                               </div>
                               <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
@@ -3202,7 +3207,7 @@ export default function StudentDashboard({
                               className="flex items-center space-x-1.5 rounded-lg bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-brand-sky/10 hover:text-brand-sky transition-all"
                             >
                               <Upload className="h-4 w-4" />
-                              <span>{uploaded ? 'পুনরায় আপলোড' : 'ফাইল আপলোড'}</span>
+                              <span>{uploaded ? 'Re-upload File' : 'Upload File'}</span>
                             </button>
                           )}
                         </div>
@@ -3241,7 +3246,7 @@ export default function StudentDashboard({
                   
                   <div className="space-y-2 text-left">
                     <span className="text-[10px] font-black uppercase text-brand-sky bg-brand-sky-light/50 px-2.5 py-1 rounded-lg inline-block">
-                      🎓 চূড়ান্ত নির্বাচন (Final Selection Overview)
+                      🎓 Final Selection Overview
                     </span>
                     <h3 className="text-xs md:text-sm font-black text-slate-800 flex items-center gap-2">
                       <School className="h-5 w-5 text-brand-sky shrink-0 animate-pulse" />
@@ -3249,21 +3254,21 @@ export default function StudentDashboard({
                     </h3>
                     <p className="text-xs font-bold text-slate-600 flex items-center gap-2 pl-6">
                       <GraduationCap className="h-4 w-4 text-brand-gold shrink-0" />
-                      <span>প্রোগ্রাম/কোর্স: {activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[0] : activeApp.desiredCourse}</span>
+                      <span>Program/Course: {activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[0] : activeApp.desiredCourse}</span>
                     </p>
                     <p className="text-[11px] text-slate-400 pl-6 flex items-center gap-1 font-semibold">
                       <MapPin className="h-3.5 w-3.5 text-slate-300" />
-                      <span>অবস্থান: বুলগেরিয়া (Bulgaria)</span>
+                      <span>Location: Bulgaria</span>
                     </p>
                   </div>
 
                   <div className="flex flex-col md:items-end text-left md:text-right shrink-0 gap-2.5 w-full md:w-auto">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">টাকা (মোট প্রসেসিং ফি)</span>
+                      <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Total Processing Fee</span>
                       <span className="text-lg md:text-xl font-black text-brand-sky font-mono">৳{totalAmt.toLocaleString()} BDT</span>
                     </div>
 
-                    {/* Edit button to correct mistakes (ভুল সংশোধন / আগের স্টেপে যাওয়ার সুযোগ) */}
+                    
                     <button
                       type="button"
                       id="edit-uni-course-btn"
@@ -3271,7 +3276,7 @@ export default function StudentDashboard({
                       className="inline-flex items-center justify-center space-x-1.5 rounded-xl border border-amber-300 bg-amber-50/50 px-4 py-2 text-xs font-black text-amber-800 hover:bg-amber-100 hover:text-amber-900 hover:border-amber-400 transition-all shadow-sm w-full md:w-auto active:scale-95"
                     >
                       <RotateCcw className="h-3.5 w-3.5 text-amber-600 animate-spin" />
-                      <span>ভুল সংশোধন / পূর্ববর্তী নির্বাচন পরিবর্তন</span>
+                      <span>Edit / Change Selection</span>
                     </button>
                   </div>
                 </div>
@@ -3288,16 +3293,16 @@ export default function StudentDashboard({
                     >
                       <div className="flex items-center space-x-2 text-amber-700">
                         <Sparkles className="h-4.5 w-4.5 text-brand-gold animate-bounce" />
-                        <h4 className="text-xs font-black">বিশ্ববিদ্যালয় ও কোর্স সংশোধন প্যানেল</h4>
+                        <h4 className="text-xs font-black">University & Course Selection Panel</h4>
                       </div>
                       <p className="text-[11px] text-slate-500 leading-relaxed">
-                        ভুল সংশোধন করার জন্য নিচে নতুন বিশ্ববিদ্যালয় ও প্রোগ্রাম সিলেক্ট করে "পরিবর্তন নিশ্চিত করুন" বাটনে ক্লিক করুন।
+                        Select a new university and program below, then click "Confirm Changes".
                       </p>
 
                       <div className="grid gap-4 sm:grid-cols-2">
                         {/* Dropdown Selector */}
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-700 block">১. বুলগেরিয়ার বিশ্ববিদ্যালয়:</label>
+                          <label className="text-[10px] font-black text-slate-700 block">1. Bulgaria University:</label>
                           <select
                             value={selectedApplyUni || (activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[1].replace(')', '') : 'Technical University of Sofia')}
                             onChange={(e) => {
@@ -3315,7 +3320,7 @@ export default function StudentDashboard({
 
                         {/* Course Selector */}
                         <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-700 block">২. প্রোগ্রাম ও কোর্স:</label>
+                          <label className="text-[10px] font-black text-slate-700 block">2. Program & Course:</label>
                           <select
                             value={selectedApplyCourse || (activeApp.desiredCourse.includes(' (') ? activeApp.desiredCourse.split(' (')[0] : '')}
                             onChange={(e) => setSelectedApplyCourse(e.target.value)}
@@ -3334,7 +3339,7 @@ export default function StudentDashboard({
                           onClick={() => setIsEditingUniCourse(false)}
                           className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                         >
-                          বাতিল
+                          Cancel
                         </button>
                         <button
                           type="button"
@@ -3350,7 +3355,7 @@ export default function StudentDashboard({
                           }}
                           className="rounded-xl bg-brand-sky px-5 py-2 text-xs font-black text-white hover:bg-brand-sky-dark transition-colors shadow-sm"
                         >
-                          পরিবর্তন নিশ্চিত করুন
+                          Confirm Changes
                         </button>
                       </div>
                     </motion.div>
@@ -3362,23 +3367,23 @@ export default function StudentDashboard({
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6 lg:col-span-1">
                   <div>
                     <span className="text-[9px] font-extrabold uppercase tracking-widest text-brand-sky bg-brand-sky-light px-2.5 py-1 rounded-full">
-                      নির্বাচিত সার্ভিস ও পেমেন্ট হিস্ট্রি
+                      Selected Services & Payment History
                     </span>
-                    <h3 className="mt-3 font-display text-lg font-bold text-slate-800">পেমেন্ট ও ইনভয়েস বিবরণী</h3>
+                    <h3 className="mt-3 font-display text-lg font-bold text-slate-800">Payment & Invoice Details</h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      আপনার নির্বাচিত সার্ভিসসমূহের তালিকা এবং প্রসেসিং ফি নিচে বিস্তারিত দেওয়া হলো।
+                      Detailed list of your selected services and processing fees below.
                     </p>
                   </div>
 
                   {/* Selected Services Itemized List */}
                   <div className="space-y-2 border-t border-b border-slate-100 py-4">
-                    <h4 className="text-xs font-bold text-slate-700">নির্বাচিত সার্ভিসসমূহ:</h4>
+                    <h4 className="text-xs font-bold text-slate-700">Selected Services:</h4>
                     <div className="space-y-2">
                       {studentServices.map((service) => (
                         <div key={service.id} className="flex justify-between items-start text-xs bg-slate-50 p-2 rounded-lg border border-slate-100/50">
                           <div>
                             <p className="font-bold text-slate-800 leading-tight">{service.nameEn}</p>
-                            <p className="text-[9px] text-slate-400 mt-0.5">ফি বাবদ</p>
+                            <p className="text-[9px] text-slate-400 mt-0.5">Fee</p>
                           </div>
                           <span className="font-mono font-bold text-slate-700 shrink-0 ml-1">৳{service.price.toLocaleString()}</span>
                         </div>
@@ -3389,58 +3394,58 @@ export default function StudentDashboard({
                   {/* Invoice Calculations Panel */}
                   <div className="rounded-xl bg-slate-50 p-4 border border-slate-100 space-y-3">
                     <div className="flex justify-between text-xs text-slate-600">
-                      <span>অ্যাপ্লিকেশন আইডি:</span>
+                      <span>Application ID:</span>
                       <span className="font-mono font-bold text-slate-800">{activeApp.id}</span>
                     </div>
                     <div className="flex justify-between text-xs text-slate-600">
-                      <span>মোট প্রসেসিং ফি:</span>
+                      <span>Total Processing Fee:</span>
                       <span className="font-mono font-bold text-slate-800">৳{totalAmt.toLocaleString()} BDT</span>
                     </div>
                     <div className="flex justify-between text-xs text-slate-600 border-b border-slate-200/50 pb-2">
-                      <span>পরিশোধিত ফি (Paid):</span>
+                      <span>Fee Paid:</span>
                       <span className="font-mono font-bold text-emerald-600">৳{paidAmt.toLocaleString()} BDT</span>
                     </div>
                     <div className="flex justify-between text-xs text-slate-700 font-bold">
-                      <span>চলতি বকেয়া (Due):</span>
+                      <span>Balance Due:</span>
                       <span className={`font-mono ${remainingAmt > 0 ? 'text-rose-600' : 'text-slate-700'}`}>
                         ৳{remainingAmt.toLocaleString()} BDT
                       </span>
                     </div>
 
                     <div className="flex justify-between text-xs text-slate-600 pt-2 border-t border-slate-200/50">
-                      <span>পেমেন্ট স্ট্যাটাস:</span>
+                      <span>Payment Status:</span>
                       {activeApp.paymentStatus === 'Paid' ? (
                         <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600 border border-emerald-100">
-                          সম্পূর্ণ পরিশোধিত (Paid)
+                          Fully Paid
                         </span>
                       ) : activeApp.paymentStatus === 'Partially Paid' ? (
                         <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 border border-amber-100 animate-pulse">
-                          আংশিক পরিশোধিত (Partial)
+                          Partially Paid
                         </span>
                       ) : (
                         <span className="rounded bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-brand-red border border-rose-100">
-                          অপরিশোধিত (Unpaid)
+                          Unpaid
                         </span>
                       )}
                     </div>
 
                     {activeApp.paymentStatus !== 'Unpaid' && (
                       <div className="border-t border-slate-200/50 pt-3 space-y-1.5 text-[10px] text-slate-500">
-                        <div className="font-bold text-slate-700">সর্বশেষ পেমেন্ট ট্রানজেকশন:</div>
-                        <div>পেমেন্ট মাধ্যম: <strong className="text-slate-700">{activeApp.paymentMethod}</strong></div>
-                        <div>ট্রানজেকশন আইডি: <strong className="text-slate-700 font-mono">{activeApp.paymentTxnId}</strong></div>
-                        <div>তারিখ ও সময়: <strong className="text-slate-700 font-mono">{activeApp.paymentDate}</strong></div>
+                        <div className="font-bold text-slate-700">Latest Payment Transaction:</div>
+                        <div>Payment Method: <strong className="text-slate-700">{activeApp.paymentMethod}</strong></div>
+                        <div>Transaction ID: <strong className="text-slate-700 font-mono">{activeApp.paymentTxnId}</strong></div>
+                        <div>Date & Time: <strong className="text-slate-700 font-mono">{activeApp.paymentDate}</strong></div>
                       </div>
                     )}
                   </div>
 
                   {/* Installments Schedule View */}
                   <div className="space-y-2 bg-brand-sky/5 p-3 rounded-xl border border-brand-sky/10">
-                    <h4 className="text-xs font-bold text-slate-800">কিস্তির সময়সূচী (Installment Plan)</h4>
+                    <h4 className="text-xs font-bold text-slate-800">Installment Plan Schedule</h4>
                     <div className="space-y-2 text-xs">
                       <div className="flex justify-between items-center bg-white p-2 rounded border border-slate-100">
                         <div>
-                          <p className="font-bold text-slate-700">১ম কিস্তি (৫০% - শুরুতেই)</p>
+                          <p className="font-bold text-slate-700">1st Installment (50% Upfront)</p>
                           {activeApp.installments?.[0]?.paymentDate && (
                             <p className="text-[9px] text-slate-400 font-mono">{activeApp.installments[0].paymentDate}</p>
                           )}
@@ -3451,13 +3456,13 @@ export default function StudentDashboard({
                             : 'bg-slate-100 text-slate-500'
                         }`}>
                           ৳{inst1Amt.toLocaleString()} BDT · {
-                            activeApp.paymentStatus === 'Paid' || activeApp.paymentStatus === 'Partially Paid' ? 'পরিশোধিত' : 'বকেয়া'
+                            activeApp.paymentStatus === 'Paid' || activeApp.paymentStatus === 'Partially Paid' ? 'Paid' : 'Unpaid'
                           }
                         </span>
                       </div>
                       <div className="flex justify-between items-center bg-white p-2 rounded border border-slate-100">
                         <div>
-                          <p className="font-bold text-slate-700">২য় কিস্তি (বাকি ৫০% - ফাইল শেষে)</p>
+                          <p className="font-bold text-slate-700">2nd Installment (Remaining 50% Final Step)</p>
                           {activeApp.installments?.[1]?.paymentDate && (
                             <p className="text-[9px] text-slate-400 font-mono">{activeApp.installments[1].paymentDate}</p>
                           )}
@@ -3468,7 +3473,7 @@ export default function StudentDashboard({
                             : 'bg-slate-100 text-slate-500'
                         }`}>
                           ৳{inst2Amt.toLocaleString()} BDT · {
-                            activeApp.paymentStatus === 'Paid' ? 'পরিশোধিত' : 'বকেয়া'
+                            activeApp.paymentStatus === 'Paid' ? 'Paid' : 'Unpaid'
                           }
                         </span>
                       </div>
@@ -3484,9 +3489,9 @@ export default function StudentDashboard({
                         <CheckCircle className="h-10 w-10 animate-bounce" />
                       </div>
                       <div className="space-y-1">
-                        <h3 className="font-display text-xl font-bold text-slate-800">পেমেন্ট সফলভাবে সম্পন্ন হয়েছে!</h3>
+                        <h3 className="font-display text-xl font-bold text-slate-800">Payment Completed Successfully!</h3>
                         <p className="text-xs text-slate-500 max-w-sm">
-                          আপনার পেমেন্ট সফলভাবে যাচাই ও অনুমোদিত হয়েছে। আপনার ফাইল সক্রিয় করা হয়েছে।
+                          Your payment has been verified and approved. Your application file is now active.
                         </p>
                       </div>
                     </div>
@@ -3496,9 +3501,9 @@ export default function StudentDashboard({
                         <Clock className="h-8 w-8" />
                       </div>
                       <div className="space-y-1">
-                        <h3 className="font-display text-base font-black text-amber-900">পেমেন্ট ভেরিফিকেশন প্রক্রিয়াধীন (Pending Verification)</h3>
+                        <h3 className="font-display text-base font-black text-amber-900">Payment Verification Pending</h3>
                         <p className="text-xs text-amber-700 max-w-md">
-                          আপনি ট্রানজেকশন আইডি <strong className="font-mono">{activeApp.paymentTxnId}</strong> জমা দিয়েছেন। এডমিন প্যানেল কর্তৃক যাচাই করার পর আপনার ফাইল আপডেট করা হবে।
+                          You have submitted Transaction ID <strong className="font-mono">{activeApp.paymentTxnId}</strong>. Your file status will be updated upon admin verification.
                         </p>
                       </div>
                     </div>
@@ -3507,20 +3512,20 @@ export default function StudentDashboard({
                       <div className="border-b border-slate-100 pb-4">
                         <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
                           <CreditCard className="h-5 w-5 text-brand-sky" />
-                          <span>সরাসরি পেমেন্ট গেটওয়ে (Direct Payment Gateway - bKash, Nagad, Rocket, Bank)</span>
+                          <span>Direct Payment Gateway (bKash, Nagad, Rocket, Bank)</span>
                         </h3>
                         <p className="text-xs text-slate-500 mt-1">
-                          নিচের মাধ্যম থেকে যেকোনো একটি সিলেক্ট করুন, প্রদত্ত নম্বরে বা ব্যাংকে টাকা পাঠিয়ে প্রেরক নম্বর, ট্রানজেকশন আইডি ও স্ক্রিনশট সাবমিট করুন। <strong className="text-emerald-700">(ব্যাংক পেমেন্টে কোন চার্জ প্রযোজ্য নয়, অন্যান্য মোবাইল ব্যাংকিংয়ে ১.৫% সার্ভিস চার্জ প্রযোজ্য)</strong>
+                          Select any method below, send money to the provided number or bank account, and submit the sender phone, transaction ID, and screenshot. <strong className="text-emerald-700">(No service charge for bank transfers, 1.5% service charge for mobile banking)</strong>
                         </p>
                       </div>
 
                       {/* Payment Method Selector Tabs */}
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {[
-                          { id: 'bkash', label: 'bKash (বিকাশ)', color: 'border-[#e2136e] text-[#e2136e] bg-pink-50/50' },
-                          { id: 'nagad', label: 'Nagad (নগদ)', color: 'border-[#f26322] text-[#f26322] bg-orange-50/50' },
-                          { id: 'rocket', label: 'Rocket (রকেট)', color: 'border-purple-600 text-purple-700 bg-purple-50/50' },
-                          { id: 'bank', label: 'Bank (ব্যাংক)', color: 'border-slate-800 text-slate-800 bg-slate-50' },
+                          { id: 'bkash', label: 'bKash', color: 'border-[#e2136e] text-[#e2136e] bg-pink-50/50' },
+                          { id: 'nagad', label: 'Nagad', color: 'border-[#f26322] text-[#f26322] bg-orange-50/50' },
+                          { id: 'rocket', label: 'Rocket', color: 'border-purple-600 text-purple-700 bg-purple-50/50' },
+                          { id: 'bank', label: 'Bank', color: 'border-slate-800 text-slate-800 bg-slate-50' },
                         ].map(gateway => (
                           <button
                             key={gateway.id}
@@ -3542,19 +3547,19 @@ export default function StudentDashboard({
                       <div className="rounded-2xl border-2 border-brand-sky/30 bg-slate-50 p-5 space-y-4">
                         <div className="flex justify-between items-center">
                           <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                            {selectedPaymentGateway === 'bkash' && 'বিকাশ মার্চেন্ট / পার্সোনাল নম্বরসমূহ'}
-                            {selectedPaymentGateway === 'nagad' && 'নগদ পার্সোনাল / মার্চেন্ট নম্বরসমূহ'}
-                            {selectedPaymentGateway === 'rocket' && 'রকেট অ্যাকাউন্ট নম্বরসমূহ'}
-                            {selectedPaymentGateway === 'bank' && 'ব্যাংক অ্যাকাউন্ট বিবরণী (Multiple Banks)'}
+                            {selectedPaymentGateway === 'bkash' && 'bKash Merchant / Personal Numbers'}
+                            {selectedPaymentGateway === 'nagad' && 'Nagad Personal / Merchant Numbers'}
+                            {selectedPaymentGateway === 'rocket' && 'Rocket Account Numbers'}
+                            {selectedPaymentGateway === 'bank' && 'Bank Account Details'}
                           </h4>
                           <span className="text-[10px] bg-brand-sky/10 text-brand-sky font-bold px-2 py-0.5 rounded-full">
-                            টাকা পাঠানোর পর নিচের ফর্ম পূরণ করুন
+                            Fill out the form below after sending payment
                           </span>
                         </div>
 
                         {/* List of accounts configured by admin */}
                         <div className="grid gap-2.5">
-                          {selectedPaymentGateway === 'bkash' && ((paymentConfig?.bkashNumbers && paymentConfig.bkashNumbers.length > 0) ? paymentConfig.bkashNumbers : [{ id: '1', number: '01712345678', type: 'Personal', name: 'Sodi Euro' }]).map((item, idx) => (
+                          {selectedPaymentGateway === 'bkash' && ((paymentConfig?.bkashNumbers && paymentConfig.bkashNumbers.length > 0) ? paymentConfig.bkashNumbers : [{ id: '1', number: '01712345678', type: 'Personal', name: 'NOVENTRA' }]).map((item, idx) => (
                             <div
                               key={item.id}
                               onClick={() => setSelectedGatewayAccountIdx(idx)}
@@ -3564,7 +3569,7 @@ export default function StudentDashboard({
                             >
                               <div>
                                 <p className="text-xs font-mono font-black text-slate-900">{item.number} <span className="text-[10px] text-pink-600 font-bold ml-2">({item.type})</span></p>
-                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">অ্যাকাউন্ট নাম: {item.name}</p>
+                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Account Name: {item.name}</p>
                               </div>
                               <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-[#e2136e] bg-[#e2136e] text-white' : 'border-slate-300'}`}>
                                 {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
@@ -3572,7 +3577,7 @@ export default function StudentDashboard({
                             </div>
                           ))}
 
-                          {selectedPaymentGateway === 'nagad' && ((paymentConfig?.nagadNumbers && paymentConfig.nagadNumbers.length > 0) ? paymentConfig.nagadNumbers : [{ id: '1', number: '01912345678', type: 'Personal', name: 'Sodi Euro Nagad' }]).map((item, idx) => (
+                          {selectedPaymentGateway === 'nagad' && ((paymentConfig?.nagadNumbers && paymentConfig.nagadNumbers.length > 0) ? paymentConfig.nagadNumbers : [{ id: '1', number: '01912345678', type: 'Personal', name: 'NOVENTRA Nagad' }]).map((item, idx) => (
                             <div
                               key={item.id}
                               onClick={() => setSelectedGatewayAccountIdx(idx)}
@@ -3582,7 +3587,7 @@ export default function StudentDashboard({
                             >
                               <div>
                                 <p className="text-xs font-mono font-black text-slate-900">{item.number} <span className="text-[10px] text-orange-600 font-bold ml-2">({item.type})</span></p>
-                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">অ্যাকাউন্ট নাম: {item.name}</p>
+                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Account Name: {item.name}</p>
                               </div>
                               <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-[#f26322] bg-[#f26322] text-white' : 'border-slate-300'}`}>
                                 {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
@@ -3590,7 +3595,7 @@ export default function StudentDashboard({
                             </div>
                           ))}
 
-                          {selectedPaymentGateway === 'rocket' && ((paymentConfig?.rocketNumbers && paymentConfig.rocketNumbers.length > 0) ? paymentConfig.rocketNumbers : [{ id: '1', number: '01812345678', type: 'Personal', name: 'Sodi Euro Rocket' }]).map((item, idx) => (
+                          {selectedPaymentGateway === 'rocket' && ((paymentConfig?.rocketNumbers && paymentConfig.rocketNumbers.length > 0) ? paymentConfig.rocketNumbers : [{ id: '1', number: '01812345678', type: 'Personal', name: 'NOVENTRA Rocket' }]).map((item, idx) => (
                             <div
                               key={item.id}
                               onClick={() => setSelectedGatewayAccountIdx(idx)}
@@ -3600,7 +3605,7 @@ export default function StudentDashboard({
                             >
                               <div>
                                 <p className="text-xs font-mono font-black text-slate-900">{item.number} <span className="text-[10px] text-purple-600 font-bold ml-2">({item.type})</span></p>
-                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">অ্যাকাউন্ট নাম: {item.name}</p>
+                                <p className="text-[11px] text-slate-500 font-semibold mt-0.5">Account Name: {item.name}</p>
                               </div>
                               <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${selectedGatewayAccountIdx === idx ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300'}`}>
                                 {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
@@ -3608,7 +3613,7 @@ export default function StudentDashboard({
                             </div>
                           ))}
 
-                          {selectedPaymentGateway === 'bank' && ((paymentConfig?.bankAccounts && paymentConfig.bankAccounts.length > 0) ? paymentConfig.bankAccounts : [{ id: '1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro', accountNumber: '123456789', branch: 'Gulshan' }]).map((bank, idx) => (
+                          {selectedPaymentGateway === 'bank' && ((paymentConfig?.bankAccounts && paymentConfig.bankAccounts.length > 0) ? paymentConfig.bankAccounts : [{ id: '1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'NOVENTRA', accountNumber: '123456789', branch: 'Gulshan' }]).map((bank, idx) => (
                             <div
                               key={bank.id}
                               onClick={() => setSelectedGatewayAccountIdx(idx)}
@@ -3622,8 +3627,8 @@ export default function StudentDashboard({
                                   {selectedGatewayAccountIdx === idx && <div className="h-2 w-2 rounded-full bg-white"></div>}
                                 </div>
                               </div>
-                              <p className="text-xs font-mono font-bold text-slate-700">অ্যাকাউন্ট নম্বর: {bank.accountNumber}</p>
-                              <p className="text-[11px] text-slate-500">অ্যাকাউন্ট নাম: {bank.accountName} | ব্রাঞ্চ: {bank.branch}</p>
+                              <p className="text-xs font-mono font-bold text-slate-700">Account Number: {bank.accountNumber}</p>
+                              <p className="text-[11px] text-slate-500">Account Name: {bank.accountName} | Branch: {bank.branch}</p>
                             </div>
                           ))}
                         </div>
@@ -3637,17 +3642,17 @@ export default function StudentDashboard({
                           return (
                             <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
                               <div className="flex justify-between text-slate-600">
-                                <span>সার্ভিস ফি (Base Amount):</span>
+                                <span>Base Fee:</span>
                                 <span className="font-mono font-bold">৳{base.toLocaleString()}</span>
                               </div>
                               <div className="flex justify-between text-slate-600 border-b border-slate-100 pb-2">
-                                <span>ক্যাশআউট/প্রসেসিং ফি {isBank ? '(ব্যাংক স্থানান্তর - 0% ফ্রি)' : '(1.5%)'}:</span>
+                                <span>Processing Fee {isBank ? '(Bank Transfer - Free)' : '(1.5%)'}:</span>
                                 <span className={`font-mono font-bold ${isBank ? 'text-emerald-600 font-black' : 'text-amber-600'}`}>
-                                  {isBank ? '৳0 (কোন চার্জ প্রযোজ্য নয়)' : `+ ৳${fee.toLocaleString()}`}
+                                  {isBank ? '৳0 (No charge applies)' : `+ ৳${fee.toLocaleString()}`}
                                 </span>
                               </div>
                               <div className="flex justify-between text-slate-900 font-black text-sm pt-1">
-                                <span>সর্বমোট প্রদেয় পরিমাণ:</span>
+                                <span>Total Amount Payable:</span>
                                 <span className="font-mono text-brand-sky">৳{total.toLocaleString()} BDT</span>
                               </div>
                             </div>
@@ -3659,7 +3664,7 @@ export default function StudentDashboard({
                       <form onSubmit={(e) => {
                         e.preventDefault();
                         if (!studentSenderPhone.trim() || !studentTxnId.trim()) {
-                          alert('অনুগ্রহ করে প্রেরক মোবাইল নম্বর এবং ট্রানজেকশন আইডি (TxnID) দিন।');
+                          alert('Please enter sender phone number and Transaction ID (TxnID).');
                           return;
                         }
                         const base = totalAmt;
@@ -3695,8 +3700,8 @@ export default function StudentDashboard({
                           notificationHistory: [
                             {
                               id: `notif-${Date.now()}`,
-                              title: 'পেমেন্ট ইনফরমেশন সাবমিট করা হয়েছে',
-                              body: `আপনার ${methodLabel} পেমেন্ট (TrxID: ${studentTxnId.trim()}) সফলভাবে সাবমিট হয়েছে। এডমিন যাচাই করার পর ফাইল অ্যাপ্রুভ করবেন।`,
+                              title: 'Payment Information Submitted',
+                              body: `Your ${methodLabel} payment (TrxID: ${studentTxnId.trim()}) was submitted successfully. Admin will review and approve shortly.`,
                               sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
                               type: 'sms',
                               recipient: activeApp.phone
@@ -3705,28 +3710,28 @@ export default function StudentDashboard({
                           ]
                         };
                         onUpdateApplication(updatedApp);
-                        setStudentPaymentSuccessMsg('আপনার পেমেন্ট ইনফরমেশন সফলভাবে সাবমিট হয়েছে। এডমিন যাচাই করে শীঘ্রই অনুমোদন করবেন।');
+                        setStudentPaymentSuccessMsg('Your payment details have been submitted. Admin will verify and approve shortly.');
                       }} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-700 block">আপনার প্রেরক মোবাইল নম্বর (Sender Phone No):</label>
+                            <label className="text-xs font-bold text-slate-700 block">Your Sender Phone Number:</label>
                             <input
                               type="text"
                               required
                               value={studentSenderPhone}
                               onChange={(e) => setStudentSenderPhone(e.target.value)}
-                              placeholder="যেমন: 01711XXXXXX"
+                              placeholder="e.g. 01711XXXXXX"
                               className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono font-bold focus:border-brand-sky focus:outline-none"
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-700 block">ট্রানজেকশন আইডি (Transaction ID / TrxID):</label>
+                            <label className="text-xs font-bold text-slate-700 block">Transaction ID (TrxID):</label>
                             <input
                               type="text"
                               required
                               value={studentTxnId}
                               onChange={(e) => setStudentTxnId(e.target.value)}
-                              placeholder="যেমন: 9N74ABC123"
+                              placeholder="e.g. 9N74ABC123"
                               className="w-full rounded-xl border border-slate-200 p-3 text-xs font-mono font-bold uppercase focus:border-brand-sky focus:outline-none"
                             />
                           </div>
@@ -3735,8 +3740,8 @@ export default function StudentDashboard({
                         {/* Payment Screenshot Upload Option */}
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
-                            <span>পেমেন্ট রসিদ / স্ক্রিনশট আপলোড (Payment Screenshot):</span>
-                            <span className="text-[10px] text-slate-400 font-normal">(বিকাশ, নগদ, রকেট স্ক্রিনশট বা ব্যাংক ডিপোজিট স্লিপ)</span>
+                            <span>Payment Receipt / Screenshot Upload:</span>
+                            <span className="text-[10px] text-slate-400 font-normal">(bKash, Nagad, Rocket screenshot or bank deposit slip)</span>
                           </label>
                           
                           {studentPaymentScreenshot ? (
@@ -3747,7 +3752,7 @@ export default function StudentDashboard({
                               <div className="flex-1 min-w-0 text-left">
                                 <p className="text-xs font-bold text-slate-800 truncate">{studentPaymentScreenshotName || 'payment_screenshot.jpg'}</p>
                                 <p className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
-                                  <CheckCircle2 className="h-3.5 w-3.5" /> স্ক্রিনশট যুক্ত করা হয়েছে
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Screenshot Attached
                                 </p>
                               </div>
                               <button
@@ -3757,7 +3762,7 @@ export default function StudentDashboard({
                                   setStudentPaymentScreenshotName('');
                                 }}
                                 className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-100 transition-colors"
-                                title="স্ক্রিনশট মুছুন"
+                                title="Remove Screenshot"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -3766,9 +3771,9 @@ export default function StudentDashboard({
                             <label className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-slate-200 hover:border-brand-sky bg-slate-50 hover:bg-slate-100/80 cursor-pointer transition-all">
                               <div className="flex items-center gap-2 text-slate-600">
                                 <Upload className="h-4 w-4 text-brand-sky" />
-                                <span className="text-xs font-bold">পেমেন্ট স্ক্রিনশট বা জমা রসিদের ছবি সিলেক্ট করুন</span>
+                                <span className="text-xs font-bold">Select Payment Screenshot or Deposit Receipt</span>
                               </div>
-                              <span className="text-[10px] text-slate-400 mt-1">bKash, Nagad, Rocket স্ক্রিনশট বা ব্যাংক জমার রসিদ আপলোড করুন</span>
+                              <span className="text-[10px] text-slate-400 mt-1">Upload bKash, Nagad, Rocket screenshot or bank deposit receipt</span>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -3799,7 +3804,7 @@ export default function StudentDashboard({
                             className="rounded-xl bg-gradient-to-r from-brand-sky to-emerald-600 hover:opacity-95 text-white px-6 py-3 text-xs font-black shadow-md flex items-center gap-2"
                           >
                             <Send className="h-4 w-4" />
-                            <span>পেমেন্ট ইনফরমেশন সাবমিট করুন (Submit)</span>
+                            <span>Submit Payment Details</span>
                           </button>
                         </div>
                       </form>
@@ -3816,11 +3821,11 @@ export default function StudentDashboard({
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6" id="additional-services-tab-content">
               <div>
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-brand-sky bg-brand-sky-light px-2.5 py-1 rounded-full">
-                  অতিরিক্ত সেবা সমূহ (Other Ground Services)
+                  Additional Ground Services
                 </span>
-                <h3 className="mt-3 font-display text-xl font-bold text-slate-800">আপনার ফাইলিং এর সাথে নতুন সার্ভিস যুক্ত করুন</h3>
+                <h3 className="mt-3 font-display text-xl font-bold text-slate-800">Add Ground Services to Your Application</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  ভিসা আবেদন ও দিল্লী দূতাবাস প্রসেসিং চলাকালীন যেকোনো সময়ে আপনি নিচের সার্ভিসসমূহ যুক্ত করে আপনার স্বপ্নের ইউরোপ যাত্রা নিরাপদ করতে পারবেন।
+                  Add ground services anytime during visa application and Delhi embassy processing to secure your journey to Europe.
                 </p>
               </div>
 
@@ -3840,9 +3845,9 @@ export default function StudentDashboard({
                         <div className="flex items-center justify-between">
                           <h4 className="text-xs font-bold text-slate-800 leading-tight">{service.name}</h4>
                           {isActive ? (
-                            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[8px] font-bold text-emerald-600 border border-emerald-100">সক্রিয় রয়েছে</span>
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[8px] font-bold text-emerald-600 border border-emerald-100">Active</span>
                           ) : (
-                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[8px] font-bold text-slate-500 border border-slate-200">অ্যাড করুন</span>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[8px] font-bold text-slate-500 border border-slate-200">Add Service</span>
                           )}
                         </div>
                         <p className="text-[11px] text-slate-500 leading-relaxed">{service.description}</p>
@@ -3890,11 +3895,11 @@ export default function StudentDashboard({
                               };
 
                               onUpdateApplication(updatedApp);
-                              alert(`"${service.name}" আপনার ফাইলে সফলভাবে যুক্ত করা হয়েছে! অনুগ্রহ করে নতুন ফি "ফি ও পেমেন্ট গেটওয়ে" ট্যাব থেকে পরিশোধ করুন।`);
+                              alert(`"${service.name}" added to your file! Please pay the fee from the Payment Gateway tab.`);
                             }}
                             className="rounded-lg bg-slate-900 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 border-b border-brand-gold"
                           >
-                            অ্যাড করুন
+                            Add Service
                           </button>
                         )}
                       </div>
@@ -3926,8 +3931,8 @@ export default function StudentDashboard({
                         <Lock className="h-4 w-4" />
                       </span>
                       <div>
-                        <h3 className="text-sm font-bold text-slate-800">লগইন ভেরিফিকেশন (Login Verification)</h3>
-                        <p className="text-[10px] text-slate-500">প্রোফাইল নিরাপত্তা নিশ্চিতকরণ</p>
+                        <h3 className="text-sm font-bold text-slate-800">Login Verification</h3>
+                        <p className="text-[10px] text-slate-500">Profile Security Verification</p>
                       </div>
                     </div>
                     <button
@@ -3940,14 +3945,14 @@ export default function StudentDashboard({
 
                   <div className="space-y-3">
                     <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-center">
-                      <p className="text-xs text-slate-500">আপনি নিচের শিক্ষার্থীর ড্যাশবোর্ডে প্রবেশের চেষ্টা করছেন:</p>
+                      <p className="text-xs text-slate-500">You are attempting to access dashboard for:</p>
                       <h4 className="text-sm font-black text-slate-800 mt-1">{selectedVerifyApp.fullName}</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">আইডি: {selectedVerifyApp.id} · পাসপোর্ট: {selectedVerifyApp.passportNumber}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">ID: {selectedVerifyApp.id} · Passport: {selectedVerifyApp.passportNumber}</p>
                     </div>
 
                     <form onSubmit={handleVerifySubmit} className="space-y-3.5">
                       <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-700 block">পাসওয়ার্ড (শিক্ষার্থীর পাসপোর্ট নম্বর):</label>
+                        <label className="text-xs font-bold text-slate-700 block">Password (Student Passport Number):</label>
                         <div className="relative">
                           <input
                             required
@@ -3955,7 +3960,7 @@ export default function StudentDashboard({
                             type="password"
                             value={verifyPassword}
                             onChange={(e) => setVerifyPassword(e.target.value)}
-                            placeholder="পাসপোর্ট নম্বরটি লিখুন"
+                            placeholder="Enter Passport Number"
                             className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-4 text-xs focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold"
                             id="verify-password-input"
                           />
@@ -3970,7 +3975,7 @@ export default function StudentDashboard({
                       )}
 
                       <div className="text-[10.5px] bg-amber-50 border border-amber-100 rounded-lg p-2.5 text-amber-800 leading-relaxed">
-                        <strong>💡 ডেমো ভেরিফিকেশন:</strong> নিরাপত্তার স্বার্থে একজনের ড্যাশবোর্ডে অন্য কেউ সরাসরি ঢুকতে পারবে না। অনুগ্রহ করে উক্ত শিক্ষার্থীর <strong>পাসপোর্ট নম্বরটি ({selectedVerifyApp.passportNumber})</strong> পাসওয়ার্ড হিসেবে টাইপ করে প্রবেশ করুন।
+                        <strong>💡 Verification Info:</strong> For security, student dashboards are password protected. Please enter the student's <strong>passport number ({selectedVerifyApp.passportNumber})</strong> as password to enter.
                       </div>
 
                       <div className="flex space-x-2 pt-1">
@@ -3979,14 +3984,14 @@ export default function StudentDashboard({
                           onClick={() => setSelectedVerifyApp(null)}
                           className="w-1/3 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors"
                         >
-                          বাতিল করুন
+                          Cancel
                         </button>
                         <button
                           type="submit"
                           className="w-2/3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
                           id="confirm-verify-btn"
                         >
-                          ভেরিফাই ও প্রবেশ করুন
+                          Verify & Enter
                         </button>
                       </div>
                     </form>
@@ -4009,7 +4014,7 @@ export default function StudentDashboard({
           const courseName = activeApp.desiredCourse.includes(' (') 
             ? activeApp.desiredCourse.split(' (')[0] 
             : activeApp.desiredCourse;
-          const countryName = "বুলগেরিয়া (Bulgaria)";
+          const countryName = "Bulgaria";
 
           const currentPayChoice = activeApp.paymentStatus === 'Partially Paid' ? 'inst2' : selectedInstallmentChoice;
           const payingAmount = currentPayChoice === 'full' 
@@ -4040,7 +4045,7 @@ export default function StudentDashboard({
                     </span>
                     <h3 className="font-display text-base font-black text-slate-800 flex items-center gap-1.5">
                       <CreditCard className="h-4.5 w-4.5 text-brand-sky" />
-                      <span>পেমেন্ট উইজার্ড (Payment Wizard)</span>
+                      <span>Payment Wizard</span>
                     </h3>
                   </div>
                   {paymentModalStep !== 4 && (
@@ -4058,10 +4063,10 @@ export default function StudentDashboard({
                 {/* Timeline Stepper Header */}
                 <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex justify-between items-center relative select-none">
                   {[
-                    { step: 1, label: 'আবেদন বিবরণ' },
-                    { step: 2, label: 'পেমেন্ট মাধ্যম' },
-                    { step: 3, label: 'ভেরিফিকেশন' },
-                    { step: 4, label: 'পেমেন্ট সফল' }
+                    { step: 1, label: 'Application Details' },
+                    { step: 2, label: 'Payment Method' },
+                    { step: 3, label: 'Verification' },
+                    { step: 4, label: 'Payment Successful' }
                   ].map((item, idx) => {
                     const isPassed = paymentModalStep > item.step;
                     const isCurrent = paymentModalStep === item.step;
@@ -4099,20 +4104,20 @@ export default function StudentDashboard({
                       <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-4 space-y-3">
                         <h4 className="text-xs font-black text-slate-800 border-b border-slate-100 pb-1 flex items-center gap-1.5">
                           <School className="h-4.5 w-4.5 text-brand-sky" />
-                          <span>আবেদনকৃত কোর্স ও দেশের বিবরণ:</span>
+                          <span>Applied Course & Country Details:</span>
                         </h4>
                         
                         <div className="space-y-2 text-xs">
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-semibold">১. দেশের নাম (Country):</span>
+                            <span className="text-slate-400 font-semibold">1. Country Name:</span>
                             <span className="text-slate-800 font-extrabold">{countryName} 🇧🇬</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-semibold">২. বিশ্ববিদ্যালয় (University):</span>
+                            <span className="text-slate-400 font-semibold">2. University Name:</span>
                             <span className="text-slate-800 font-extrabold text-right max-w-[250px]">{uniName}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-semibold">৩. কোর্স (Course Name):</span>
+                            <span className="text-slate-400 font-semibold">3. Course Name:</span>
                             <span className="text-slate-800 font-extrabold text-right max-w-[250px]">{courseName}</span>
                           </div>
                         </div>
@@ -4120,7 +4125,7 @@ export default function StudentDashboard({
 
                       {/* Installment Selection if Unpaid */}
                       <div className="space-y-2">
-                        <label className="text-xs font-extrabold text-slate-700 block">পেমেন্ট মোড নির্বাচন করুন:</label>
+                        <label className="text-xs font-extrabold text-slate-700 block">Select Payment Mode:</label>
                         {activeApp.paymentStatus === 'Unpaid' ? (
                           <div className="grid gap-3 sm:grid-cols-2">
                             <button
@@ -4132,7 +4137,7 @@ export default function StudentDashboard({
                                   : 'border-slate-200 bg-white hover:bg-slate-50'
                               }`}
                             >
-                              <span className="text-[11px] font-bold text-slate-800">এককালীন সম্পূর্ণ ফি</span>
+                              <span className="text-[11px] font-bold text-slate-800">Full One-Time Fee</span>
                               <span className="text-sm font-black text-slate-900 mt-1 font-mono">৳{totalAmt.toLocaleString()} BDT</span>
                             </button>
                             <button
@@ -4144,7 +4149,7 @@ export default function StudentDashboard({
                                   : 'border-slate-200 bg-white hover:bg-slate-50'
                               }`}
                             >
-                              <span className="text-[11px] font-bold text-slate-800">১ম কিস্তি (৫০%)</span>
+                              <span className="text-[11px] font-bold text-slate-800">1st Installment (50%)</span>
                               <span className="text-sm font-black text-slate-900 mt-1 font-mono">৳{inst1Amt.toLocaleString()} BDT</span>
                             </button>
                           </div>
@@ -4152,10 +4157,10 @@ export default function StudentDashboard({
                           <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 flex flex-col text-xs text-emerald-800 font-semibold gap-1.5">
                             <span className="flex items-center gap-1">
                               <CheckCircle className="h-4 w-4 text-emerald-600" />
-                              <span>১ম কিস্তি পরিশোধ সম্পন্ন হয়েছে!</span>
+                              <span>1st Installment Payment Completed!</span>
                             </span>
                             <div className="flex justify-between items-center bg-white p-2 rounded border border-emerald-100 mt-1">
-                              <span className="text-slate-600 font-bold">২য় কিস্তি পরিশোধযোগ্য (বাকি ৫০%):</span>
+                              <span className="text-slate-600 font-bold">2nd Installment Payable (Remaining 50%):</span>
                               <span className="font-mono font-black text-slate-900">৳{inst2Amt.toLocaleString()} BDT</span>
                             </div>
                           </div>
@@ -4168,7 +4173,7 @@ export default function StudentDashboard({
                           onClick={() => setPaymentModalStep(2)}
                           className="rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 text-xs font-black flex items-center gap-1 shadow-md"
                         >
-                          <span>পরবর্তী ধাপে যান</span>
+                          <span>Proceed to Next Step</span>
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -4179,7 +4184,7 @@ export default function StudentDashboard({
                   {paymentModalStep === 2 && (
                     <div className="space-y-4" id="modal-step-2">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-extrabold text-slate-700 block">পেমেন্ট গেটওয়ে নির্বাচন করুন (Select Payment Gateway):</label>
+                        <label className="text-xs font-extrabold text-slate-700 block">Select Payment Gateway:</label>
                         <select
                           value={paymentMethod}
                           onChange={(e) => {
@@ -4188,8 +4193,8 @@ export default function StudentDashboard({
                           }}
                           className="w-full rounded-xl border-2 border-slate-200 bg-white p-3 text-xs font-black text-slate-700 focus:outline-none focus:border-brand-sky transition-all cursor-pointer"
                         >
-                          <option value="bkash">bKash (বিকাশ মোবাইল ব্যাংকিং)</option>
-                          <option value="nagad">Nagad (নগদ মোবাইল ব্যাংকিং)</option>
+                          <option value="bkash">bKash (Mobile Banking)</option>
+                          <option value="nagad">Nagad (Mobile Banking)</option>
                           <option value="card">Visa / Mastercard Credit/Debit Card</option>
                         </select>
                       </div>
@@ -4204,12 +4209,12 @@ export default function StudentDashboard({
                           </div>
                           
                           <div className="space-y-1.5 max-w-xs mx-auto">
-                            <label className="text-[10px] font-black text-slate-500 block text-center">আপনার {paymentMethod === 'bkash' ? 'বিকাশ' : 'নগদ'} পার্সোনাল নম্বর:</label>
+                            <label className="text-[10px] font-black text-slate-500 block text-center">Your {paymentMethod === 'bkash' ? 'bKash' : 'Nagad'} Personal Number:</label>
                             <input
                               required
                               type="tel"
                               maxLength={11}
-                              placeholder="যেমন: 017XXXXXXXX"
+                              placeholder="e.g. 017XXXXXXXX"
                               value={bkashPhone}
                               onChange={(e) => setBkashPhone(e.target.value)}
                               className="w-full text-center rounded-xl border-2 border-slate-200 p-2.5 font-mono text-sm tracking-wider focus:outline-none focus:border-brand-sky text-slate-800 font-bold"
@@ -4218,21 +4223,21 @@ export default function StudentDashboard({
                         </div>
                       ) : (
                         <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3 text-xs">
-                          <h4 className="font-bold text-slate-700 border-b border-slate-200 pb-1">কার্ড বিবরণী দিন:</h4>
+                          <h4 className="font-bold text-slate-700 border-b border-slate-200 pb-1">Enter Card Details:</h4>
                           <div className="space-y-2.5">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-500 block">কার্ডহোল্ডার নাম (Cardholder Name):</label>
+                              <label className="text-[10px] font-bold text-slate-500 block">Cardholder Name:</label>
                               <input
                                 required
                                 type="text"
-                                placeholder="যেমন: KAMRUL HASAN"
+                                placeholder="e.g. KAMRUL HASAN"
                                 value={cardName}
                                 onChange={(e) => setCardName(e.target.value)}
                                 className="w-full rounded-lg border border-slate-200 p-2 text-xs focus:outline-none focus:border-brand-sky font-bold"
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-500 block">কার্ড নম্বর (Card Number):</label>
+                              <label className="text-[10px] font-bold text-slate-500 block">Card Number:</label>
                               <input
                                 required
                                 type="text"
@@ -4256,7 +4261,7 @@ export default function StudentDashboard({
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-500 block">সিভিভি (CVV):</label>
+                                <label className="text-[10px] font-bold text-slate-500 block">CVV:</label>
                                 <input
                                   required
                                   type="password"
@@ -4278,7 +4283,7 @@ export default function StudentDashboard({
                           onClick={() => setPaymentModalStep(1)}
                           className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                         >
-                          আগের ধাপ
+                          Previous Step
                         </button>
                         <button
                           type="button"
@@ -4289,7 +4294,7 @@ export default function StudentDashboard({
                           }}
                           className="rounded-xl bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 text-xs font-black disabled:opacity-50 flex items-center gap-1 shadow-md"
                         >
-                          <span>পরবর্তী ধাপে যান</span>
+                          <span>Proceed to Next Step</span>
                           <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
@@ -4303,22 +4308,22 @@ export default function StudentDashboard({
                         <div className="py-8 text-center space-y-4">
                           <div className="h-12 w-12 border-4 border-brand-sky border-t-transparent rounded-full animate-spin mx-auto"></div>
                           <div className="space-y-1">
-                            <h4 className="text-sm font-black text-slate-800">পেমেন্ট যাচাই করা হচ্ছে...</h4>
-                            <p className="text-[11px] text-slate-500">অনুগ্রহ করে কয়েক সেকেন্ড অপেক্ষা করুন, আপনার ব্রাউজারটি বন্ধ করবেন না।</p>
+                            <h4 className="text-sm font-black text-slate-800">Verifying Payment...</h4>
+                            <p className="text-[11px] text-slate-500">Please wait a few seconds, do not close your browser.</p>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-4">
                           {/* OTP verification helper banner */}
                           <div className="bg-amber-50 rounded-xl p-3 text-[11px] text-amber-800 border border-amber-200/50 leading-relaxed space-y-1">
-                            <div>🔒 <strong>অটোমেটেড সিকিউরিটি সিমুলেটর:</strong></div>
-                            <div>আপনার সুরক্ষায় মোবাইলে একটি টেস্ট ওটিপি কোড পাঠানো হয়েছে।</div>
-                            <div>ব্যবহার করুন ওটিপি কোড: <strong className="font-mono text-sm bg-white border border-amber-300 px-1.5 py-0.5 rounded text-amber-900">{paymentMethod === 'card' ? '4832' : '8291'}</strong></div>
+                            <div>🔒 <strong>Automated Security Simulator:</strong></div>
+                            <div>A test OTP code has been sent to your mobile for security.</div>
+                            <div>Use OTP Code: <strong className="font-mono text-sm bg-white border border-amber-300 px-1.5 py-0.5 rounded text-amber-900">{paymentMethod === 'card' ? '4832' : '8291'}</strong></div>
                           </div>
 
                           <div className="space-y-3 max-w-xs mx-auto">
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-500 block text-center">আপনার মোবাইলে পাঠানো ৪ ডিজিটের কোডটি দিন (OTP):</label>
+                              <label className="text-[10px] font-bold text-slate-500 block text-center">Enter the 4-digit OTP code sent to your phone:</label>
                               <input
                                 required
                                 type="text"
@@ -4332,7 +4337,7 @@ export default function StudentDashboard({
 
                             {(paymentMethod === 'bkash' || paymentMethod === 'nagad') && (
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-slate-500 block text-center">আপনার গেটওয়ে পিন নম্বর প্রদান করুন (PIN):</label>
+                                <label className="text-[10px] font-bold text-slate-500 block text-center">Enter your gateway PIN number:</label>
                                 <input
                                   required
                                   type="password"
@@ -4352,7 +4357,7 @@ export default function StudentDashboard({
                               onClick={() => setPaymentModalStep(2)}
                               className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                             >
-                              আগের ধাপ
+                              Previous Step
                             </button>
                             <button
                               type="button"
@@ -4363,7 +4368,7 @@ export default function StudentDashboard({
                                 'bg-brand-sky hover:bg-brand-sky-dark'
                               }`}
                             >
-                              ৳{payingAmount.toLocaleString()} টাকা পরিশোধ করুন
+                              ৳{payingAmount.toLocaleString()} Pay Now
                             </button>
                           </div>
                         </div>
@@ -4379,42 +4384,42 @@ export default function StudentDashboard({
                       </div>
                       
                       <div className="space-y-1">
-                        <h3 className="font-display text-lg font-black text-slate-800">পেমেন্ট সফলভাবে প্রাপ্ত হয়েছে!</h3>
+                        <h3 className="font-display text-lg font-black text-slate-800">Payment Received Successfully!</h3>
                         <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                          অভিনন্দন! আপনার স্টুডেন্ট ভিসা আবেদনের পরিশোধ সফল হয়েছে। নিচে আপনার ডিজিটাল পেমেন্ট রসিদ প্রদান করা হলো।
+                          Congratulations! Your student visa application payment was successful. Your official receipt is shown below.
                         </p>
                       </div>
 
                       {/* Receipt details */}
                       <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 text-xs text-left space-y-2 max-w-md mx-auto">
                         <h4 className="text-[11px] font-black uppercase text-emerald-600 border-b border-slate-200 pb-1 flex justify-between">
-                          <span>পেমেন্ট রসিদ (Official Receipt)</span>
+                          <span>Official Payment Receipt</span>
                           <span className="text-slate-400 font-mono text-[9px]">{activeApp.paymentDate}</span>
                         </h4>
                         
                         <div className="space-y-1.5">
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-bold">১. গন্তব্য দেশ (Country):</span>
+                            <span className="text-slate-400 font-bold">1. Destination Country:</span>
                             <span className="text-slate-800 font-extrabold">{countryName} 🇧🇬</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-bold">২. বিশ্ববিদ্যালয় (University Name):</span>
+                            <span className="text-slate-400 font-bold">2. University Name:</span>
                             <span className="text-slate-800 font-extrabold text-right max-w-[250px]">{uniName}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-bold">৩. প্রোগ্রাম ও কোর্স (Course):</span>
+                            <span className="text-slate-400 font-bold">3. Course Name:</span>
                             <span className="text-slate-800 font-extrabold text-right max-w-[250px]">{courseName}</span>
                           </div>
                           <div className="flex justify-between border-t border-slate-100 pt-1.5 mt-1">
-                            <span className="text-slate-400 font-bold">৪. পেমেন্ট মাধ্যম:</span>
+                            <span className="text-slate-400 font-bold">4. Payment Method:</span>
                             <span className="text-slate-800 font-extrabold uppercase">{activeApp.paymentMethod}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-slate-400 font-bold">৫. পরিশোধিত পরিমাণ:</span>
+                            <span className="text-slate-400 font-bold">5. Amount Paid:</span>
                             <span className="text-slate-900 font-black font-mono text-sm">৳{payingAmount.toLocaleString()} BDT</span>
                           </div>
                           <div className="flex justify-between text-slate-400">
-                            <span>৬. ট্রানজেকশন আইডি:</span>
+                            <span>6. Transaction ID:</span>
                             <span className="font-mono font-black text-brand-sky text-xs">{activeApp.paymentTxnId}</span>
                           </div>
                         </div>
@@ -4430,7 +4435,7 @@ export default function StudentDashboard({
                           }}
                           className="w-full rounded-xl bg-slate-800 hover:bg-slate-900 text-white py-3 text-xs font-black shadow-md"
                         >
-                          রসিদ বন্ধ করুন ও ড্যাশবোর্ডে যান
+                          Close Receipt & Go to Dashboard
                         </button>
                       </div>
                     </div>
@@ -4504,7 +4509,7 @@ export default function StudentDashboard({
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            <span>নতুন উইন্ডোতে বড় করে দেখুন (View Full Image)</span>
+                            <span>View Full Image in New Window</span>
                           </a>
                         </div>
                       );
@@ -4529,7 +4534,7 @@ export default function StudentDashboard({
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            <span>নতুন উইন্ডোতে পিডিএফটি দেখুন (Open PDF in New Window)</span>
+                            <span>Open PDF in New Window</span>
                           </a>
                         </div>
                       );
@@ -4537,16 +4542,16 @@ export default function StudentDashboard({
                       return (
                         <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
                           <div className="h-14 w-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl font-bold">📄</div>
-                          <h4 className="text-xs font-bold text-slate-800">অ-ছবি ডকুমেন্ট ফাইল (Non-Image File)</h4>
+                          <h4 className="text-xs font-bold text-slate-800">Non-Image Document File</h4>
                           <p className="text-[11px] text-slate-500 leading-relaxed">
-                            এই ফাইলটি সরাসরি ব্রাউজারে রেন্ডার করা যাচ্ছে না। ডাউনলোড করে ফাইলটি প্রিভিউ করুন।
+                            This file cannot be rendered directly in the browser. Download to preview.
                           </p>
                           <a
                             href={previewUrl}
                             download={previewDoc.fileName}
                             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-5 py-2.5 text-xs font-black hover:bg-slate-800 shadow transition-all"
                           >
-                            ফাইল ডাউনলোড করুন (Download File)
+                            Download File
                           </a>
                         </div>
                       );
@@ -4555,9 +4560,9 @@ export default function StudentDashboard({
                 ) : (
                   <div className="text-center space-y-3 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
                     <div className="text-3xl">⚠️</div>
-                    <h4 className="text-xs font-bold text-slate-800">কোনো ফাইল ডাটা পাওয়া যায়নি</h4>
+                    <h4 className="text-xs font-bold text-slate-800">No File Data Found</h4>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      এটি একটি ডেমো রেকর্ড। শিক্ষার্থীর আপলোড করা রিয়েল ডকুমেন্টে সম্পূর্ণ ডাউনলোডযোগ্য ও প্রিভিউযোগ্য ডাটা থাকবে।
+                      This is a demo record. Real documents uploaded by students will contain downloadable data.
                     </p>
                   </div>
                 )}
@@ -4565,14 +4570,14 @@ export default function StudentDashboard({
 
               {/* Modal Footer */}
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-                <span className="text-[10px] text-slate-400 font-bold font-mono">আপলোড: {previewDoc.uploadedAt}</span>
+                <span className="text-[10px] text-slate-400 font-bold font-mono">Uploaded: {previewDoc.uploadedAt}</span>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setPreviewDoc(null)}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                   >
-                    বন্ধ করুন
+                    Close
                   </button>
                   {previewDoc.fileUrl && (
                     <a
@@ -4580,7 +4585,7 @@ export default function StudentDashboard({
                       download={previewDoc.fileName}
                       className="flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-5 py-2 text-xs font-black hover:bg-emerald-700 shadow transition-all"
                     >
-                      ডাউনলোড (Download)
+                      Download
                     </a>
                   )}
                 </div>
@@ -4615,10 +4620,10 @@ export default function StudentDashboard({
                       <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-slate-950"></span>
                     </div>
                     <div className="text-left">
-                      <h4 className="text-xs font-black text-white">Sodi Euro Support Team</h4>
+                      <h4 className="text-xs font-black text-white">NOVENTRA Support Team</h4>
                       <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                        <span>অনলাইন (Online & Active)</span>
+                        <span>Online & Active</span>
                       </p>
                     </div>
                   </div>
@@ -4636,9 +4641,9 @@ export default function StudentDashboard({
                   {(!activeApp.messages || activeApp.messages.length === 0) ? (
                     <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
                       <div className="text-2xl">👋</div>
-                      <h5 className="text-xs font-bold text-slate-700">হ্যালো! কিভাবে সাহায্য করতে পারি?</h5>
+                      <h5 className="text-xs font-bold text-slate-700">Hello! How can we help you?</h5>
                       <p className="text-[10px] text-slate-400 leading-relaxed max-w-[200px]">
-                        বুলগেরিয়া স্টুডেন্ট ভিসা ও ফাইল প্রসেসিং সংক্রান্ত যেকোনো প্রশ্ন এখানে লিখুন। আমাদের টিম দ্রুত উত্তর দেবে।
+                        Ask any questions regarding Bulgaria student visa and file processing here. Our team will respond promptly.
                       </p>
                     </div>
                   ) : (
@@ -4651,13 +4656,13 @@ export default function StudentDashboard({
                       >
                         <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest px-1 mb-1 flex items-center gap-1">
                           {msg.sender === 'student' ? (
-                            <span>আমার বার্তা (Student)</span>
+                            <span>My Message (Student)</span>
                           ) : (
                             <>
                               {msg.adminPhoto && (
                                 <img src={msg.adminPhoto} alt="" className="h-3.5 w-3.5 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
                               )}
-                              <span>{msg.adminName || 'ম্যানেজার (Admin)'}</span>
+                              <span>{msg.adminName || 'Admin Manager'}</span>
                             </>
                           )}
                         </span>
@@ -4702,7 +4707,7 @@ export default function StudentDashboard({
                         }}
                         className="text-rose-600 hover:text-rose-700 text-xs font-black shrink-0"
                       >
-                        মুছুন
+                        Delete
                       </button>
                     </div>
                   )}
@@ -4730,7 +4735,7 @@ export default function StudentDashboard({
                       type="text"
                       value={studentMsgText}
                       onChange={(e) => setStudentMsgText(e.target.value)}
-                      placeholder="আপনার মেসেজ বা ফাইল এখানে লিখুন..."
+                      placeholder="Type your message or attach a file here..."
                       className="flex-1 rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-semibold focus:outline-none focus:border-brand-sky focus:ring-1 focus:ring-brand-sky/25 bg-slate-50"
                     />
                     <button

@@ -7,6 +7,7 @@ import SupportPage from './components/SupportPage';
 import { initialApplications } from './data';
 import { Application, PaymentConfig } from './types';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from './context/LanguageContext';
 import { 
   Bell, 
   X, 
@@ -17,7 +18,13 @@ import {
   ShieldCheck,
   CheckCircle,
   Clock,
-  HelpCircle
+  HelpCircle,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Youtube,
+  Globe
 } from 'lucide-react';
 import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, sanitizeForFirestore } from './firebase';
@@ -43,6 +50,7 @@ const triggerRealEmailSend = async (to: string, subject: string, body: string) =
 };
 
 export default function App() {
+  const { t } = useLanguage();
   // Navigation view state
   const [view, setView] = useState<'lobby' | 'student' | 'admin' | 'support'>(() => {
     return (localStorage.getItem('bulgaria_active_view_v1') as 'lobby' | 'student' | 'admin' | 'support') || 'lobby';
@@ -89,10 +97,10 @@ export default function App() {
 
   // Payment configuration synced with Firestore
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>({
-    bkashNumbers: [{ id: 'bk-1', number: '01712-345678', type: 'Personal', name: 'Sodi Euro Merchant' }],
-    nagadNumbers: [{ id: 'ng-1', number: '01912-345678', type: 'Personal', name: 'Sodi Euro Nagad' }],
-    rocketNumbers: [{ id: 'rk-1', number: '01812-345678', type: 'Personal', name: 'Sodi Euro Rocket' }],
-    bankAccounts: [{ id: 'bnk-1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro Education', accountNumber: '1231100028392', branch: 'Gulshan Branch, Dhaka' }]
+    bkashNumbers: [{ id: 'bk-1', number: '01712-345678', type: 'Personal', name: 'NOVENTRA Merchant' }],
+    nagadNumbers: [{ id: 'ng-1', number: '01912-345678', type: 'Personal', name: 'NOVENTRA Nagad' }],
+    rocketNumbers: [{ id: 'rk-1', number: '01812-345678', type: 'Personal', name: 'NOVENTRA Rocket' }],
+    bankAccounts: [{ id: 'bnk-1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'NOVENTRA Education', accountNumber: '1231100028392', branch: 'Gulshan Branch, Dhaka' }]
   });
 
   useEffect(() => {
@@ -102,10 +110,10 @@ export default function App() {
         setPaymentConfig(docSnap.data() as PaymentConfig);
       } else {
         setDoc(docRef, sanitizeForFirestore({
-          bkashNumbers: [{ id: 'bk-1', number: '01712-345678', type: 'Personal', name: 'Sodi Euro Merchant' }],
-          nagadNumbers: [{ id: 'ng-1', number: '01912-345678', type: 'Personal', name: 'Sodi Euro Nagad' }],
-          rocketNumbers: [{ id: 'rk-1', number: '01812-345678', type: 'Personal', name: 'Sodi Euro Rocket' }],
-          bankAccounts: [{ id: 'bnk-1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro Education', accountNumber: '1231100028392', branch: 'Gulshan Branch, Dhaka' }]
+          bkashNumbers: [{ id: 'bk-1', number: '01712-345678', type: 'Personal', name: 'NOVENTRA Merchant' }],
+          nagadNumbers: [{ id: 'ng-1', number: '01912-345678', type: 'Personal', name: 'NOVENTRA Nagad' }],
+          rocketNumbers: [{ id: 'rk-1', number: '01812-345678', type: 'Personal', name: 'NOVENTRA Rocket' }],
+          bankAccounts: [{ id: 'bnk-1', bankName: 'Dutch-Bangla Bank PLC', accountName: 'NOVENTRA Education', accountNumber: '1231100028392', branch: 'Gulshan Branch, Dhaka' }]
         })).catch(err => console.error(err));
       }
     }, err => console.error(err));
@@ -136,7 +144,7 @@ export default function App() {
         studentTimer = setTimeout(() => {
           setActiveAppId(null);
           localStorage.removeItem('bulgaria_active_app_id_v1');
-          alert('দীর্ঘক্ষণ নিষ্ক্রিয় থাকার কারণে আপনার স্টুডেন্ট সেশনটি অটো-লগআউট হয়েছে।');
+          alert('Your student session was automatically logged out due to inactivity.');
         }, 30 * 60 * 1000); // 30 minutes
       }
     };
@@ -309,8 +317,8 @@ export default function App() {
               className="flex flex-col items-center justify-center py-20 space-y-4"
               id="app-loading-screen"
             >
-              <div className="h-10 w-10 border-4 border-brand-sky border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs font-bold text-slate-500 animate-pulse">Sodi Euro ডাটাবেস লোড হচ্ছে...</p>
+              <div className="h-10 w-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-bold text-slate-500 animate-pulse">Loading NOVENTRA Database...</p>
             </motion.div>
           ) : (
             <>
@@ -406,14 +414,14 @@ export default function App() {
                 )}
                 <span>
                   {liveNotification.type === 'sms' 
-                    ? 'সিমুলেটেড এসএমএস (Simulated SMS Received)' 
-                    : 'সিমুলেটেড ইমেইল (Simulated Email Received)'}
+                    ? 'Simulated SMS Received' 
+                    : 'Simulated Email Received'}
                 </span>
               </div>
               <button
                 onClick={() => setLiveNotification(null)}
                 className="p-1 hover:bg-white/10 rounded transition-colors"
-                title="বন্ধ করুন"
+                title="Close"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -422,8 +430,8 @@ export default function App() {
             {/* Simulated Notification Details */}
             <div className="p-4 space-y-2.5">
               <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
-                <span>গ্রাহক: <strong>{liveNotification.recipient}</strong></span>
-                <span>এখন পাঠানো হলো</span>
+                <span>Recipient: <strong>{liveNotification.recipient}</strong></span>
+                <span>Just now</span>
               </div>
               <h4 className="text-xs font-bold text-slate-800 leading-snug">{liveNotification.title}</h4>
               <p className="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
@@ -434,32 +442,98 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 4. Elegant Minimalist Footer */}
-      <footer className="border-t border-slate-100 bg-white py-6" id="app-footer">
+      {/* 4. Elegant Line-by-Line Structured Centered Footer */}
+      <footer className="border-t border-slate-100 bg-white py-8" id="app-footer">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-[11px] text-slate-400">
-            <div className="flex flex-col items-center md:items-start gap-1">
-              <div className="flex items-center gap-1.5 justify-center md:justify-start">
-                <span className="font-sans font-black text-slate-700 text-xs tracking-tight">Sodi Euro</span>
-                <span className="text-slate-200">|</span>
-                <span>© 2026 Sodi Euro. All rights reserved.</span>
-              </div>
-              <p className="text-[10px] text-slate-400 text-center md:text-left">ঢাকা, বাংলাদেশ ও সোফিয়া, বুলগেরিয়া শাখা দ্বারা পরিচালিত।</p>
+          <div className="flex flex-col items-center justify-center text-center space-y-3">
+            {/* Line 1: Website Name */}
+            <div className="flex items-center justify-center gap-2 notranslate">
+              <img src="/logo.png" alt="NOVENTRA Logo" className="h-6 w-6 object-contain notranslate" referrerPolicy="no-referrer" />
+              <span className="font-sans font-black text-amber-600 text-base tracking-wider uppercase notranslate">NOVENTRA</span>
             </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-4 text-slate-500">
-              <button onClick={() => setView('lobby')} className="hover:text-brand-sky transition-colors">হোম</button>
+
+            {/* Line 2: Slogan */}
+            <p className="text-xs font-bold text-slate-700 notranslate">
+              Gateway to Global Education
+            </p>
+
+            {/* Line 3: All rights reserved */}
+            <p className="text-xs text-slate-400">
+              {t('footer_rights')}
+            </p>
+
+            {/* Line 4: Social Icons */}
+            <div className="flex items-center justify-center gap-2.5 pt-1">
+              <a 
+                href="https://facebook.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-brand-sky hover:text-white text-slate-600 flex items-center justify-center transition-all duration-200"
+                title="Facebook"
+              >
+                <Facebook className="h-4 w-4" />
+              </a>
+              <a 
+                href="https://twitter.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-brand-sky hover:text-white text-slate-600 flex items-center justify-center transition-all duration-200"
+                title="Twitter / X"
+              >
+                <Twitter className="h-4 w-4" />
+              </a>
+              <a 
+                href="https://instagram.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-pink-600 hover:text-white text-slate-600 flex items-center justify-center transition-all duration-200"
+                title="Instagram"
+              >
+                <Instagram className="h-4 w-4" />
+              </a>
+              <a 
+                href="https://linkedin.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 flex items-center justify-center transition-all duration-200"
+                title="LinkedIn"
+              >
+                <Linkedin className="h-4 w-4" />
+              </a>
+              <a 
+                href="https://youtube.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-red-600 hover:text-white text-slate-600 flex items-center justify-center transition-all duration-200"
+                title="YouTube"
+              >
+                <Youtube className="h-4 w-4" />
+              </a>
+              <a 
+                href="https://noventra.edu" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-amber-500 hover:text-white text-slate-600 flex items-center justify-center transition-all duration-200"
+                title="Official Website"
+              >
+                <Globe className="h-4 w-4" />
+              </a>
+            </div>
+
+            {/* Line 5: Quick Navigation Links */}
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs font-medium text-slate-500 pt-2">
+              <button onClick={() => setView('lobby')} className="hover:text-brand-sky transition-colors">Home</button>
               <span className="text-slate-200">•</span>
-              <button onClick={() => setView('student')} className="hover:text-brand-sky transition-colors">স্টুডেন্ট ট্র্যাকিং</button>
+              <button onClick={() => setView('student')} className="hover:text-brand-sky transition-colors">Student Portal</button>
               <span className="text-slate-200">•</span>
-              <button onClick={() => setView('support')} className="hover:text-brand-sky transition-colors">সাপোর্ট টিম</button>
+              <button onClick={() => setView('support')} className="hover:text-brand-sky transition-colors">Support Team</button>
               <span className="text-slate-200">•</span>
               <button 
                 onClick={() => setView('admin')} 
-                className="hover:text-slate-800 transition-colors flex items-center gap-1 text-[11px]"
+                className="hover:text-slate-800 transition-colors flex items-center gap-1 text-xs"
               >
                 <ShieldCheck className="h-3.5 w-3.5 text-brand-sky" />
-                <span>ম্যানেজমেন্ট কনসোল</span>
+                <span>Admin Console</span>
               </button>
             </div>
           </div>

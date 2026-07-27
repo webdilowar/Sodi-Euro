@@ -64,7 +64,7 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
         <!DOCTYPE html>
         <html>
           <head>
-            <title>PDF View - Sodi Euro</title>
+            <title>PDF View - NOVENTRA</title>
             <style>
               body { margin: 0; background: #1e293b; height: 100vh; display: flex; flex-direction: column; font-family: system-ui, sans-serif; }
               iframe { flex: 1; border: none; width: 100%; height: 100%; }
@@ -104,7 +104,7 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white">
                     <span className="p-2 rounded-full bg-slate-900/80 backdrop-blur-sm text-xs font-bold flex items-center gap-1">
                       <Eye className="h-3.5 w-3.5 text-brand-gold" />
-                      <span>সবদেখুন</span>
+                      <span>View All</span>
                     </span>
                   </div>
                 </div>
@@ -125,13 +125,13 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
                   <div className="px-3 py-1.5 bg-slate-900 flex items-center justify-between text-[11px] text-slate-300">
                     <span className="truncate font-semibold flex items-center gap-1 text-slate-200">
                       <Film className="h-3.5 w-3.5 text-brand-gold shrink-0" />
-                      <span className="truncate">{file.name || 'ভিডিও বার্তা'}</span>
+                      <span className="truncate">{file.name || 'Video Note'}</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => handleDownload(file.url, file.name || 'video.mp4')}
                       className="p-1 hover:text-brand-gold transition-colors text-slate-400"
-                      title="ডাউনলোড"
+                      title="Download"
                     >
                       <Download className="h-3.5 w-3.5" />
                     </button>
@@ -169,7 +169,7 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
                         className="flex-1 inline-flex items-center justify-center space-x-1 px-2.5 py-1 rounded-lg bg-rose-600 text-white text-[10px] font-bold hover:bg-rose-700 transition-colors shadow-xs"
                       >
                         <Eye className="h-3 w-3" />
-                        <span>দেখুন</span>
+                        <span>View</span>
                       </button>
                       <button
                         type="button"
@@ -181,7 +181,7 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
                         }`}
                       >
                         <Download className="h-3 w-3" />
-                        <span>ডাউনলোড</span>
+                        <span>Download</span>
                       </button>
                     </div>
                   </div>
@@ -208,7 +208,7 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
                 type="button"
                 onClick={() => handleDownload(file.url, file.name)}
                 className="p-1.5 rounded-lg bg-brand-gold/20 hover:bg-brand-gold/40 text-brand-gold transition-colors shrink-0"
-                title="ডাউনলোড করুন"
+                title="Download"
               >
                 <Download className="h-3.5 w-3.5" />
               </button>
@@ -240,7 +240,7 @@ export const ChatAttachmentList: React.FC<ChatAttachmentListProps> = ({ attachme
                   className="px-3 py-1.5 rounded-xl bg-brand-gold text-slate-950 text-xs font-bold hover:bg-yellow-400 transition-colors flex items-center gap-1"
                 >
                   <Download className="h-3.5 w-3.5" />
-                  <span>ডাউনলোড</span>
+                  <span>Download</span>
                 </button>
                 <button
                   type="button"

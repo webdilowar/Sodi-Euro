@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext';
 import { Application, ApplicationStatus, UploadedDocument, NotificationLog, SupportMember, ChatMessage, AuditLog, PaymentConfig } from '../types';
 import { documentRequirements, initialApplications } from '../data';
 import { collection, doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
@@ -81,25 +82,26 @@ function getSafePreviewUrl(dataUrl: string): string {
 // MASTER_ADMIN_PROFILE definition
 const MASTER_ADMIN_PROFILE: SupportMember = {
   id: 'master_admin',
-  name: 'Sodi Euro Admin',
-  role: 'প্রধান প্রশাসক (Master Administrator)',
-  email: 'admin@sodieuro.com',
+  name: 'NOVENTRA Admin',
+  role: 'Master Administrator',
+  email: 'admin@noventra.com',
   phone: '+880 1712-345678',
   whatsapp: '8801712345678',
   location: 'ঢাকা ও সোফিয়া অফিস',
-  bio: 'Master Platform Administrator',
+  bio: 'NOVENTRA Platform Administrator',
   badge: 'Platform Administrator',
   colorClass: 'from-brand-sky via-brand-sky-dark to-slate-950',
   accentBorder: 'border-brand-sky/30',
   btnText: 'যোগাযোগ',
   btnUrl: '',
   createdAt: '2026-07-10 00:00',
-  username: 'sodieuro',
-  password: 'sodieuro',
+  username: 'noventra',
+  password: 'noventra',
   roleType: 'administrator'
 };
 
 export default function AdminPanel({ applications, onUpdateApplication, paymentConfig, onUpdatePaymentConfig }: AdminPanelProps) {
+  const { language, t } = useLanguage();
   // Admin Authentication States
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
     return localStorage.getItem('sodieuro_admin_logged_in') === 'true';
@@ -125,7 +127,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           setCurrentAdmin(null);
           localStorage.removeItem('sodieuro_admin_logged_in');
           localStorage.removeItem('sodieuro_current_admin');
-          alert('দীর্ঘক্ষণ নিষ্ক্রিয় থাকার কারণে অ্যাডমিন সেশনটি অটো-লগআউট হয়েছে।');
+          alert('দীর্ঘক্ষণ নিষ্ক্রিয় থাকার কারণে Your admin session was automatically logged out due to inactivity.');
         }, 60 * 60 * 1000); // 1 hour
       }
     };
@@ -300,15 +302,15 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
   const handleAddNewSupportMember = async () => {
     if (!isUserAdmin) {
-      alert('দুঃখিত, শুধুমাত্র Administrators নতুন মেম্বার তৈরি করতে পারবেন!');
+      alert('দুঃখিত, শুধুমাত্র Administrators New Member তৈরি করতে পারবেন!');
       return;
     }
     const newId = `member-${Date.now()}`;
     const newMember: SupportMember = {
       id: newId,
-      name: "নতুন মেম্বার (New Member)",
+      name: "New Member (New Member)",
       role: "সহকারী পরিচালক (Assistant Director)",
-      email: "info@sodieuro.com",
+      email: "info@noventra.com",
       phone: "+880 1712-000000",
       whatsapp: "8801712000000",
       location: "ঢাকা অফিস, বাংলাদেশ",
@@ -332,7 +334,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       setLastSelectedId(newId);
     } catch (err) {
       console.error('Error creating new support member:', err);
-      alert('নতুন মেম্বার তৈরি করতে সমস্যা হয়েছে।');
+      alert('New Member তৈরি করতে সমস্যা হয়েছে।');
     }
   };
 
@@ -537,7 +539,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       m => (m.username?.toLowerCase() === trimmedUser || m.email?.toLowerCase() === trimmedUser) && m.password === trimmedPass
     );
 
-    if (trimmedUser === 'sodieuro' && trimmedPass === 'sodieuro') {
+    if ((trimmedUser === 'noventra' || trimmedUser === 'sodieuro') && (trimmedPass === 'noventra' || trimmedPass === 'sodieuro')) {
       setIsAdminLoggedIn(true);
       localStorage.setItem('sodieuro_admin_logged_in', 'true');
       const adminProfile = MASTER_ADMIN_PROFILE;
@@ -553,7 +555,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       localStorage.setItem('sodieuro_admin_display_name', matchedMember.name);
       setLoginError('');
     } else {
-      setLoginError('ভুল ইউজারনেম/ইমেইল অথবা পাসওয়ার্ড! শুধুমাত্র অথরাইজড এডমিন প্রবেশ করতে পারবেন।');
+      setLoginError('Invalid username/email or password! Only authorized administrators may log in.');
     }
   };
 
@@ -602,24 +604,24 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
     switch (newStatus) {
       case 'Document Verification':
-        notificationTitle = 'কাগজপত্র যাচাইকরণ শুরু হয়েছে';
-        notificationBody = `প্রিয় ${selectedApp.fullName}, আপনার আপলোডকৃত ডকুমেন্টস এবং বোর্ড ভেরিফিকেশনের কাজ আমাদের টিম শুরু করেছে। দয়া করে ড্যাশবোর্ডে চোখ রাখুন।`;
+        notificationTitle = 'Document Verification Started';
+        notificationBody = `Dear ${selectedApp.fullName}, our team has started verifying your uploaded board documents. Please keep an eye on your dashboard.`;
         break;
       case 'Embassy Processing':
         notificationTitle = 'দিল্লী দূতাবাস প্রসেসিং ও ভারতীয় ভিসা';
-        notificationBody = `প্রিয় ${selectedApp.fullName}, আপনার ফাইল দিল্লী দূতাবাসের জন্য প্রস্তুত। ভারতীয় ভিসার শিডিউল এবং এম্বাসি স্লট বুকিং করা হয়েছে। বিস্তারিত দেখুন পোর্টালে।`;
+        notificationBody = `Dear ${selectedApp.fullName}, your file is ready for embassy processing. Transit visa and interview slot have been booked.`;
         break;
       case 'Visa Issued':
-        notificationTitle = 'বুলগেরিয়া ভিসা স্ট্যাম্পিং সম্পন্ন!';
+        notificationTitle = 'Bulgaria Visa Stamping Approved!';
         notificationBody = `অভিনন্দন ${selectedApp.fullName}! দিল্লীস্থ বুলগেরিয়ান দূতাবাস থেকে আপনার স্টুডেন্ট ভিসা অনুমোদিত ও পাসপোর্ট স্ট্যাম্পড করা হয়েছে। ফ্লাইটের জন্য যোগাযোগ করুন।`;
         break;
       case 'Rejected':
-        notificationTitle = 'ভিসা আবেদন প্রক্রিয়ায় আপডেট';
-        notificationBody = `প্রিয় ${selectedApp.fullName}, সাময়িক ত্রুটির জন্য আপনার আবেদনটি স্থগিত করা হয়েছে। বিস্তারিত তথ্য এবং সংশোধনের জন্য এজেন্সিতে সশরীরে যোগাযোগ করুন।`;
+        notificationTitle = 'Visa Application Status Update';
+        notificationBody = `Dear ${selectedApp.fullName}, your application has been temporarily put on hold. Please contact our agency office for guidance.`;
         break;
       default:
-        notificationTitle = 'আবেদনে নতুন আপডেট';
-        notificationBody = `আপনার অ্যাপ্লিকেশন আইডি: ${selectedApp.id} এর স্ট্যাটাস আপডেট করা হয়েছে।`;
+        notificationTitle = 'New Application Update';
+        notificationBody = `Your application ID ${selectedApp.id} status has been updated.`;
     }
 
     const currentTimestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
@@ -637,7 +639,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
       {
         id: `not-status-${Date.now()}-email`,
         title: `Bulgaria Visa Status Update: ${newStatus}`,
-        body: `${notificationBody} (এটি একটি অটোমেটেড সিস্টেম জেনারেটেড ইমেল)`,
+        body: `${notificationBody} (This is an automated system notification)`,
         type: 'email',
         sentAt: currentTimestamp,
         recipient: selectedApp.email
@@ -685,8 +687,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         ...selectedApp.notificationHistory,
         {
           id: `not-doc-app-${Date.now()}`,
-          title: 'ডকুমেন্ট অনুমোদিত হয়েছে',
-          body: `আপনার আপলোডকৃত ফাইল "${targetDoc?.name}" সফলভাবে যাচাই ও অনুমোদন করা হয়েছে।`,
+          title: 'Document Approved',
+          body: `Your uploaded file "${targetDoc?.name}" has been verified and approved.`,
           type: 'sms',
           sentAt: currentTimestamp,
           recipient: selectedApp.phone
@@ -727,16 +729,16 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         ...selectedApp.notificationHistory,
         {
           id: `not-doc-rej-${Date.now()}`,
-          title: 'ডকুমেন্ট সংশোধনের অনুরোধ',
-          body: `আপনার "${targetDoc?.name}" ডকুমেন্টটি প্রত্যাখ্যাত হয়েছে। কারণ: ${rejectionFeedback}। দয়া করে সঠিক ফাইলটি পুনরায় আপলোড করুন।`,
+          title: 'Document Correction Requested',
+          body: `Your document "${targetDoc?.name}" was rejected. Reason: ${rejectionFeedback}. Please re-upload the correct file.`,
           type: 'email',
           sentAt: currentTimestamp,
           recipient: selectedApp.email
         },
         {
           id: `not-doc-rej-sms-${Date.now()}`,
-          title: 'ডকুমেন্ট রিজেক্ট হয়েছে',
-          body: `আপনার ফাইল "${targetDoc?.name}" এ সমস্যা পাওয়া গেছে। সংশোধনের জন্য ড্যাশবোর্ড দেখুন।`,
+          title: 'Document Rejected',
+          body: `Issues were found with your document "${targetDoc?.name}". Please review feedback in your dashboard.`,
           type: 'sms',
           sentAt: currentTimestamp,
           recipient: selectedApp.phone
@@ -753,14 +755,24 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
   // Handle student application deletion from Firestore database
   const handleDeleteApplication = async (appId: string) => {
     if (!isAdminLoggedIn) {
-      alert('দুঃখিত, শুধুমাত্র লগইন করা অ্যাডমিন স্টুডেন্ট তথ্য ডিলিট করতে পারবেন!');
+      alert('Sorry, only logged in administrators can delete student records.');
       return;
     }
     const targetApp = applications.find(a => a.id === appId);
-    const studentName = targetApp?.fullName || 'এই শিক্ষার্থী';
-    if (!window.confirm(`আপনি কি নিশ্চিতভাবে "${studentName}" (ID: ${appId}) এর সকল তথ্য ডাটাবেজ থেকে ডিলিট করতে চান? এই অ্যাকশনটি রিভার্স করা যাবে না!`)) {
-      return;
+    const studentName = targetApp?.fullName || 'this student';
+    
+    // Smooth custom delete confirmation or standard window confirm
+    let confirmDelete = true;
+    try {
+      if (typeof window !== 'undefined' && window.confirm) {
+        confirmDelete = window.confirm(`Are you sure you want to permanently delete "${studentName}" (ID: ${appId}) from the database? This action cannot be undone.`);
+      }
+    } catch {
+      confirmDelete = true;
     }
+
+    if (!confirmDelete) return;
+
     try {
       await deleteDoc(doc(db, 'applications', appId));
       logAdminAction('student_deleted', appId, studentName, `Permanently deleted entire application and records`);
@@ -769,10 +781,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         const remaining = applications.filter(a => a.id !== appId);
         setSelectedAppId(remaining.length > 0 ? remaining[0].id : null);
       }
-      alert(`"${studentName}" এর তথ্য সফলভাবে ডাটাবেজ থেকে ডিলিট করা হয়েছে।`);
+      alert(`"${studentName}" has been deleted successfully.`);
     } catch (err) {
       console.error("Error deleting application: ", err);
-      alert("আবেদনকারী ডিলিট করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।");
+      alert("Error deleting applicant. Please try again.");
     }
   };
 
@@ -800,7 +812,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
     onUpdateApplication(updatedApp);
     setNotifTitle('');
     setNotifBody('');
-    alert('নোটিফিকেশন সফলভাবে পাঠানো হয়েছে (সিমুলেটেড হিস্ট্রিতে যোগ হয়েছে)!');
+    alert('Notification dispatched successfully!');
   };
 
   // Stats Calculations
@@ -834,16 +846,16 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         
         <div className="max-w-md w-full space-y-8 bg-white border border-slate-100 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10 shadow-slate-200/60">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-brand-gold to-amber-300 text-white flex items-center justify-center mx-auto shadow-lg shadow-brand-gold/15">
-              <Lock className="h-7 w-7 text-slate-900" />
+            <div className="w-20 h-20 rounded-full bg-slate-900 border-2 border-amber-500/30 text-white flex items-center justify-center mx-auto shadow-xl overflow-hidden p-1">
+              <img src="/logo.png" alt="NOVENTRA Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
             </div>
             <div>
-              <span className="font-sans font-black text-brand-gold bg-brand-gold-light border border-brand-gold/20 px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest inline-block">
-                Sodi Euro Admin Portal
+              <span className="font-sans font-black text-amber-600 bg-amber-50 border border-amber-200 px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest inline-block">
+                NOVENTRA Admin Portal
               </span>
-              <h2 className="mt-3 text-2xl font-black text-slate-900 font-sans tracking-tight">অ্যাডমিন গেটওয়ে (Secure Login)</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                শুধুমাত্র অনুমোদিত কর্মকর্তাদের প্রবেশাধিকার সংরক্ষিত
+              <h2 className="mt-3 text-2xl font-black text-slate-900 font-sans tracking-tight">Admin Portal (Secure Login)</h2>
+              <p className="mt-1 text-xs font-bold text-slate-500">
+                Gateway to Global Education • SINCE : 2026
               </p>
             </div>
           </div>
@@ -851,7 +863,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           <form onSubmit={handleAdminLogin} className="space-y-4" id="admin-login-form">
             <div className="space-y-4">
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">অ্যাডমিন আইডি বা ইমেইল (Username or Email)</label>
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">Admin Username or Email</label>
                 <input
                   required
                   id="admin-username-input"
@@ -864,7 +876,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">নিরাপত্তা পাসওয়ার্ড (Password)</label>
+                <label className="text-[10px] uppercase font-black tracking-wider text-slate-500">Security Password</label>
                 <input
                   required
                   id="admin-password-input"
@@ -890,7 +902,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               className="w-full flex items-center justify-center space-x-2 rounded-xl bg-slate-900 hover:bg-slate-800 py-3.5 text-xs font-black text-white shadow-lg shadow-slate-900/10 active:scale-95 transition-all"
             >
               <ShieldCheck className="h-4 w-4 text-brand-gold" />
-              <span>ড্যাশবোর্ডে প্রবেশ করুন</span>
+              <span>Login to Dashboard</span>
             </button>
           </form>
         </div>
@@ -909,17 +921,17 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         <div className="relative z-10 flex items-center justify-between gap-3">
           {/* Left: Brand / Title & Student Count in One Line */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-gradient-to-br from-amber-400/20 via-amber-500/10 to-slate-900 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 shadow-md">
-              <ShieldCheck className="h-5 w-5 text-amber-400" />
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-slate-900 border border-amber-500/30 overflow-hidden p-1 flex items-center justify-center shrink-0 shadow-md">
+              <img src="/logo.png" alt="NOVENTRA Logo" className="h-full w-full object-contain" referrerPolicy="no-referrer" />
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-left min-w-0">
-              <h2 className="font-sans font-black text-sm sm:text-base md:text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 uppercase whitespace-nowrap">
-                SODI EURO cPanel
+            <div className="flex flex-row items-center gap-2 sm:gap-3 text-left min-w-0 flex-nowrap">
+              <h2 className="font-sans font-black text-sm sm:text-base md:text-lg tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-500 uppercase whitespace-nowrap shrink-0">
+                NOVENTRA cPanel
               </h2>
-              <span className="hidden sm:inline text-slate-700 font-bold">•</span>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold flex items-center gap-1.5 whitespace-nowrap">
+              <span className="text-slate-700 font-bold">•</span>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold flex items-center gap-1.5 whitespace-nowrap truncate">
                 <Users className="h-3.5 w-3.5 text-amber-400/90 shrink-0" />
-                <span>রেজিস্টার্ড শিক্ষার্থী: <span className="text-amber-300 font-extrabold">{applications.length} জন</span></span>
+                <span>Registered Students: <span className="text-amber-300 font-extrabold">{applications.length}</span></span>
               </p>
             </div>
           </div>
@@ -927,7 +939,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           {/* Right: Clean Logout Icon-only Button Aligned Top Right */}
           <button
             onClick={handleAdminLogout}
-            title="লগআউট (Logout)"
+            title="Logout"
             className="p-2.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/30 transition-all active:scale-90 shadow-sm shrink-0 flex items-center justify-center"
           >
             <LogOut className="h-4.5 w-4.5" />
@@ -947,7 +959,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           id="admin-tab-btn-applicants"
         >
           <Users className="h-4 w-4" />
-          <span>আবেদনকারী ও ফাইল ম্যানেজমেন্ট ({applications.length})</span>
+          <span>Applicants & File Management ({applications.length})</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('support_editor')}
@@ -959,7 +971,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           id="admin-tab-btn-support"
         >
           <Settings className="h-4 w-4 text-brand-gold" />
-          <span>সাপোর্ট টিম ও পেজ সেটিংস</span>
+          <span>Support Team & Page Settings</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('messages')}
@@ -971,7 +983,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           id="admin-tab-btn-messages"
         >
           <MessageSquare className="h-4 w-4 text-brand-sky" />
-          <span>শিক্ষার্থী সাপোর্ট মেসেজ</span>
+          <span>Student Support Messages</span>
           {(() => {
             const unreadCount = applications.reduce((sum, app) => {
               const unread = app.messages?.filter(m => m.sender === 'student' && !m.read).length || 0;
@@ -994,7 +1006,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           id="admin-tab-btn-payment-settings"
         >
           <CreditCard className="h-4 w-4 text-emerald-600" />
-          <span>পেমেন্ট গেটওয়ে সেটিংস</span>
+          <span>Payment Gateway Settings</span>
         </button>
         <button
           onClick={() => setActiveAdminTab('activity_log')}
@@ -1006,7 +1018,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           id="admin-tab-btn-activity-log"
         >
           <History className="h-4 w-4 text-emerald-500 animate-pulse" />
-          <span>রিয়েল-টাইম অ্যাক্টিভিটি লগ ({auditLogs.length})</span>
+          <span>Real-Time System Audit Log ({auditLogs.length})</span>
         </button>
       </div>
 
@@ -1017,8 +1029,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-blue-500 to-indigo-500"></div>
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">মোট আবেদনকারী</span>
-            <span className="text-xl font-black font-sans text-slate-800">{stats.total} জন</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Applicants</span>
+            <span className="text-xl font-black font-sans text-slate-800">{stats.total} students</span>
           </div>
           <div className="rounded-xl bg-blue-50 p-2.5 text-blue-600 group-hover:bg-blue-100 transition-colors"><Users className="h-5 w-5" /></div>
         </div>
@@ -1026,8 +1038,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-amber-500 to-orange-500"></div>
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">ডকুমেন্ট ভেরিফিকেশন</span>
-            <span className="text-xl font-black font-sans text-amber-600">{stats.verification} জন</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Document Verification</span>
+            <span className="text-xl font-black font-sans text-amber-600">{stats.verification} students</span>
           </div>
           <div className="rounded-xl bg-amber-50 p-2.5 text-amber-600 group-hover:bg-amber-100 transition-colors"><Clock className="h-5 w-5" /></div>
         </div>
@@ -1035,8 +1047,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-purple-500 to-fuchsia-500"></div>
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">দিল্লী প্রসেসিং</span>
-            <span className="text-xl font-black font-sans text-purple-600">{stats.embassy} জন</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Embassy Processing</span>
+            <span className="text-xl font-black font-sans text-purple-600">{stats.embassy} students</span>
           </div>
           <div className="rounded-xl bg-purple-50 p-2.5 text-purple-600 group-hover:bg-purple-100 transition-colors"><TrendingUp className="h-5 w-5" /></div>
         </div>
@@ -1044,8 +1056,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-emerald-500 to-teal-500"></div>
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">ভিসা ইস্যু হয়েছে</span>
-            <span className="text-xl font-black font-sans text-emerald-600">{stats.issued} জন</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Visa Issued</span>
+            <span className="text-xl font-black font-sans text-emerald-600">{stats.issued} students</span>
           </div>
           <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600 group-hover:bg-emerald-100 transition-colors"><Award className="h-5 w-5" /></div>
         </div>
@@ -1053,8 +1065,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
         <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex items-center justify-between relative overflow-hidden group">
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-rose-500 to-red-500"></div>
           <div className="space-y-1 text-left">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">অপরিশোধিত বিল</span>
-            <span className="text-xl font-black font-sans text-rose-600">{stats.unpaid} জন</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Unpaid Bills</span>
+            <span className="text-xl font-black font-sans text-rose-600">{stats.unpaid} students</span>
           </div>
           <div className="rounded-xl bg-rose-50 p-2.5 text-brand-red group-hover:bg-rose-100 transition-colors"><CreditCard className="h-5 w-5" /></div>
         </div>
@@ -1070,7 +1082,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="নাম, পাসপোর্ট বা আইডি খুঁজুন..."
+                  placeholder="Search name, passport, or ID..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-xs focus:outline-none"
@@ -1087,7 +1099,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     onChange={(e) => setStatusFilter(e.target.value)}
                     className="w-full rounded border border-slate-200 p-1 bg-white focus:outline-none font-semibold text-slate-600"
                   >
-                    <option value="All">সব স্ট্যাটাস</option>
+                    <option value="All">All Statuses</option>
                     <option value="Submitted">Submitted</option>
                     <option value="Document Verification">Doc Verification</option>
                     <option value="Embassy Processing">Embassy Proc</option>
@@ -1103,9 +1115,9 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     onChange={(e) => setPaymentFilter(e.target.value)}
                     className="w-full rounded border border-slate-200 p-1 bg-white focus:outline-none font-semibold text-slate-600"
                   >
-                    <option value="All">সব পেমেন্ট</option>
-                    <option value="Paid">পরিশোধিত</option>
-                    <option value="Unpaid">অপরিশোধিত</option>
+                    <option value="All">All Payments</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Unpaid">Unpaid</option>
                   </select>
                 </div>
               </div>
@@ -1114,7 +1126,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             {/* List */}
             <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto" id="admin-student-list">
               {filteredApps.length === 0 ? (
-                <div className="text-center py-12 text-slate-400 text-xs">কোনো আবেদনকারী খুঁজে পাওয়া যায়নি।</div>
+                <div className="text-center py-12 text-slate-400 text-xs">No applicants found.</div>
               ) : (
                 filteredApps.map((app) => (
                   <div
@@ -1170,7 +1182,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                           e.stopPropagation();
                           handleDeleteApplication(app.id);
                         }}
-                        title="স্টুডেন্ট ডাটাবেজ থেকে ডিলিট করুন"
+                        title="Delete Student from Database"
                         className="p-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200/80 transition-all active:scale-95 shrink-0"
                         id={`admin-btn-delete-list-item-${app.id}`}
                       >
@@ -1184,7 +1196,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           </div>
 
           <div className="p-3 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-500 text-center font-semibold">
-            সক্রিয় ফিল্টার আউটপুট: {filteredApps.length} জন আবেদনকারী
+            Active Filter Output: {filteredApps.length} applicants
           </div>
         </div>
 
@@ -1224,7 +1236,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                   {/* Status pipeline update triggers */}
                   <div className="space-y-1.5 shrink-0 text-left">
-                    <label className="text-[10px] font-black text-slate-400 block uppercase">আবেদন স্ট্যাটাস পরিবর্তন ও নিয়ন্ত্রণ:</label>
+                    <label className="text-[10px] font-black text-slate-400 block uppercase">Change & Control Application Status:</label>
                     <div className="flex items-center gap-2">
                       <select
                         id="admin-change-status-select"
@@ -1232,21 +1244,21 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         onChange={(e) => handleUpdateStatus(e.target.value as ApplicationStatus)}
                         className="rounded-xl border border-slate-200 py-2.5 px-3.5 text-xs font-black bg-slate-50 focus:border-brand-sky focus:outline-none text-slate-700 transition-all shadow-sm flex-grow sm:flex-grow-0"
                       >
-                        <option value="Submitted">Submitted (আবেদন জমা)</option>
-                        <option value="Document Verification">Document Verification (যাচাইকরণ)</option>
-                        <option value="Embassy Processing">Embassy Processing (দিল্লী দূতাবাস)</option>
-                        <option value="Visa Issued">Visa Issued (ভিসা অনুমোদিত)</option>
-                        <option value="Rejected">Rejected (স্থগিত)</option>
+                        <option value="Submitted">Submitted</option>
+                        <option value="Document Verification">Document Verification</option>
+                        <option value="Embassy Processing">Embassy Processing</option>
+                        <option value="Visa Issued">Visa Issued</option>
+                        <option value="Rejected">Rejected</option>
                       </select>
                       <button
                         type="button"
                         onClick={() => handleDeleteApplication(selectedApp.id)}
                         className="px-3 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-red-700 transition-all shadow-sm shrink-0 flex items-center justify-center gap-1.5 font-bold text-xs"
-                        title="আবেদনকারীর সকল তথ্য ডাটাবেজ থেকে ডিলিট করুন"
+                        title="Delete applicant data from database"
                         id={`admin-btn-delete-app-${selectedApp.id}`}
                       >
                         <Trash2 className="h-4 w-4 text-rose-600" />
-                        <span>ডিলিট করুন</span>
+                        <span>Delete</span>
                       </button>
                     </div>
                   </div>
@@ -1255,19 +1267,19 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 {/* Contact Stats Grid */}
                 <div className="grid gap-4 grid-cols-2 md:grid-cols-4 text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">পাসপোর্ট নম্বর:</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Passport Number:</span>
                     <span className="font-mono text-slate-700 font-semibold">{selectedApp.passportNumber}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">মোবাইল নম্বর:</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Mobile Number:</span>
                     <span className="font-mono text-slate-700 font-semibold">{selectedApp.phone}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">ইমেইল:</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Email:</span>
                     <span className="text-slate-700 font-semibold truncate block">{selectedApp.email}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold uppercase">পেমেন্ট স্ট্যাটাস:</span>
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Payment Status:</span>
                     <span className={`font-semibold font-mono px-1.5 py-0.2 rounded text-[10px] ${
                       selectedApp.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-brand-red'
                     }`}>
@@ -1279,7 +1291,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 {/* Student Submitted Payment Information & Verification Panel */}
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-left">
                   <h4 className="text-xs font-black text-slate-800 flex items-center justify-between border-b border-slate-200/60 pb-1.5">
-                    <span className="flex items-center gap-1.5 text-brand-sky"><CreditCard className="h-4 w-4" /> পেমেন্ট ও ট্রানজেকশন তথ্য</span>
+                    <span className="flex items-center gap-1.5 text-brand-sky"><CreditCard className="h-4 w-4" /> Payment & Transaction Information</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       selectedApp.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-800' :
                       selectedApp.paymentStatus === 'Pending Verification' ? 'bg-amber-100 text-amber-800 animate-pulse' :
@@ -1291,19 +1303,19 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <span className="text-slate-400 font-semibold block text-[10px]">পেমেন্ট মাধ্যম:</span>
-                      <span className="text-slate-800 font-bold">{selectedApp.paymentMethod || 'প্রযোজ্য নয়'}</span>
+                      <span className="text-slate-400 font-semibold block text-[10px]">Payment Method:</span>
+                      <span className="text-slate-800 font-bold">{selectedApp.paymentMethod || 'N/A'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-semibold block text-[10px]">ট্রানজেকশন আইডি (TrxID):</span>
-                      <span className="text-brand-sky font-mono font-black">{selectedApp.paymentTxnId || 'নেই'}</span>
+                      <span className="text-slate-400 font-semibold block text-[10px]">Transaction ID (TrxID):</span>
+                      <span className="text-brand-sky font-mono font-black">{selectedApp.paymentTxnId || 'None'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-semibold block text-[10px]">প্রেরক মোবাইল/অ্যাকাউন্ট:</span>
-                      <span className="text-slate-800 font-mono font-bold">{selectedApp.paymentSenderPhone || 'নেই'}</span>
+                      <span className="text-slate-400 font-semibold block text-[10px]">Sender Mobile / Account:</span>
+                      <span className="text-slate-800 font-mono font-bold">{selectedApp.paymentSenderPhone || 'None'}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 font-semibold block text-[10px]">পরিমাণ:</span>
+                      <span className="text-slate-400 font-semibold block text-[10px]">Amount:</span>
                       <span className="text-slate-800 font-mono font-black">৳{(selectedApp.paymentAmount || selectedApp.totalAmount || 15000).toLocaleString()} BDT</span>
                     </div>
                   </div>
@@ -1311,7 +1323,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   {selectedApp.paymentScreenshot && (
                     <div className="pt-2.5 border-t border-slate-100 space-y-1">
                       <span className="text-slate-500 font-bold block text-[11px] flex items-center gap-1">
-                        <ImageIcon className="h-3.5 w-3.5 text-brand-sky" /> পেমেন্ট স্ক্রিনশট / রসিদের ছবি (Payment Screenshot):
+                        <ImageIcon className="h-3.5 w-3.5 text-brand-sky" /> Payment Screenshot / Receipt Image:
                       </span>
                       <a 
                         href={selectedApp.paymentScreenshot} 
@@ -1325,7 +1337,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                           className="max-h-48 object-contain bg-slate-900/5 group-hover:scale-105 transition-transform duration-300" 
                         />
                         <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-xs transition-opacity">
-                          <Eye className="h-4 w-4 mr-1" /> মূল ছবি দেখুন
+                          <Eye className="h-4 w-4 mr-1" /> View Original Image
                         </div>
                       </a>
                     </div>
@@ -1346,8 +1358,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             notificationHistory: [
                               {
                                 id: `notif-${Date.now()}`,
-                                title: 'পেমেন্ট সফলভাবে অনুমোদিত হয়েছে',
-                                body: `আপনার পেমেন্ট (ট্রানজেকশন আইডি: ${selectedApp.paymentTxnId || 'N/A'}) এডমিন কর্তৃক যাচাই ও অনুমোদিত হয়েছে। আপনার ফাইল সক্রিয় করা হয়েছে।`,
+                                title: 'Payment Approved Successfully',
+                                body: `Your payment (Transaction ID: ${selectedApp.paymentTxnId || 'N/A'}) has been verified and approved by Admin. Your application is active.`,
                                 sentAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
                                 type: 'sms' as const,
                                 recipient: selectedApp.phone
@@ -1361,7 +1373,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-black shadow-md flex items-center gap-1.5"
                       >
                         <CheckCircle className="h-4 w-4" />
-                        <span>পেমেন্ট অনুমোদন ও ভেরিফাই করুন (Approve Payment)</span>
+                        <span>Approve & Verify Payment</span>
                       </button>
                     </div>
                   )}
@@ -1375,7 +1387,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     className="flex-1 rounded-xl bg-slate-900 hover:bg-slate-800 text-white p-3.5 text-xs font-black flex items-center justify-center space-x-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md shadow-slate-900/10 border border-slate-950 group"
                   >
                     <MessageSquare className="h-4 w-4 text-brand-gold animate-bounce shrink-0" />
-                    <span>শিক্ষার্থীর সাথে চ্যাট করুন</span>
+                    <span>Chat with Student</span>
                     <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
                     {(selectedApp.messages && selectedApp.messages.length > 0) && (
                       <span className="px-2 py-0.5 rounded-full bg-brand-sky text-[8px] text-white font-mono font-black shadow-inner">
@@ -1390,7 +1402,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     className="flex-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 p-3.5 text-xs font-black flex items-center justify-center space-x-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] border border-slate-200/80 shadow-sm"
                   >
                     <Mail className="h-4 w-4 text-brand-sky shrink-0 animate-pulse" />
-                    <span>কাস্টম নোটিফিকেশন (Email/SMS)</span>
+                    <span>Custom Notification (Email/SMS)</span>
                   </button>
                 </div>
               </div>
@@ -1398,11 +1410,11 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               {/* Uploaded Document Review Segment */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
                 <h4 className="font-display font-bold text-slate-800 text-sm border-b border-slate-50 pb-3">
-                  আপলোডকৃত কাগজপত্র রিভিউ (Verify & Approve Documents)
+                  Verify & Approve Uploaded Documents
                 </h4>
 
                 {selectedApp.documents.length === 0 ? (
-                  <div className="text-center py-6 text-slate-400 text-xs">শিক্ষার্থী এখনো কোনো ফাইল আপলোড করেনি।</div>
+                  <div className="text-center py-6 text-slate-400 text-xs">No files uploaded by student yet.</div>
                 ) : (
                   <div className="divide-y divide-slate-100" id="admin-review-doc-list">
                     {selectedApp.documents.map((doc) => (
@@ -1418,7 +1430,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                 {doc.status}
                               </span>
                             </div>
-                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{doc.fileName} ({doc.fileSize}) · আপলোড: {doc.uploadedAt}</p>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{doc.fileName} ({doc.fileSize}) · Uploaded: {doc.uploadedAt}</p>
                             
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
                               {doc.fileUrl ? (
@@ -1428,7 +1440,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                     className="inline-flex items-center gap-1.5 text-[10px] font-bold text-brand-sky hover:text-brand-sky-dark bg-brand-sky-light/10 hover:bg-brand-sky-light/20 px-2 py-1 rounded transition-colors"
                                   >
                                     <Eye className="h-3.5 w-3.5" />
-                                    ফাইল দেখুন (View)
+                                    View File
                                   </button>
                                   <a
                                     href={doc.fileUrl}
@@ -1436,18 +1448,18 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                     className="inline-flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded transition-colors"
                                   >
                                     <Download className="h-3.5 w-3.5" />
-                                    ডাউনলোড (Download)
+                                    Download
                                   </a>
                                 </>
                               ) : (
                                 <button
                                   onClick={() => {
-                                    alert(`এটি ডেমো ফাইল। নতুন আবেদনকারীর আপলোড করা ফাইল সরাসরি দেখতে ও ডাউনলোড করতে পারবেন।\n\nফাইল নাম: ${doc.fileName}`);
+                                    alert(`Demo document preview: ${doc.fileName}`);
                                   }}
                                   className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded"
                                 >
                                   <Eye className="h-3.5 w-3.5" />
-                                  ডেমো ফাইল (View/Download)
+                                  Demo File (View/Download)
                                 </button>
                               )}
                             </div>
@@ -1461,7 +1473,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                               disabled={doc.status === 'Approved'}
                               className="rounded-lg bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
                             >
-                              অনুমোদন
+                              Approve
                             </button>
                             <button
                               id={`admin-btn-toggle-reject-${doc.id}`}
@@ -1471,7 +1483,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                               }}
                               className="rounded-lg bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-brand-red hover:bg-rose-100"
                             >
-                              রিজেক্ট
+                              Reject
                             </button>
                           </div>
                         </div>
@@ -1479,21 +1491,21 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         {/* Dropdown feedback writer for rejection */}
                         {activeReviewDocId === doc.id && (
                           <form onSubmit={(e) => handleRejectDoc(e, doc.id)} className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-2">
-                            <label className="text-[10px] font-bold text-slate-500 block">রিজেক্ট করার কারণ (Feedback to Student):</label>
+                            <label className="text-[10px] font-bold text-slate-500 block">Rejection Reason (Feedback to Student):</label>
                             <div className="flex space-x-2">
                               <input
                                 required
                                 type="text"
                                 value={rejectionFeedback}
                                 onChange={(e) => setRejectionFeedback(e.target.value)}
-                                placeholder="যেমন: পাসপোর্ট পৃষ্ঠার ছবি পরিষ্কার নয়, পুনরায় সাবমিট করুন।"
+                                placeholder="e.g. Passport page is blurry, please resubmit."
                                 className="w-full rounded border border-slate-200 bg-white p-2 text-xs focus:outline-none focus:border-brand-sky"
                               />
                               <button
                                 type="submit"
                                 className="rounded bg-slate-800 px-4 py-1.5 text-xs font-bold text-white hover:bg-slate-900"
                               >
-                                পাঠান
+                                Send
                               </button>
                             </div>
                           </form>
@@ -1508,7 +1520,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             </div>
           ) : (
             <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-400 text-xs">
-              আবেদনকারীর বিবরণ দেখতে বামের তালিকা থেকে সিলেক্ট করুন।
+              Select an applicant from the left list to view details.
             </div>
           )}
         </div>
@@ -1523,10 +1535,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="space-y-1 text-left">
               <h3 className="font-display font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
                 <Settings className="h-5 w-5 text-brand-gold" />
-                <span>কন্ট্যাক্ট পেইজ ও সাপোর্ট টিম ম্যানেজার (Contact Page Team Editor)</span>
+                <span>Contact Page Team Editor</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                এখানে ওনার (Dilowar Hosen) এবং ব্যবস্থাপনা পরিচালক (Sohel Rana) এর মতো কন্ট্যাক্ট পেইজের নতুন মেম্বারদের তথ্য যোগ ও এডিট করতে পারবেন। নতুন মেম্বার যুক্ত করলে সেটি সরাসরি পাবলিক কন্ট্যাক্ট পেইজে অ্যাড হবে।
+                এখানে ওনার (Dilowar Hosen) এবং ব্যবস্থাপনা পরিচালক (Sohel Rana) এর মতো কন্ট্যাক্ট পেইজের New Memberদের তথ্য যোগ ও এডিট করতে পারবেন। New Member যুক্ত করলে সেটি সরাসরি পাবলিক কন্ট্যাক্ট পেইজে অ্যাড হবে।
               </p>
             </div>
             
@@ -1534,17 +1546,17 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               type="button"
               onClick={handleResetSupportToDefault}
               className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-500 px-4 py-2 text-[10px] font-black transition-all flex items-center gap-1.5 shrink-0"
-              title="রিসেট করুন"
+              title="Reset Defaults"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              <span>ডিফল্ট রিসেট (Reset Defaults)</span>
+              <span>Reset Defaults</span>
             </button>
           </div>
 
           {!isUserAdmin && (
             <div className="bg-amber-500/10 border border-amber-500/20 text-amber-800 text-xs font-bold px-4 py-3 rounded-2xl text-left flex items-center gap-2">
               <span>⚠️</span>
-              <span>দুঃখিত, আপনি "Moderator" বা "Support" রোলে লগইন করেছেন। শুধুমাত্র <strong>Administrators</strong> মেম্বারদের তথ্য যোগ, পরিবর্তন বা ডিলিট করতে পারবেন।</span>
+              <span>Sorry, you are logged in with a restricted role. Only <strong>Administrators</strong> can add, edit, or delete team members.</span>
             </div>
           )}
 
@@ -1553,18 +1565,18 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="lg:col-span-4 space-y-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm space-y-2 text-left">
                 <div className="flex justify-between items-center pb-2 border-b border-slate-100 gap-2">
-                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block">মেম্বার সিলেক্ট করুন</span>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 block">Select Member</span>
                   <button
                     type="button"
                     onClick={handleAddNewSupportMember}
                     className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-[10px] font-black px-2.5 py-1.5 flex items-center gap-1 border border-emerald-200/45 transition-all shadow-sm shrink-0 active:scale-95"
                   >
                     <Plus className="h-3 w-3" />
-                    <span>নতুন মেম্বার</span>
+                    <span>New Member</span>
                   </button>
                 </div>
                 {loadingSupport ? (
-                  <p className="text-xs text-slate-400 py-4 text-center">লোড হচ্ছে...</p>
+                  <p className="text-xs text-slate-400 py-4 text-center">Loading...</p>
                 ) : (
                   <div className="space-y-2">
                     {supportMembers.map((member) => (
@@ -1603,11 +1615,11 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                     <div className="space-y-0.5 text-left">
                       <span className="text-[10px] bg-brand-sky/10 text-brand-sky font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
-                        {supportDraft.id === 'dilowar_hosen' ? 'ওনার প্রোফাইল (Owner)' : 
-                         supportDraft.id === 'sohel_rana' ? 'ব্যবস্থাপনা পরিচালক (MD)' : 'সাপোর্ট টিম প্রোফাইল (Support Team)'}
+                        {supportDraft.id === 'dilowar_hosen' ? 'Owner Profile' : 
+                         supportDraft.id === 'sohel_rana' ? 'Managing Director Profile' : 'Support Team Profile'}
                       </span>
                       <h4 className="text-xs font-black text-slate-800 font-sans mt-1">
-                        {supportDraft.name}-এর প্রোফাইল এডিটর
+                        {supportDraft.name}'s Profile Editor
                       </h4>
                     </div>
                     {supportSuccessMsg && (
@@ -1619,7 +1631,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                   {/* 1. Profile photos */}
                   <div className="space-y-3">
-                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">প্রোফাইল ছবি ও কভার ফটো (Images)</span>
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">Profile Photo & Cover Banner</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {/* Avatar Photo Upload */}
                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3 flex flex-col justify-between">
@@ -1632,8 +1644,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             )}
                           </div>
                           <div className="text-left">
-                            <span className="text-xs font-bold text-slate-800 block">প্রোফাইল ফটো (Avatar)</span>
-                            <span className="text-[10px] text-slate-400 block">সাইজ সর্বোচ্চ ৯০০ কি.বা.</span>
+                            <span className="text-xs font-bold text-slate-800 block">Profile Photo</span>
+                            <span className="text-[10px] text-slate-400 block">Max size 900 KB</span>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -1643,7 +1655,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
                           >
                             <Camera className="h-3.5 w-3.5 text-slate-500" />
-                            <span>আপলোড ছবি</span>
+                            <span>Upload Photo</span>
                           </button>
                           <input
                             ref={supportPhotoInputRef}
@@ -1657,7 +1669,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                               type="button"
                               onClick={() => updateDraftField('photoUrl', '')}
                               className="bg-rose-50 hover:bg-rose-100 border border-rose-100 text-brand-red rounded-lg p-2 transition-colors"
-                              title="ছবি মুছুন"
+                              title="Delete Photo"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -1672,12 +1684,12 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             {supportDraft.coverPhotoUrl ? (
                               <img src={supportDraft.coverPhotoUrl} alt="" className="h-full w-full object-cover rounded-lg" referrerPolicy="no-referrer" />
                             ) : (
-                              <div className="text-slate-400 text-xs font-black">গ্রাডিয়েন্ট</div>
+                              <div className="text-slate-400 text-xs font-black">Gradient</div>
                             )}
                           </div>
                           <div className="text-left">
-                            <span className="text-xs font-bold text-slate-800 block">কভার ব্যানার (Cover Banner)</span>
-                            <span className="text-[10px] text-slate-400 block">সাইজ সর্বোচ্চ ৯০০ কি.বা.</span>
+                            <span className="text-xs font-bold text-slate-800 block">Cover Banner</span>
+                            <span className="text-[10px] text-slate-400 block">Max size 900 KB</span>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -1687,7 +1699,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-lg py-2 px-3 text-[10px] font-bold flex items-center justify-center gap-1.5 transition-colors"
                           >
                             <Camera className="h-3.5 w-3.5 text-slate-500" />
-                            <span>আপলোড ব্যানার</span>
+                            <span>Upload Banner</span>
                           </button>
                           <input
                             ref={supportCoverInputRef}
@@ -1701,7 +1713,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                               type="button"
                               onClick={() => updateDraftField('coverPhotoUrl', '')}
                               className="bg-rose-50 hover:bg-rose-100 border border-rose-100 text-brand-red rounded-lg p-2 transition-colors"
-                              title="ব্যানার মুছুন"
+                              title="Delete Banner"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -1713,10 +1725,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                   {/* 2. Basic Credentials */}
                   <div className="space-y-4">
-                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">প্রাথমিক তথ্য (Basic Profile)</span>
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">Basic Profile Info</span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1 sm:col-span-1">
-                        <label className="text-[10px] font-black text-slate-500">মেম্বারের নাম (Name):</label>
+                        <label className="text-[10px] font-black text-slate-500">Member Name:</label>
                         <input
                           required
                           type="text"
@@ -1726,7 +1738,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1 sm:col-span-1">
-                        <label className="text-[10px] font-black text-slate-500">পদবী/রোল (Role/Designation):</label>
+                        <label className="text-[10px] font-black text-slate-500">Role / Designation:</label>
                         <input
                           required
                           type="text"
@@ -1736,7 +1748,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1 sm:col-span-1">
-                        <label className="text-[10px] font-black text-slate-500">ব্যাজ ট্যাগ (Badge Tag):</label>
+                        <label className="text-[10px] font-black text-slate-500">Badge Tag:</label>
                         <input
                           required
                           type="text"
@@ -1750,10 +1762,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                   {/* 2b. Admin Portal Credentials */}
                   <div className="space-y-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">অ্যাডমিন লগইন তথ্য (Admin Portal Credentials)</span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider block">Admin Portal Credentials</span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500">ইউজারনেম (Username):</label>
+                        <label className="text-[10px] font-black text-slate-500">Username:</label>
                         <input
                           required
                           type="text"
@@ -1764,7 +1776,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500">পাসওয়ার্ড (Password):</label>
+                        <label className="text-[10px] font-black text-slate-500">Password:</label>
                         <input
                           required
                           type="text"
@@ -1775,7 +1787,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-500">রোল টাইপ (Role Type):</label>
+                        <label className="text-[10px] font-black text-slate-500">Role Type:</label>
                         <select
                           value={supportDraft.roleType || 'support'}
                           onChange={(e) => updateDraftField('roleType', e.target.value)}
@@ -1787,15 +1799,15 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         </select>
                       </div>
                     </div>
-                    <p className="text-[9px] text-slate-400">এই ইউজারনেম, পাসওয়ার্ড এবং রোল টাইপ দিয়ে সংশ্লিষ্ট মেম্বার এডমিন প্যানেলে লগইন করতে পারবেন এবং তার এক্সেস লেভেল নির্ধারিত হবে।</p>
+                    <p className="text-[9px] text-slate-400">Credentials used for member login and authorization levels.</p>
                   </div>
 
                   {/* 3. Contact & Location Info */}
                   <div className="space-y-4">
-                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">যোগাযোগ ও অবস্থান (Contact details)</span>
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">Contact Details & Location</span>
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       <div className="space-y-1 sm:col-span-1">
-                        <label className="text-[10px] font-black text-slate-500">ইমেইল এড্রেস (Email):</label>
+                        <label className="text-[10px] font-black text-slate-500">Email Address:</label>
                         <input
                           required
                           type="email"
@@ -1805,7 +1817,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1 sm:col-span-1">
-                        <label className="text-[10px] font-black text-slate-500">সরাসরি ফোন (Phone):</label>
+                        <label className="text-[10px] font-black text-slate-500">Direct Phone:</label>
                         <input
                           required
                           type="text"
@@ -1826,7 +1838,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1 sm:col-span-1">
-                        <label className="text-[10px] font-black text-slate-500">অফিস অবস্থান (Location):</label>
+                        <label className="text-[10px] font-black text-slate-500">Office Location:</label>
                         <input
                           required
                           type="text"
@@ -1840,23 +1852,23 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                   {/* 4. Biography / Intro */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">পরিচিতি ও ভূমিকা (Bio/About):</label>
+                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">Bio / About Role:</label>
                     <textarea
                       required
                       rows={4}
                       value={supportDraft.bio}
                       onChange={(e) => updateDraftField('bio', e.target.value)}
-                      placeholder="এখানে মেম্বারের বিস্তারিত পরিচিতি ও কাজের ভূমিকা লিখুন..."
+                      placeholder="Write detailed member bio and duties here..."
                       className="w-full rounded-xl border border-slate-200 p-3 text-xs font-semibold focus:outline-none focus:border-brand-sky whitespace-pre-line leading-relaxed"
                     />
                   </div>
 
                   {/* 5. Custom Buttons settings */}
                   <div className="space-y-4">
-                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">কল-টু-অ্যাকশন কাস্টমাইজেশন (CTA Action Button)</span>
+                    <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider block">Call to Action Button Customization</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1 text-left">
-                        <label className="text-[10px] font-black text-slate-500">বাটনের লিখা (CTA Text):</label>
+                        <label className="text-[10px] font-black text-slate-500">CTA Button Text:</label>
                         <input
                           required
                           type="text"
@@ -1866,7 +1878,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         />
                       </div>
                       <div className="space-y-1 text-left">
-                        <label className="text-[10px] font-black text-slate-500">অ্যাকশন লিঙ্ক (CTA URL):</label>
+                        <label className="text-[10px] font-black text-slate-500">CTA Button URL:</label>
                         <input
                           required
                           type="text"
@@ -1889,7 +1901,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         className="flex items-center space-x-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-brand-red disabled:opacity-40 disabled:cursor-not-allowed px-4 py-2.5 text-[11px] font-black shadow-sm transition-all active:scale-95"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        <span>প্রোফাইলটি ডিলিট করুন</span>
+                        <span>Delete Profile</span>
                       </button>
                     ) : (
                       <div></div> // Spacer
@@ -1901,13 +1913,13 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       className="flex items-center space-x-1.5 rounded-xl bg-slate-900 text-white disabled:bg-slate-300 disabled:cursor-not-allowed px-6 py-3 text-xs font-black hover:bg-slate-800 disabled:text-slate-500 shadow-md transition-all active:scale-95"
                     >
                       <Save className="h-4 w-4 text-brand-gold" />
-                      <span>{isSavingSupport ? 'সংরক্ষণ করা হচ্ছে...' : 'পরিবর্তনগুলো সংরক্ষণ করুন'}</span>
+                      <span>{isSavingSupport ? 'Saving...' : 'Save Changes'}</span>
                     </button>
                   </div>
                 </form>
               ) : (
                 <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-400 text-xs">
-                  মেম্বার সেটিংস লোড করা সম্ভব হয়নি।
+                  Failed to load member settings.
                 </div>
               )}
             </div>
@@ -1923,21 +1935,21 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               <div>
                 <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-brand-sky" />
-                  <span>পেমেন্ট গেটওয়ে অ্যাকাউন্ট ব্যবস্থাপনা (Payment Gateway Settings)</span>
+                  <span>Payment Gateway Account Management</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  এখানে সেট করা মোবাইল ব্যাংকিং নম্বর এবং ব্যাংক অ্যাকাউন্টগুলো শিক্ষার্থীর ড্যাশবোর্ডের পেমেন্ট পেজে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।
+                  Mobile banking numbers and bank accounts set here will automatically appear on the student payment page.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => {
                   onUpdatePaymentConfig(paymentForm);
-                  alert('পেমেন্ট গেটওয়ে সেটিংস সফলভাবে সংরক্ষণ করা হয়েছে!');
+                  alert('Payment gateway settings saved successfully!');
                 }}
                 className="rounded-xl bg-gradient-to-r from-brand-sky to-emerald-600 text-white px-5 py-2.5 text-xs font-black shadow-md hover:opacity-95 transition-all"
               >
-                সেটিংস সংরক্ষণ করুন (Save All)
+                Save All Settings
               </button>
             </div>
 
@@ -1945,19 +1957,19 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
               <div className="flex justify-between items-center">
                 <h4 className="text-xs font-black text-[#e2136e] uppercase flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-[#e2136e]"></span> bKash নম্বরসমূহ
+                  <span className="h-3 w-3 rounded-full bg-[#e2136e]"></span> bKash Numbers
                 </h4>
                 <button
                   type="button"
                   onClick={() => {
                     setPaymentForm({
                       ...paymentForm,
-                      bkashNumbers: [...paymentForm.bkashNumbers, { id: `bk-${Date.now()}`, number: '017XXXXXXXX', type: 'Personal', name: 'Sodi Euro Merchant' }]
+                      bkashNumbers: [...paymentForm.bkashNumbers, { id: `bk-${Date.now()}`, number: '017XXXXXXXX', type: 'Personal', name: 'NOVENTRA Merchant' }]
                     });
                   }}
                   className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
                 >
-                  <Plus className="h-3.5 w-3.5" /> বিকাশ নম্বর যোগ করুন
+                  <Plus className="h-3.5 w-3.5" /> Add bKash Number
                 </button>
               </div>
               <div className="space-y-2">
@@ -1971,7 +1983,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].number = e.target.value;
                         setPaymentForm({ ...paymentForm, bkashNumbers: list });
                       }}
-                      placeholder="নম্বর"
+                      placeholder="Number"
                       className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
                     />
                     <input
@@ -1982,7 +1994,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].type = e.target.value;
                         setPaymentForm({ ...paymentForm, bkashNumbers: list });
                       }}
-                      placeholder="ধরণ (Personal/Merchant)"
+                      placeholder="Type (Personal/Merchant)"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <input
@@ -1993,7 +2005,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].name = e.target.value;
                         setPaymentForm({ ...paymentForm, bkashNumbers: list });
                       }}
-                      placeholder="অ্যাকাউন্ট নাম"
+                      placeholder="Account Name"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <button
@@ -2015,19 +2027,19 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
               <div className="flex justify-between items-center">
                 <h4 className="text-xs font-black text-[#f26322] uppercase flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-[#f26322]"></span> Nagad নম্বরসমূহ
+                  <span className="h-3 w-3 rounded-full bg-[#f26322]"></span> Nagad Numbers
                 </h4>
                 <button
                   type="button"
                   onClick={() => {
                     setPaymentForm({
                       ...paymentForm,
-                      nagadNumbers: [...paymentForm.nagadNumbers, { id: `ng-${Date.now()}`, number: '019XXXXXXXX', type: 'Personal', name: 'Sodi Euro Nagad' }]
+                      nagadNumbers: [...paymentForm.nagadNumbers, { id: `ng-${Date.now()}`, number: '019XXXXXXXX', type: 'Personal', name: 'NOVENTRA Nagad' }]
                     });
                   }}
                   className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
                 >
-                  <Plus className="h-3.5 w-3.5" /> নগদ নম্বর যোগ করুন
+                  <Plus className="h-3.5 w-3.5" /> Add Nagad Number
                 </button>
               </div>
               <div className="space-y-2">
@@ -2041,7 +2053,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].number = e.target.value;
                         setPaymentForm({ ...paymentForm, nagadNumbers: list });
                       }}
-                      placeholder="নম্বর"
+                      placeholder="Number"
                       className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
                     />
                     <input
@@ -2052,7 +2064,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].type = e.target.value;
                         setPaymentForm({ ...paymentForm, nagadNumbers: list });
                       }}
-                      placeholder="ধরণ (Personal)"
+                      placeholder="Type (Personal)"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <input
@@ -2063,7 +2075,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].name = e.target.value;
                         setPaymentForm({ ...paymentForm, nagadNumbers: list });
                       }}
-                      placeholder="অ্যাকাউন্ট নাম"
+                      placeholder="Account Name"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <button
@@ -2085,19 +2097,19 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
               <div className="flex justify-between items-center">
                 <h4 className="text-xs font-black text-purple-700 uppercase flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-purple-600"></span> Rocket নম্বরসমূহ
+                  <span className="h-3 w-3 rounded-full bg-purple-600"></span> Rocket Numbers
                 </h4>
                 <button
                   type="button"
                   onClick={() => {
                     setPaymentForm({
                       ...paymentForm,
-                      rocketNumbers: [...paymentForm.rocketNumbers, { id: `rk-${Date.now()}`, number: '018XXXXXXXX', type: 'Personal', name: 'Sodi Euro Rocket' }]
+                      rocketNumbers: [...paymentForm.rocketNumbers, { id: `rk-${Date.now()}`, number: '018XXXXXXXX', type: 'Personal', name: 'NOVENTRA Rocket' }]
                     });
                   }}
                   className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
                 >
-                  <Plus className="h-3.5 w-3.5" /> রকেট নম্বর যোগ করুন
+                  <Plus className="h-3.5 w-3.5" /> Add Rocket Number
                 </button>
               </div>
               <div className="space-y-2">
@@ -2111,7 +2123,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].number = e.target.value;
                         setPaymentForm({ ...paymentForm, rocketNumbers: list });
                       }}
-                      placeholder="নম্বর"
+                      placeholder="Number"
                       className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
                     />
                     <input
@@ -2122,7 +2134,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].type = e.target.value;
                         setPaymentForm({ ...paymentForm, rocketNumbers: list });
                       }}
-                      placeholder="ধরণ (Personal)"
+                      placeholder="Type (Personal)"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <input
@@ -2133,7 +2145,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].name = e.target.value;
                         setPaymentForm({ ...paymentForm, rocketNumbers: list });
                       }}
-                      placeholder="অ্যাকাউন্ট নাম"
+                      placeholder="Account Name"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <button
@@ -2155,19 +2167,19 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
               <div className="flex justify-between items-center">
                 <h4 className="text-xs font-black text-slate-800 uppercase flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-slate-800"></span> ব্যাংক অ্যাকাউন্টসমূহ (Multiple Bank Accounts)
+                  <span className="h-3 w-3 rounded-full bg-slate-800"></span> Bank Accounts
                 </h4>
                 <button
                   type="button"
                   onClick={() => {
                     setPaymentForm({
                       ...paymentForm,
-                      bankAccounts: [...paymentForm.bankAccounts, { id: `bnk-${Date.now()}`, bankName: 'Dutch-Bangla Bank PLC', accountName: 'Sodi Euro Education', accountNumber: '123XXXXXXXX', branch: 'Gulshan Branch, Dhaka' }]
+                      bankAccounts: [...paymentForm.bankAccounts, { id: `bnk-${Date.now()}`, bankName: 'Dutch-Bangla Bank PLC', accountName: 'NOVENTRA Education', accountNumber: '123XXXXXXXX', branch: 'Gulshan Branch, Dhaka' }]
                     });
                   }}
                   className="text-[11px] font-bold text-brand-sky hover:underline flex items-center gap-1"
                 >
-                  <Plus className="h-3.5 w-3.5" /> ব্যাংক অ্যাকাউন্ট যোগ করুন
+                  <Plus className="h-3.5 w-3.5" /> Add Bank Account
                 </button>
               </div>
               <div className="space-y-3">
@@ -2181,7 +2193,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].bankName = e.target.value;
                         setPaymentForm({ ...paymentForm, bankAccounts: list });
                       }}
-                      placeholder="ব্যাংকের নাম"
+                      placeholder="Bank Name"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <input
@@ -2192,7 +2204,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].accountName = e.target.value;
                         setPaymentForm({ ...paymentForm, bankAccounts: list });
                       }}
-                      placeholder="অ্যাকাউন্ট নাম"
+                      placeholder="Account Name"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <input
@@ -2203,7 +2215,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].accountNumber = e.target.value;
                         setPaymentForm({ ...paymentForm, bankAccounts: list });
                       }}
-                      placeholder="অ্যাকাউন্ট নম্বর"
+                      placeholder="Account Number"
                       className="rounded border border-slate-200 p-1.5 text-xs font-mono font-bold"
                     />
                     <input
@@ -2214,7 +2226,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                         list[idx].branch = e.target.value;
                         setPaymentForm({ ...paymentForm, bankAccounts: list });
                       }}
-                      placeholder="ব্রাঞ্চের নাম"
+                      placeholder="Branch Name"
                       className="rounded border border-slate-200 p-1.5 text-xs font-semibold"
                     />
                     <button
@@ -2242,10 +2254,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
             <div className="space-y-1 text-left">
               <h3 className="font-display font-black text-slate-800 text-sm sm:text-base flex items-center gap-2">
                 <History className="h-5 w-5 text-emerald-500" />
-                <span>রিয়েল-টাইম অ্যাক্টিভিটি ট্র্যাকার (Real-Time System Audit Log)</span>
+                <span>Real-Time Audit Log & Activity Tracker</span>
               </h3>
               <p className="text-[11px] text-slate-400">
-                সকল এডমিন, মডারেটর এবং ম্যানেজারদের কাজের রিয়েল-টাইম আপডেট ও সিকিউরিটি লগ ট্র্যাকিং। যেকোনো মেসেজ রিপ্লাই, ফাইল অনুমোদন বা স্ট্যাটাস আপডেট এখানে ট্র্যাকিং হয়।
+                সকল এডমিন, মডারেটর এবং ম্যানেজারদের কাজের রিয়েল-টাইম আপডেট ও সিকিউরিটি লগ ট্র্যাকিং। যেকোনো Message Reply, ফাইল Approve বা Status Updated এখানে ট্র্যাকিং হয়।
               </p>
             </div>
           </div>
@@ -2253,23 +2265,23 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           {/* Stat summary inside audit logs */}
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">মোট লগ সংখ্যা</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Total Logs</span>
               <span className="text-lg font-black font-mono text-slate-800">{auditLogs.length}</span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">বার্তা রিপ্লাই</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Message Replies</span>
               <span className="text-lg font-black font-mono text-indigo-600">
                 {auditLogs.filter(l => l.actionType === 'message_reply').length}
               </span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">ফাইল অনুমোদিত</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Approved Files</span>
               <span className="text-lg font-black font-mono text-emerald-600">
                 {auditLogs.filter(l => l.actionType === 'document_approved').length}
               </span>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">ফাইল রিজেক্ট</span>
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 block">Rejected Files</span>
               <span className="text-lg font-black font-mono text-rose-600">
                 {auditLogs.filter(l => l.actionType === 'document_rejected').length}
               </span>
@@ -2280,31 +2292,31 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
           <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden text-left">
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
-                <h4 className="text-xs font-black text-slate-800 font-sans">সর্বশেষ অ্যাক্টিভিটি টাইমলাইন (Audit Timeline)</h4>
-                <p className="text-[10px] text-slate-400 font-medium">নিচে রিয়েল-টাইমে সর্টকৃত সর্বশেষ মেম্বারদের অ্যাকশন লিস্ট দেওয়া হল।</p>
+                <h4 className="text-xs font-black text-slate-800 font-sans">Audit Activity Timeline</h4>
+                <p className="text-[10px] text-slate-400 font-medium">Latest actions listed in real time below.</p>
               </div>
               <div className="flex items-center space-x-2 text-[10px] text-slate-500 font-bold bg-white px-3 py-1.5 rounded-xl border border-slate-200">
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>অটো-সিঙ্ক সক্রিয়</span>
+                <span>Auto-Sync Active</span>
               </div>
             </div>
 
             {auditLogs.length === 0 ? (
               <div className="p-12 text-center text-slate-400 space-y-3">
                 <div className="text-3xl">📭</div>
-                <h5 className="text-xs font-bold text-slate-700">কোনো অ্যাক্টিভিটি লগ পাওয়া যায়নি</h5>
-                <p className="text-[10px] text-slate-400 max-w-sm mx-auto">এডমিন বা মডারেটর কোনো ফাইল অ্যাপ্রুভ/রিজেক্ট করলে অথবা স্টুডেন্টদের মেসেজে রিপ্লাই দিলে এখানে স্বয়ংক্রিয়ভাবে ট্র্যাকিং ডেটা যুক্ত হবে।</p>
+                <h5 className="text-xs font-bold text-slate-700">No activity logs found.</h5>
+                <p className="text-[10px] text-slate-400 max-w-sm mx-auto">Automatic audit log creation upon file approval, rejection, or support message response.</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100 overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-slate-50 text-[10px] uppercase font-black text-slate-400 tracking-wider">
-                      <th className="py-3 px-5 text-left font-bold w-1/4">এডমিন / মডারেটর (Actor)</th>
-                      <th className="py-3 px-5 text-left font-bold w-1/6">অ্যাকশন টাইপ (Action)</th>
-                      <th className="py-3 px-5 text-left font-bold w-1/4">শিক্ষার্থী (Student Target)</th>
-                      <th className="py-3 px-5 text-left font-bold w-1/3">বিস্তারিত বিবরণ (Details)</th>
-                      <th className="py-3 px-5 text-left font-bold w-1/12">সময় (Timestamp)</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/4">Admin / Actor</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/6">Action Type</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/4">Student Target</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/3">Details</th>
+                      <th className="py-3 px-5 text-left font-bold w-1/12">Timestamp</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -2315,31 +2327,31 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       switch (log.actionType) {
                         case 'message_reply':
                           actionBadgeClass = 'bg-blue-50 text-blue-600 border border-blue-100';
-                          actionText = 'মেসেজ রিপ্লাই';
+                          actionText = 'Message Reply';
                           break;
                         case 'document_approved':
                           actionBadgeClass = 'bg-emerald-50 text-emerald-600 border border-emerald-100';
-                          actionText = 'ডকুমেন্ট অনুমোদন';
+                          actionText = 'Document Approved';
                           break;
                         case 'document_rejected':
                           actionBadgeClass = 'bg-rose-50 text-rose-600 border border-rose-100';
-                          actionText = 'ডকুমেন্ট রিজেক্ট';
+                          actionText = 'Document Rejected';
                           break;
                         case 'status_updated':
                           actionBadgeClass = 'bg-amber-50 text-amber-600 border border-amber-100';
-                          actionText = 'স্ট্যাটাস আপডেট';
+                          actionText = 'Status Updated';
                           break;
                         case 'member_added':
                           actionBadgeClass = 'bg-purple-50 text-purple-600 border border-purple-100';
-                          actionText = 'নতুন এডমিন যোগ';
+                          actionText = 'New Admin Added';
                           break;
                         case 'member_updated':
                           actionBadgeClass = 'bg-slate-100 text-slate-700 border border-slate-200';
-                          actionText = 'প্রোফাইল আপডেট';
+                          actionText = 'Profile Updated';
                           break;
                         case 'student_deleted':
                           actionBadgeClass = 'bg-red-50 text-red-600 border border-red-100';
-                          actionText = 'আবেদনকারী ডিলিট';
+                          actionText = 'Applicant Deleted';
                           break;
                         default:
                           actionBadgeClass = 'bg-slate-50 text-slate-600 border border-slate-100';
@@ -2372,7 +2384,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                           </td>
                           <td className="py-4 px-5">
                             {log.studentId === 'system' ? (
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">সিস্টেম ওয়াইড (System Wide)</span>
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">System Wide</span>
                             ) : (
                               <div>
                                 <span className="font-bold text-slate-700 block leading-tight">{log.studentName}</span>
@@ -2436,12 +2448,12 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               <div className="space-y-1 text-left">
                 <h3 className="text-sm sm:text-base font-black text-slate-800 flex items-center gap-2">
                   <MessageSquare className="h-5 w-5 text-brand-sky" />
-                  <span>শিক্ষার্থী সহায়তা মেসেজ সেন্টার (Support Message Center)</span>
+                  <span>Student Support Message Center</span>
                 </h3>
-                <p className="text-[11px] text-slate-400">রিয়েল-টাইম মেসেজ আদান-প্রদান এবং শিক্ষার্থী সমস্যা সমাধান হাব</p>
+                <p className="text-[11px] text-slate-400">Real-time support messaging and student query desk</p>
               </div>
               <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-100 font-mono text-[11px] font-bold text-slate-600">
-                <span>মোট রেজিস্টার্ড শিক্ষার্থী: {applications.length} জন</span>
+                <span>Total Registered Students: {applications.length} students</span>
               </div>
             </div>
 
@@ -2457,7 +2469,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 }`}
               >
                 <MessageSquare className="h-3.5 w-3.5 text-brand-sky" />
-                <span>মেসেজ বক্স {currentChatApp ? `(${currentChatApp.fullName.split(' ')[0]})` : ''}</span>
+                <span>Message Box {currentChatApp ? `(${currentChatApp.fullName.split(' ')[0]})` : ''}</span>
               </button>
               <button
                 type="button"
@@ -2469,7 +2481,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 }`}
               >
                 <Users className="h-3.5 w-3.5 text-emerald-500" />
-                <span>সকল শিক্ষার্থী তালিকা ({applications.length})</span>
+                <span>All Students List ({applications.length})</span>
               </button>
             </div>
 
@@ -2485,7 +2497,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   <div className="relative">
                     <input
                       type="text"
-                      placeholder="শিক্ষার্থীর নাম / পাসপোর্ট / ID দিয়ে খুঁজুন..."
+                      placeholder="Search by student name, passport, or ID..."
                       value={chatSearchTerm}
                       onChange={(e) => setChatSearchTerm(e.target.value)}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-xs focus:outline-none focus:border-brand-sky focus:bg-white transition-all text-slate-700 font-semibold"
@@ -2493,7 +2505,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     <Search className="absolute left-3 top-3.5 h-3.5 w-3.5 text-slate-400" />
                   </div>
                   <p className="text-[10px] text-slate-400 font-bold px-1">
-                    মোট {allFilteredApplications.length} জন শিক্ষার্থী প্রদর্শিত হচ্ছে:
+                    Showing ${allFilteredApplications.length} total students:
                   </p>
                 </div>
 
@@ -2501,7 +2513,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 <div className="flex-1 overflow-y-auto min-h-0 divide-y divide-slate-100 p-2.5 sm:p-3 space-y-1.5 bg-slate-50/30">
                   {allFilteredApplications.length === 0 ? (
                     <div className="p-6 text-center text-slate-400 text-xs font-semibold">
-                      কোনো অমিল শিক্ষার্থী পাওয়া যায়নি।
+                      No matching students found.
                     </div>
                   ) : (
                     allFilteredApplications.map(app => {
@@ -2551,7 +2563,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                 ? 'text-slate-500 font-medium'
                                 : 'text-brand-sky font-bold'
                             }`}>
-                              {lastMsg ? (lastMsg.text || '📷 ফাইল/ছবি') : 'নতুন চ্যাট শুরু করতে চাপুন 💬'}
+                              {lastMsg ? (lastMsg.text || '📷 File / Photo') : 'Click to start a new chat 💬'}
                             </span>
                           </div>
                         </button>
@@ -2587,7 +2599,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                       {/* Dropdown for Switching Students on any device */}
                       <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800">
-                        <span className="text-[10px] font-bold text-slate-300 shrink-0 hidden sm:inline">শিক্ষার্থী পরিবর্তন:</span>
+                        <span className="text-[10px] font-bold text-slate-300 shrink-0 hidden sm:inline">Change Student:</span>
                         <select
                           value={currentChatApp.id}
                           onChange={(e) => {
@@ -2617,8 +2629,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             <MessageSquare className="h-5 w-5" />
                           </div>
                           <div className="space-y-1">
-                            <span className="text-xs font-black text-slate-700 block">কোনো পূর্ববর্তী মেসেজ ইতিহাস নেই</span>
-                            <span className="text-[10px] text-slate-400 block">নিচের টেক্সট বক্সে টাইপ করে প্রথম মেসেজ ও প্রয়োজনীয় ফাইল পাঠাতে পারেন।</span>
+                            <span className="text-xs font-black text-slate-700 block">No prior message history</span>
+                            <span className="text-[10px] text-slate-400 block">Type in the box below to send your message and files.</span>
                           </div>
                         </div>
                       ) : (
@@ -2635,10 +2647,10 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                     {msg.adminPhoto && (
                                       <img src={msg.adminPhoto} alt="" className="h-3.5 w-3.5 rounded-full object-cover border border-slate-200" referrerPolicy="no-referrer" />
                                     )}
-                                    <span>{msg.adminName || 'ম্যানেজার (Admin)'}</span>
+                                    <span>{msg.adminName || 'Admin Manager'}</span>
                                   </>
                                 ) : (
-                                  <span>শিক্ষার্থী ({currentChatApp.fullName})</span>
+                                  <span>Student (${currentChatApp.fullName})</span>
                                 )}
                               </span>
                               
@@ -2653,7 +2665,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                                 
                                 {msg.attachments && msg.attachments.length > 0 && (
                                   <div className="mt-2.5 pt-2 border-t border-slate-100/10 space-y-1.5">
-                                    <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">সংযুক্ত ফাইলসমূহ:</span>
+                                    <span className="text-[9px] font-black uppercase text-brand-gold tracking-wider block text-left">Attached Files:</span>
                                     {msg.attachments.map((file, fIdx) => (
                                       <a
                                         key={fIdx}
@@ -2679,12 +2691,12 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                     {/* Quick Response Templates */}
                     <div className="p-2 border-t border-slate-100 bg-slate-50 flex items-center gap-1.5 overflow-x-auto shrink-0 scrollbar-none">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0 pl-2">কুইক রিপ্লাই:</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider shrink-0 pl-2">Quick Reply:</span>
                       {[
-                        "আপনার কাগজপত্র অনুমোদিত হয়েছে।",
-                        "অনুগ্রহ করে সঠিক পাসপোর্ট সাইজ ছবি আপলোড দিন।",
-                        "এম্বাসি ইন্টারভিউ স্লট চূড়ান্ত করা হয়েছে।",
-                        "দয়া করে ফি এর রশিদটি আপলোড করুন।"
+                        "Your documents have been approved.",
+                        "Please upload a clear passport-sized photo.",
+                        "Embassy interview slot confirmed.",
+                        "Please upload your fee payment receipt."
                       ].map((tmpl, tIdx) => (
                         <button
                           key={tIdx}
@@ -2743,14 +2755,14 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             }}
                             className="text-brand-red hover:text-red-700 text-xs font-black shrink-0"
                           >
-                            মুছুন (Remove)
+                            Remove
                           </button>
                         </div>
                       )}
 
                       <div className="flex items-center space-x-2">
                         {/* File upload */}
-                        <label className="cursor-pointer h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="ফাইল বা ছবি যুক্ত করুন">
+                        <label className="cursor-pointer h-10 w-10 rounded-xl border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors shrink-0" title="Attach file or image">
                           <Paperclip className="h-4 w-4" />
                           <input
                             type="file"
@@ -2769,7 +2781,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
                         <input
                           type="text"
-                          placeholder="শিক্ষার্থীর উদ্দেশ্যে উত্তর লিখুন..."
+                          placeholder="Type a response to the student..."
                           value={adminMessageText}
                           onChange={(e) => setAdminMessageText(e.target.value)}
                           className="flex-grow rounded-xl border border-slate-200 px-3 py-2.5 text-xs focus:outline-none focus:border-brand-sky text-slate-800 font-semibold"
@@ -2780,7 +2792,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                           className="bg-slate-900 text-white rounded-xl h-10 px-4 text-xs font-black flex items-center justify-center space-x-1.5 hover:bg-slate-800 transition-all active:scale-95 shrink-0 shadow-md"
                         >
                           <Send className="h-3.5 w-3.5 text-brand-gold" />
-                          <span className="text-xs font-black">পাঠান</span>
+                          <span className="text-xs font-black">Send</span>
                         </button>
                       </div>
                     </form>
@@ -2791,8 +2803,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       <MessageSquare className="h-6 w-6" />
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-black text-slate-700 block">কোনো শিক্ষার্থী পাওয়া যায়নি</span>
-                      <span className="text-[10px] text-slate-400 block">সিস্টেমে শিক্ষার্থী আবেদন যুক্ত হওয়ার পর চ্যাট করা যাবে।</span>
+                      <span className="text-xs font-black text-slate-700 block">No students found</span>
+                      <span className="text-[10px] text-slate-400 block">Chat will be enabled once student applications are logged.</span>
                     </div>
                   </div>
                 )}
@@ -2856,8 +2868,8 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       <MessageSquare className="h-6 w-6 text-slate-400" />
                     </div>
                     <div>
-                      <p className="text-slate-500 text-xs font-black">কোনো বার্তালাপ নেই।</p>
-                      <p className="text-[10px] text-slate-400 max-w-[280px] mx-auto leading-relaxed">শিক্ষার্থীর সাথে চ্যাট শুরু করতে নিচের কুইক টেমপ্লেট ব্যবহার করতে পারেন অথবা মেসেজ টাইপ করুন।</p>
+                      <p className="text-slate-500 text-xs font-black">No chat messages yet.</p>
+                      <p className="text-[10px] text-slate-400 max-w-[280px] mx-auto leading-relaxed">Use quick presets below or type a message to start chatting with the student.</p>
                     </div>
                   </div>
                 ) : (
@@ -2883,7 +2895,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                           )}
                         </div>
                         <span className="text-[9px] text-slate-400 mt-1 px-1 font-mono font-semibold">
-                          {isAdmin ? 'অ্যাডমিন (আপনি)' : 'শিক্ষার্থী'} · {msg.sentAt}
+                          {isAdmin ? 'Admin (You)' : 'Student'} · {msg.sentAt}
                         </span>
                       </div>
                     );
@@ -2893,14 +2905,14 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
               {/* Quick Template Presets selector inside the chat popup */}
               <div className="px-4 sm:px-5 py-3 border-t border-slate-100 bg-white space-y-1.5 text-left shrink-0">
-                <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">কুইক টেমপ্লেট (Quick Send Presets):</span>
+                <span className="text-[9px] font-black uppercase text-slate-400 block tracking-wider">Quick Send Presets:</span>
                 <div className="flex flex-wrap gap-1.5 max-h-[75px] sm:max-h-[none] overflow-y-auto pr-1">
                   {[
-                    "আপনার আপলোডকৃত ডকুমেন্টস সফলভাবে ভেরিফিকেশন করা হয়েছে। ধন্যবাদ।",
-                    "আপনার পাসপোর্টের স্ক্যান কপিটি অস্পষ্ট। দয়া করে ড্যাশবোর্ড থেকে পুনরায় আপলোড করুন।",
-                    "অভিনন্দন! আপনার বয়স ও রেজাল্ট অনুযায়ী বিজ্ঞান ও প্রযুক্তি বিশ্ববিদ্যালয় নির্বাচন সফল হয়েছে।",
-                    "অভিনন্দন! আপনার বুলগেরিয়া স্টুডেন্ট ভিসা অনুমোদিত ও পাসপোর্ট স্ট্যাম্পড হয়েছে।",
-                    "আপনার দিল্লী প্রসেসিং এর ১ম কিস্তি ফি বকেয়া আছে। অনুগ্রহ করে পরিশোধ করুন।"
+                    "Your uploaded documents have been verified successfully. Thank you.",
+                    "Your passport scan is blurry. Please re-upload from your dashboard.",
+                    "Congratulations! University selection confirmed based on your profile.",
+                    "Congratulations! Your Bulgaria student visa has been approved and passport stamped.",
+                    "Your 1st installment fee for Embassy Processing is due. Please make payment."
                   ].map((presetText, i) => (
                     <button
                       key={i}
@@ -2920,14 +2932,14 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center justify-between text-xs shrink-0">
                   <div className="flex items-center space-x-2 truncate">
                     <Paperclip className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                    <span className="font-bold text-amber-900 truncate">{adminChatFileName || 'সংযুক্ত ফাইল'}</span>
+                    <span className="font-bold text-amber-900 truncate">{adminChatFileName || 'Attached File'}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => { setAdminChatFile(''); setAdminChatFileName(''); }}
                     className="text-rose-600 font-bold hover:underline text-[11px] shrink-0 ml-2"
                   >
-                    বাতিল
+                    Cancel
                   </button>
                 </div>
               )}
@@ -2935,7 +2947,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
               {/* Message input area */}
               <form onSubmit={handleSendAdminMessage} className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 flex gap-2 sm:gap-2.5 items-center shrink-0">
                 {/* File Upload Button */}
-                <label className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-brand-sky transition-all cursor-pointer shrink-0" title="ফাইল বা ছবি যুক্ত করুন (PDF, Image, Video)">
+                <label className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-brand-sky transition-all cursor-pointer shrink-0" title="Attach file or image (PDF, Image, Video)">
                   <Paperclip className="h-4 w-4" />
                   <input
                     type="file"
@@ -2957,7 +2969,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   type="text"
                   value={adminMessageText}
                   onChange={(e) => setAdminMessageText(e.target.value)}
-                  placeholder="মেসেজ বা ফাইল পাঠান..."
+                  placeholder="Send message or file..."
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 sm:px-4 py-2.5 sm:py-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all shadow-inner"
                 />
                 <button
@@ -2965,7 +2977,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   className="rounded-xl bg-slate-900 text-white px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-black hover:bg-slate-800 transition-all border-b border-brand-gold shrink-0 flex items-center space-x-1.5"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">পাঠান</span>
+                  <span className="hidden sm:inline">Send</span>
                 </button>
               </form>
             </motion.div>
@@ -2997,35 +3009,35 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   <Mail className="h-5.5 w-5.5 animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-slate-800">স্মার্ট নোটিফিকেশন হাব (Custom Dispatcher)</h4>
-                  <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold truncate max-w-[200px] sm:max-w-none">শিক্ষার্থী: {selectedApp.fullName} ({selectedApp.phone})</p>
+                  <h4 className="text-xs sm:text-sm font-black text-slate-800">Smart Notification Hub (Custom Dispatcher)</h4>
+                  <p className="text-[9px] sm:text-[10px] text-slate-400 font-semibold truncate max-w-[200px] sm:max-w-none">Student: {selectedApp.fullName} ({selectedApp.phone})</p>
                 </div>
               </div>
 
               {/* Direct Template Quick Presets to ease work */}
               <div className="space-y-1.5 shrink-0">
-                <label className="text-[10px] font-black text-slate-500 block">কুইক প্রিসেটস (Auto-Fill Presets):</label>
+                <label className="text-[10px] font-black text-slate-500 block">Auto-Fill Presets:</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-left max-h-[110px] sm:max-h-none overflow-y-auto pr-1">
                   {[
                     {
-                      label: "✅ বোর্ড ডকুমেন্টস এপ্রুভড",
-                      title: "আপনার বোর্ড ডকুমেন্টস ভেরিফিকেশন সম্পন্ন হয়েছে!",
-                      body: `প্রিয় ${selectedApp.fullName}, আপনার বোর্ড আপলোডকৃত কাগজপত্র সফলভাবে যাচাই করা হয়েছে। পরবর্তী প্রসেসিং এর জন্য অপেক্ষা করুন।`
+                      label: "✅ Board Documents Approved",
+                      title: "Your board documents verification is complete!",
+                      body: `Dear ${selectedApp.fullName}, your board documents have been verified. Please wait for the next step.`
                     },
                     {
-                      label: "❌ ইনকমপ্লিট ডকুমেন্টস এলার্ট",
-                      title: "কাগজপত্র অসম্পূর্ণ বা ক্রুটিপূর্ণ এলার্ট",
-                      body: `প্রিয় ${selectedApp.fullName}, আপনার আপলোডকৃত ডকুমেন্টস এর মধ্যে কিছু ত্রুটি পাওয়া গেছে। দয়া করে প্রোফাইল থেকে রিজেকশন ফিডব্যাক পড়ে পুনরায় সঠিক ফাইল আপলোড করুন।`
+                      label: "❌ Incomplete Documents Alert",
+                      title: "Incomplete Documents Alert",
+                      body: `Dear ${selectedApp.fullName}, some errors were found in your documents. Please check feedback and re-upload.`
                     },
                     {
-                      label: "🛂 দিল্লী এম্বাসি বুকিং স্লট",
-                      title: "দিল্লী এম্বাসি বুকিং এবং ভারতীয় ভাষা শিডিউল সম্পন্ন",
-                      body: `প্রিয় ${selectedApp.fullName}, আপনার বুলগেরিয়ান ফাইল ভারতীয় দিল্লী হাই কমিশন এম্বাসি ইন্টারভিউ স্লটের জন্য শিডিউল বুকড করা হয়েছে। বিস্তারিত দেখতে ইনবক্স চেক করুন।`
+                      label: "🛂 Delhi Embassy Slot Booked",
+                      title: "Delhi Embassy Slot & Interview Scheduled",
+                      body: `Dear ${selectedApp.fullName}, your file has been scheduled for interview at the Delhi embassy. Check inbox for details.`
                     },
                     {
                       label: "✈️ visa issue alert",
-                      title: "অভিনন্দন! বুলগেরিয়া ভিসা ইস্যু সম্পন্ন",
-                      body: `অভিনন্দন ${selectedApp.fullName}! আপনার দেশীয় পাসপোর্ট দিল্লীস্থ বুলগেরিয়া এম্বাসি থেকে স্টুডেন্ট ভিসা স্ট্যাম্পড হয়ে ফেরত এসেছে। টিকিট বুকিং সংক্রান্ত তথ্যের জন্য যোগাযোগ করুন।`
+                      title: "Congratulations! Bulgaria Visa Issued",
+                      body: `Congratulations ${selectedApp.fullName}! Your passport with Bulgarian student visa stamp has arrived from Delhi. Contact us for flights.`
                     }
                   ].map((preset, index) => (
                     <button
@@ -3050,18 +3062,18 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 <div className="space-y-4">
                   <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                     <div className="space-y-1 sm:col-span-2">
-                      <label className="text-[10px] font-black text-slate-500">নোটিফিকেশনের শিরোনাম (Subject/Title):</label>
+                      <label className="text-[10px] font-black text-slate-500">Notification Title / Subject:</label>
                       <input
                         required
                         type="text"
                         value={notifTitle}
                         onChange={(e) => setNotifTitle(e.target.value)}
-                        placeholder="যেমন: পাসপোর্ট অ্যাটেস্টেশন সম্পন্ন হয়েছে"
+                        placeholder="e.g. Passport attestation completed"
                         className="w-full rounded-xl border border-slate-200 p-2.5 sm:p-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all"
                       />
                     </div>
                     <div className="space-y-1 sm:col-span-1">
-                      <label className="text-[10px] font-black text-slate-500">মাধ্যমে (Channel):</label>
+                      <label className="text-[10px] font-black text-slate-500">Channel:</label>
                       <select
                         value={notifType}
                         onChange={(e) => setNotifType(e.target.value as 'sms' | 'email')}
@@ -3074,13 +3086,13 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-500">বার্তা (Message Body):</label>
+                    <label className="text-[10px] font-black text-slate-500">Message Body:</label>
                     <textarea
                       required
                       rows={3}
                       value={notifBody}
                       onChange={(e) => setNotifBody(e.target.value)}
-                      placeholder="এখানে বার্তার মূল অংশ লিখুন..."
+                      placeholder="Type your message here..."
                       className="w-full rounded-xl border border-slate-200 p-2.5 sm:p-3 text-xs font-semibold focus:outline-none focus:border-brand-sky transition-all"
                     />
                   </div>
@@ -3088,9 +3100,9 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                   <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between text-[10px] font-bold text-slate-500 bg-slate-50 rounded-2xl p-3 border border-slate-100">
                     <span className="flex items-center gap-1.5 truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0"></span>
-                      প্রাপক: {notifType === 'sms' ? selectedApp.phone : selectedApp.email}
+                      Recipient: {notifType === 'sms' ? selectedApp.phone : selectedApp.email}
                     </span>
-                    <span className="shrink-0">{notifBody.length} অক্ষর</span>
+                    <span className="shrink-0">{notifBody.length} characters</span>
                   </div>
                 </div>
 
@@ -3100,7 +3112,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     onClick={() => setIsNotificationModalOpen(false)}
                     className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                   >
-                    বাতিল করুন
+                    Cancel
                   </button>
                   <button
                     id="admin-btn-send-notif"
@@ -3108,7 +3120,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                     className="flex items-center space-x-1.5 rounded-xl bg-brand-sky text-white px-5 py-2.5 text-xs font-black hover:bg-brand-sky-dark shadow-md transition-all active:scale-95"
                   >
                     <Send className="h-3.5 w-3.5" />
-                    <span>পাঠান</span>
+                    <span>Send</span>
                   </button>
                 </div>
               </form>
@@ -3169,7 +3181,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            <span>নতুন উইন্ডোতে বড় করে দেখুন (View Full Image)</span>
+                            <span>View Full Image in New Window</span>
                           </a>
                         </div>
                       );
@@ -3194,7 +3206,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-brand-sky hover:text-brand-sky-dark bg-white border border-slate-200 rounded-lg shadow-sm transition-all"
                           >
                             <Eye className="h-3.5 w-3.5" />
-                            <span>নতুন উইন্ডোতে পিডিএফটি দেখুন (Open PDF in New Window)</span>
+                            <span>Open PDF in New Window</span>
                           </a>
                         </div>
                       );
@@ -3202,16 +3214,16 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       return (
                         <div className="text-center space-y-4 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
                           <div className="h-14 w-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto text-xl font-bold">📄</div>
-                          <h4 className="text-xs font-bold text-slate-800">অ-ছবি ডকুমেন্ট ফাইল (Non-Image File)</h4>
+                          <h4 className="text-xs font-bold text-slate-800">Non-Image Document File</h4>
                           <p className="text-[11px] text-slate-500 leading-relaxed">
-                            এই ফাইলটি সরাসরি ব্রাউজারে রেন্ডার করা যাচ্ছে না। ডাউনলোড করে ফাইলটি প্রিভিউ করুন।
+                            This file cannot be rendered directly in the browser. Download to preview.
                           </p>
                           <a
                             href={previewUrl}
                             download={previewDoc.fileName}
                             className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-5 py-2.5 text-xs font-black hover:bg-slate-800 shadow transition-all"
                           >
-                            ফাইল ডাউনলোড করুন (Download File)
+                            Download File
                           </a>
                         </div>
                       );
@@ -3220,9 +3232,9 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                 ) : (
                   <div className="text-center space-y-3 p-8 bg-white rounded-2xl shadow-sm border border-slate-200 max-w-md">
                     <div className="text-3xl">⚠️</div>
-                    <h4 className="text-xs font-bold text-slate-800">কোনো ফাইল ডাটা পাওয়া যায়নি</h4>
+                    <h4 className="text-xs font-bold text-slate-800">No File Data Found</h4>
                     <p className="text-[11px] text-slate-400 leading-relaxed">
-                      এটি একটি ডেমো আবেদনকারী রেকর্ড। শিক্ষার্থীর আপলোড করা রিয়েল ডকুমেন্টে সম্পূর্ণ ডাউনলোডযোগ্য ডাটা থাকবে।
+                      This is a demo applicant record. Real student documents will contain downloadable files.
                     </p>
                   </div>
                 )}
@@ -3230,14 +3242,14 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
 
               {/* Modal Footer */}
               <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
-                <span className="text-[10px] text-slate-400 font-bold font-mono">আপলোড: {previewDoc.uploadedAt}</span>
+                <span className="text-[10px] text-slate-400 font-bold font-mono">Uploaded: {previewDoc.uploadedAt}</span>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setPreviewDoc(null)}
                     className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50 transition-colors"
                   >
-                    বন্ধ করুন
+                    Close
                   </button>
                   {previewDoc.fileUrl && (
                     <a
@@ -3245,7 +3257,7 @@ export default function AdminPanel({ applications, onUpdateApplication, paymentC
                       download={previewDoc.fileName}
                       className="flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-5 py-2 text-xs font-black hover:bg-emerald-700 shadow transition-all"
                     >
-                      ডাউনলোড (Download)
+                      Download
                     </a>
                   )}
                 </div>

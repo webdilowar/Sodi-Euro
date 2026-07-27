@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { documentRequirements } from '../data';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   FileCheck, 
   HelpCircle, 
@@ -21,60 +22,61 @@ import {
 } from 'lucide-react';
 
 export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
+  const { language, t } = useLanguage();
   // Selected University & Calculator States with nested Programs
   const universities = [
     { 
       id: 'sofia_uni', 
-      name: 'Sofia University St. Kliment Ohridski (সোফিয়া ইউনিভার্সিটি)', 
+      name: 'Sofia University St. Kliment Ohridski', 
       programs: [
-        { id: 'bachelor', name: 'ব্যাচেলর (Bachelor Degree)', fee: 3500 },
-        { id: 'language', name: 'ভাষা শিক্ষা কোর্স (Language Course)', fee: 2500 },
-        { id: 'masters', name: 'মাস্টার্স (Masters Degree)', fee: 4000 }
+        { id: 'bachelor', name: 'Bachelor Degree', fee: 3500 },
+        { id: 'language', name: 'Language Course', fee: 2500 },
+        { id: 'masters', name: 'Masters Degree', fee: 4000 }
       ]
     },
     { 
       id: 'tech_sofia', 
-      name: 'Technical University of Sofia (টেকনিক্যাল ইউনিভার্সিটি অফ সোফিয়া)', 
+      name: 'Technical University of Sofia', 
       programs: [
-        { id: 'bachelor', name: 'ব্যাচেলর (Bachelor Degree)', fee: 3000 },
-        { id: 'language', name: 'ভাষা শিক্ষা কোর্স (Language Course)', fee: 2000 },
-        { id: 'masters', name: 'মাস্টার্স (Masters Degree)', fee: 3500 }
+        { id: 'bachelor', name: 'Bachelor Degree', fee: 3000 },
+        { id: 'language', name: 'Language Course', fee: 2000 },
+        { id: 'masters', name: 'Masters Degree', fee: 3500 }
       ]
     },
     { 
       id: 'med_sofia', 
-      name: 'Medical University of Sofia (মেডিকেল ইউনিভার্সিটি অফ সোফিয়া)', 
+      name: 'Medical University of Sofia', 
       programs: [
-        { id: 'bachelor', name: 'ব্যাচেলর (Bachelor Degree)', fee: 8000 },
-        { id: 'language', name: 'ভাষা শিক্ষা কোর্স (Language Course)', fee: 4000 },
-        { id: 'masters', name: 'মাস্টার্স (Masters Degree)', fee: 9000 }
+        { id: 'bachelor', name: 'Bachelor Degree', fee: 8000 },
+        { id: 'language', name: 'Language Course', fee: 4000 },
+        { id: 'masters', name: 'Masters Degree', fee: 9000 }
       ]
     },
     { 
       id: 'varna_management', 
-      name: 'Varna University of Management (ভার্না ইউনিভার্সিটি অফ ম্যানেজমেন্ট)', 
+      name: 'Varna University of Management', 
       programs: [
-        { id: 'bachelor', name: 'ব্যাচেলর (Bachelor Degree)', fee: 4500 },
-        { id: 'language', name: 'ভাষা শিক্ষা কোর্স (Language Course)', fee: 3000 },
-        { id: 'masters', name: 'মাস্টার্স (Masters Degree)', fee: 5000 }
+        { id: 'bachelor', name: 'Bachelor Degree', fee: 4500 },
+        { id: 'language', name: 'Language Course', fee: 3000 },
+        { id: 'masters', name: 'Masters Degree', fee: 5000 }
       ]
     },
     { 
       id: 'tech_varna', 
-      name: 'Technical University of Varna (টেকনিক্যাল ইউনিভার্সিটি অফ ভার্না)', 
+      name: 'Technical University of Varna', 
       programs: [
-        { id: 'bachelor', name: 'ব্যাচেলর (Bachelor Degree)', fee: 3000 },
-        { id: 'language', name: 'ভাষা শিক্ষা কোর্স (Language Course)', fee: 2000 },
-        { id: 'masters', name: 'মাস্টার্স (Masters Degree)', fee: 3500 }
+        { id: 'bachelor', name: 'Bachelor Degree', fee: 3000 },
+        { id: 'language', name: 'Language Course', fee: 2000 },
+        { id: 'masters', name: 'Masters Degree', fee: 3500 }
       ]
     },
     { 
       id: 'aubg', 
-      name: 'American University in Bulgaria (আমেরিকান ইউনিভার্সিটি ইন বুলগেরিয়া)', 
+      name: 'American University in Bulgaria', 
       programs: [
-        { id: 'bachelor', name: 'ব্যাচেলর (Bachelor Degree)', fee: 12000 },
-        { id: 'language', name: 'ভাষা শিক্ষা কোর্স (Language Course)', fee: 6000 },
-        { id: 'masters', name: 'মাস্টার্স (Masters Degree)', fee: 14000 }
+        { id: 'bachelor', name: 'Bachelor Degree', fee: 12000 },
+        { id: 'language', name: 'Language Course', fee: 6000 },
+        { id: 'masters', name: 'Masters Degree', fee: 14000 }
       ]
     }
   ];
@@ -101,11 +103,11 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
 
   // Real Bulgaria university campus and student life images for gallery
   const campusSlides = [
-    { url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop', title: 'সোফিয়া বিশ্ববিদ্যালয় (Sofia University St. Kliment Ohridski) ক্যাম্পাস ও লাইব্রেরি' },
-    { url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop', title: 'বুলগেরিয়ার বিশ্বমানের ঐতিহ্যবাহী ও আধুনিক শিক্ষাঙ্গন' },
-    { url: 'https://images.unsplash.com/photo-1555992336-03a23c7b20eb?q=80&w=1200&auto=format&fit=crop', title: 'ইউরোপীয় সুযোগ-সুবিধা সম্বলিত রিডিং রুম ও স্টাডি স্পেস' },
-    { url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200&auto=format&fit=crop', title: 'গ্রুপ স্টাডি এবং বিশ্বমানের ল্যাব ফ্যাসিলিটি' },
-    { url: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=1200&auto=format&fit=crop', title: 'বুলগেরিয়ার সুন্দর প্রাকৃতিক পরিবেশে ছাত্রজীবন' }
+    { url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop', title: 'Sofia University St. Kliment Ohridski Campus & Library' },
+    { url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop', title: 'World-Class Traditional and Modern Educational Campus in Bulgaria' },
+    { url: 'https://images.unsplash.com/photo-1555992336-03a23c7b20eb?q=80&w=1200&auto=format&fit=crop', title: 'Reading Rooms & Study Spaces with European Facilities' },
+    { url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200&auto=format&fit=crop', title: 'Group Study and Advanced Laboratory Facilities' },
+    { url: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=1200&auto=format&fit=crop', title: 'Vibrant Student Life in Bulgaria\'s Natural Environment' }
   ];
 
   // Calculate costs
@@ -137,10 +139,10 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
 
   // Sliding background images for the Hero
   const heroSlides = [
-    { url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop', title: 'বুলগেরিয়ার বিশ্বমানের বিশ্ববিদ্যালয় ক্যাম্পাস' },
-    { url: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=1200&auto=format&fit=crop', title: 'ইউরোপীয় শিক্ষা ও রোমাঞ্চকর ছাত্রজীবন' },
-    { url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop', title: 'সফল ভিসা প্রাপ্তি ও সোনালী ভবিষ্যৎ' },
-    { url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200&auto=format&fit=crop', title: 'নিরাপদ ও নির্ভরযোগ্য ইউরোপীয়ান ভিসা প্রসেসিং' }
+    { url: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop', title: 'World-Class University Campuses in Bulgaria' },
+    { url: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=1200&auto=format&fit=crop', title: 'European Education & Vibrant Student Life' },
+    { url: 'https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop', title: 'Successful Visa Grants & Bright Futures' },
+    { url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1200&auto=format&fit=crop', title: 'Safe & Reliable European Student Visa Processing' }
   ];
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -149,58 +151,58 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
   const testimonials = [
     {
       id: 1,
-      name: 'শরিফুল ইসলাম (Shariful Islam)',
+      name: 'Shariful Islam',
       university: 'Sofia University St. Kliment Ohridski',
-      program: 'ব্যাচেলর ইন কম্পিউটার সায়েন্স (B.Sc. in CS)',
-      home: 'সিলেট (Sylhet)',
-      visaDate: 'মার্চ ২০২৬',
+      program: 'B.Sc. in Computer Science',
+      home: 'Sylhet',
+      visaDate: 'March 2026',
       rating: 5,
       image: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=300&auto=format&fit=crop',
-      quote: 'Sodi Euro এর সহযোগিতায় আমার বুলগেরিয়া আসার স্বপ্ন সত্যি হয়েছে। বিশেষ করে দিল্লী এমব্যাসির ডাবল এন্ট্রি ইন্ডিয়ান ভিসা এবং পেপার সত্যায়নের প্রসেসটি তারা অনেক সহজ করে দিয়েছিল। ধন্যবাদ Sodi Euro টিম!'
+      quote: 'My dream of studying abroad came true with NOVENTRA\'s help. They made the embassy file preparation and document attestation process extremely smooth and easy. Thank you NOVENTRA team!'
     },
     {
       id: 2,
-      name: 'ফারহানা রহমান (Farhana Rahman)',
+      name: 'Farhana Rahman',
       university: 'Medical University of Sofia',
-      program: 'মাস্টার্স ইন পাবলিক হেলথ (M.Sc. in MPH)',
-      home: 'ঢাকা (Dhaka)',
-      visaDate: 'অক্টোবর ২০২৫',
+      program: 'M.Sc. in Public Health',
+      home: 'Dhaka',
+      visaDate: 'October 2025',
       rating: 5,
       image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=300&auto=format&fit=crop',
-      quote: 'সোফিয়া মেডিকেল ইউনিভার্সিটিতে পড়াশোনা করার সিদ্ধান্তটি আমার জীবনের সেরা সিদ্ধান্ত ছিল। Sodi Euro টিম আমার ভর্তি থেকে শুরু করে দিল্লীর ইন্টারভিউ প্রিপারেশন এবং বুলগেরিয়ার হোস্টেল বুকিং পর্যন্ত সব ধাপে পাশে ছিল।'
+      quote: 'Choosing Medical University of Sofia was the best decision of my life. NOVENTRA stood by me at every step from admission to interview prep and hostel booking.'
     },
     {
       id: 3,
-      name: 'তানভীর আহমেদ (Tanveer Ahmed)',
+      name: 'Tanveer Ahmed',
       university: 'Technical University of Sofia',
-      program: 'ব্যাচেলর ইন মেকানিক্যাল ইঞ্জিনিয়ারিং (B.Sc. in ME)',
-      home: 'চট্টগ্রাম (Chattogram)',
-      visaDate: 'জানুয়ারি ২০২৬',
+      program: 'B.Sc. in Mechanical Engineering',
+      home: 'Chattogram',
+      visaDate: 'January 2026',
       rating: 5,
       image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop',
-      quote: 'টিউশন ফি সাশ্রয়ী এবং বুলগেরিয়া এখন সেনজেন ভুক্ত হওয়ায় এখানে ক্যারিয়ারের দারুণ সুযোগ রয়েছে। Sodi Euro এর ওয়ান-স্টপ গ্রাউন্ড সাপোর্ট অত্যন্ত পেশাদার এবং নির্ভরযোগ্য।'
+      quote: 'Affordable tuition fees and Schengen access make Bulgaria an excellent career choice. NOVENTRA\'s one-stop ground support is thoroughly professional and dependable.'
     },
     {
       id: 4,
-      name: 'মাহাদি হাসান (Mahadi Hasan)',
+      name: 'Mahadi Hasan',
       university: 'Varna University of Management',
-      program: 'ব্যাচেলর ইন ইন্টারন্যাশনাল হসপিটালিটি',
-      home: 'বগুড়া (Bogura)',
-      visaDate: 'সেপ্টেম্বর ২০২৫',
+      program: 'Bachelor in International Hospitality',
+      home: 'Bogura',
+      visaDate: 'September 2025',
       rating: 5,
       image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=300&auto=format&fit=crop',
-      quote: 'ভার্না একটি অত্যন্ত চমৎকার উপকূলীয় শহর। এখানকার জীবনযাত্রার খরচ অনেক কম। Sodi Euro আমার ভিসা হওয়ার পর এয়ারপোর্ট পিক-আপ এবং পুলিশ রেজিস্ট্রেশনের কাজগুলোতে সরাসরি সাহায্য করেছে।'
+      quote: 'Varna is a fantastic coastal city with very affordable living costs. NOVENTRA directly assisted with airport pickup and university registration upon my arrival.'
     },
     {
       id: 5,
-      name: 'নুসরাত জাহান (Nusrat Jahan)',
+      name: 'Nusrat Jahan',
       university: 'Sofia University St. Kliment Ohridski',
-      program: 'মাস্টার্স ইন সফটওয়্যার ইঞ্জিনিয়ারিং (M.Sc. in SE)',
-      home: 'খুলনা (Khulna)',
-      visaDate: 'ফেব্রুয়ারি ২০২৬',
+      program: 'M.Sc. in Software Engineering',
+      home: 'Khulna',
+      visaDate: 'February 2026',
       rating: 5,
       image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=300&auto=format&fit=crop',
-      quote: 'মেডিকেল ইন্স্যুরেন্স, ডিক্লেয়ারেশন লেটার এবং নোটারি সত্যায়ন নিয়ে আমি খুব চিন্তিত ছিলাম। Sodi Euro খুব দ্রুত সময়ের মধ্যে আমার ফাইল দিল্লী দূতাবাসে জমা দেওয়ার উপযুক্ত করে তুলেছিল। অসাধারণ সার্ভিস!'
+      quote: 'I was worried about medical insurance, declaration letters, and notary attestations. NOVENTRA quickly prepared my complete file for embassy submission. Excellent service!'
     }
   ];
 
@@ -214,13 +216,6 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
     }, 6000);
     return () => clearInterval(testimonialTimer);
   }, [isTestimonialAutoPlay, testimonials.length]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
 
   return (
     <div className="space-y-12 py-6" id="lobby-view-container">
@@ -274,18 +269,19 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
         </div>
         
         <div className="relative z-10 max-w-4xl space-y-6">
-          {/* Sodi Euro Call To Action */}
+          {/* NOVENTRA Call To Action */}
           <div className="space-y-6 text-left">
-            <div className="inline-flex items-center space-x-2 rounded-full bg-brand-gold/10 border border-brand-gold/30 px-3.5 py-1 text-xs font-bold text-brand-gold-accent backdrop-blur-md">
-              <Sparkles className="h-3 w-3 text-brand-gold animate-spin" />
-              <span>বাংলাদেশ টু ইউরোপ ও বুলগেরিয়া প্রসেসিং • Sodi Euro</span>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-white border-2 border-amber-400 p-0.5 shadow-lg overflow-hidden shrink-0 notranslate">
+                <img src="/logo.png" alt="NOVENTRA Logo" className="h-full w-full object-contain notranslate" referrerPolicy="no-referrer" />
+              </div>
             </div>
-            <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl md:text-5xl leading-tight">
-              ইউরোপে উচ্চশিক্ষা ও <br />
-              <span className="bg-gradient-to-r from-brand-sky via-brand-gold-accent to-brand-gold bg-clip-text text-transparent">নিরাপদ ওয়ান-স্টপ ভিসা</span> পোর্টাল
+                       <h1 className="font-sans text-3xl font-black tracking-tight sm:text-4xl md:text-5xl leading-tight text-white">
+              <span className="notranslate">Gateway to Global Education</span> <br />
+              <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">{t('hero_title_2', 'Secure One-Stop Student Visa Portal')}</span>
             </h1>
             <p className="text-sm text-slate-300 sm:text-base leading-relaxed max-w-2xl">
-              শিক্ষা সনদের পররাষ্ট্র মন্ত্রণালয় থেকে দ্রুততম উপায়ে সত্যায়ন, পুলিশ ক্লিয়ারেন্স রেডি করা, দিল্লী দূতাবাসে ফাইল সাবমিশন এবং ভারতীয় ডাবল এন্ট্রি ভিসা প্রসেসিংসহ সম্পূর্ণ প্রক্রিয়ায় নির্ভরযোগ্য সমাধান। আপনার স্বপ্নের ইউরোপ যাত্রায় **Sodi Euro** থাকবে প্রতিটি পদক্ষেপে।
+              {t('hero_subtitle', 'Official agency consultancy platform for Bulgarian Higher Education, European D-type Student Visa processing, Board verification, & Delhi Embassy slot booking.')}
             </p>
             <div className="flex flex-col space-y-3 pt-4 sm:flex-row sm:space-y-0 sm:space-x-4">
               <button
@@ -293,7 +289,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 onClick={onGoToApply}
                 className="flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-sky/20 transition-all hover:scale-105 active:scale-95"
               >
-                <span>অনলাইনে আবেদন শুরু করুন</span>
+                <span>{t('hero_btn_apply', 'Start New Application')}</span>
                 <ArrowRight className="h-4 w-4" />
               </button>
               <button
@@ -304,7 +300,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 className="flex items-center justify-center space-x-2 rounded-xl bg-white/10 border border-brand-gold/20 px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-white/20 hover:border-brand-gold/50"
               >
                 <Coins className="h-4 w-4 text-brand-gold" />
-                <span>বাজেট ও খরচের হিসাব</span>
+                <span>{t('cost_title', 'Budget & Cost Estimator')}</span>
               </button>
             </div>
           </div>
@@ -314,18 +310,24 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
       {/* 2. Process Pathway with folding hover layout */}
       <section className="space-y-6" id="process-pathway">
         <div className="text-center max-w-xl mx-auto space-y-2">
-          <h2 className="font-display text-2xl font-bold text-slate-800">Sodi Euro ভিসা প্রসেস টাইমলাইন</h2>
-          <p className="text-xs text-slate-500">বাংলাদেশী শিক্ষার্থীদের জন্য প্রতিটি ধাপে সুনির্দিষ্ট গাইডলাইন</p>
+          <h2 className="font-display text-2xl font-bold text-slate-800">{t('pathway_title', 'NOVENTRA Visa Process Timeline')}</h2>
+          <p className="text-xs text-slate-500">{t('pathway_subtitle', 'Step-by-step guidance for Bangladeshi students')}</p>
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5" id="timeline-steps">
-          {[
-            { step: '০১', title: 'ভর্তি ও অফার লেটার', desc: 'পছন্দের বিশ্ববিদ্যালয়ে আবেদন ও ভর্তি অনুমোদন।' },
-            { step: '০২', title: 'ডকুমেন্ট রেডি ও লিগালাইজেশন', desc: 'শিক্ষা ও পররাষ্ট্র মন্ত্রণালয় থেকে দ্রুততম সত্যায়ন।' },
-            { step: '০৩', title: 'ডাবল এন্ট্রি ইন্ডিয়ান ভিসা', desc: 'দিল্লী দূতাবাসে সশরীরে যেতে ট্রাভেল পারমিট নিশ্চিতকরণ।' },
-            { step: '০৪', title: 'দূতাবাস ইন্টারভিউ', desc: 'নতুন দিল্লীতে অবস্থিত ইউরোপীয় দূতাবাসে ফাইল পেশ ও ইন্টারভিউ।' },
-            { step: '০৫', title: 'ভিসা সিল ও ফ্লাইট বুকিং', desc: 'ভিসা পাসপোর্ট ফেরত পাওয়ার পর স্বপ্নের বিমান যাত্রা।' }
-          ].map((item, index) => (
+          {(language === 'bn' ? [
+            { step: '০১', title: 'এডমিশন ও অফার লেটার', desc: 'বিশ্ববিদ্যালয়ে আবেদন জমা এবং অফার লেটার অনুমোদন গ্রহণ।' },
+            { step: '০২', title: 'ডকুমেন্ট সত্যায়ন ও অনুবাদ', desc: 'শিক্ষা বোর্ড, শিক্ষা মন্ত্রণালয় ও পররাষ্ট্র মন্ত্রণালয় সত্যায়ন।' },
+            { step: '০৩', title: 'ডাবল এন্ট্রি ট্রানজিট ভিসা', desc: 'দিল্লী এম্বাসি ইন্টারভিউতে উপস্থিত হওয়ার জন্য ট্রাভেল পারমিট।' },
+            { step: '০৪', title: 'এম্বাসি ফাইল ও ইন্টারভিউ', desc: 'দিল্লীস্থ ইউরোপীয় দূতাবাসে ফাইল জমা ও সাক্ষাৎকার।' },
+            { step: '০৫', title: 'ভিসা স্ট্যাম্পিং ও যাত্রা', desc: 'পাসপোর্টে ভিসা স্ট্যাম্পিং শেষে বুলগেরিয়ার উদ্দেশ্যে যাত্রা।' }
+          ] : [
+            { step: '01', title: 'Admission & Offer Letter', desc: 'Application submission & admission approval from your chosen university.' },
+            { step: '02', title: 'Document Prep & Legalization', desc: 'Fast-track attestation from the Ministry of Education & Ministry of Foreign Affairs.' },
+            { step: '03', title: 'Double Entry Transit Visa', desc: 'Travel permit for attending the in-person embassy appointment in New Delhi.' },
+            { step: '04', title: 'Embassy File & Interview', desc: 'File submission & interview at the European Embassy in New Delhi.' },
+            { step: '05', title: 'Visa Stamping & Departure', desc: 'Receive your stamped passport and embark on your journey abroad.' }
+          ]).map((item, index) => (
             <motion.div 
               key={index} 
               whileHover={{ y: -5, rotateX: 5 }}
@@ -351,9 +353,9 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
           <div className="space-y-1">
             <h3 className="font-display font-bold text-slate-800 text-lg flex items-center space-x-1.5">
               <Layers className="h-5 w-5 text-brand-sky" />
-              <span>বাংলাদেশি ডকুমেন্ট গাইড</span>
+              <span>Bangladeshi Document Guide</span>
             </h3>
-            <p className="text-xs text-slate-500">আপনার প্রয়োজনীয় সার্টিফিকেট কিভাবে এবং কোথা থেকে সত্যায়ন করবেন তার সুনির্দিষ্ট গাইডলাইন:</p>
+            <p className="text-xs text-slate-500">Step-by-step guidelines on how and where to attest your required certificates:</p>
           </div>
           <div className="space-y-2" id="doc-req-selectors">
             {documentRequirements.map((doc) => (
@@ -376,7 +378,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   <h4 className="text-xs font-bold leading-tight line-clamp-1">{doc.title}</h4>
                   <div className="flex justify-between items-center mt-1">
                     <span className={`text-[9px] font-extrabold ${selectedDocId === doc.id ? 'text-brand-gold-dark' : 'text-slate-400'}`}>
-                      {doc.isRequired ? 'বাধ্যতামূলক (Required)' : 'ঐচ্ছিক (Optional)'}
+                      {doc.isRequired ? 'Mandatory (Required)' : 'Optional'}
                     </span>
                     {selectedDocId === doc.id && (
                       <span className="text-[10px] text-brand-gold">➔</span>
@@ -405,7 +407,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
             <div className="space-y-6">
               <div className="border-b border-slate-100 pb-4 pr-6">
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-white bg-gradient-to-r from-brand-sky to-brand-sky-dark px-2.5 py-1 rounded-full border border-brand-gold/20">
-                  {activeDoc.isRequired ? 'বাধ্যতামূলক ডকুমেন্ট গাইড' : 'সহায়ক ডকুমেন্ট'}
+                  {activeDoc.isRequired ? 'Mandatory Document Guide' : 'Supporting Document'}
                 </span>
                 <h3 className="mt-3 font-display text-xl font-bold text-slate-800 flex items-center space-x-2">
                   <span className="text-brand-gold">✦</span>
@@ -417,7 +419,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
               {/* Preparation Steps */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-brand-sky-dark flex items-center space-x-1">
-                  <span>প্রস্তুতির সঠিক নিয়ম (Embassy Standards):</span>
+                  <span>Preparation Rules (Embassy Standards):</span>
                 </h4>
                 <ul className="grid gap-2.5 text-xs text-slate-600">
                   {activeDoc.guidelines.map((guide, idx) => (
@@ -433,7 +435,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
               <div className="rounded-xl bg-gradient-to-r from-brand-sky-light/40 to-brand-gold-light p-4 border border-brand-gold/20 space-y-2">
                 <div className="flex items-center space-x-1.5 text-slate-800">
                   <MapPin className="h-4 w-4 text-brand-sky" />
-                  <h4 className="text-xs font-bold text-slate-800">Sodi Euro থেকে যেভাবে সংগ্রহ করবেন (Our Ground Assistance):</h4>
+                  <h4 className="text-xs font-bold text-slate-800">How to Collect with NOVENTRA (Ground Assistance):</h4>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed font-medium">{activeDoc.bangladeshCollectionGuide}</p>
               </div>
@@ -442,7 +444,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span className="flex items-center space-x-1">
                 <span className="text-brand-gold text-lg">💡</span>
-                <span>এই ডকুমেন্টগুলো সংগ্রহের জন্য আমাদের গ্রাউন্ড ফিল্ড এজেন্ট বোর্ডে এবং মন্ত্রণালয়ে আপনার পক্ষ থেকে সহায়তা করবে।</span>
+                <span>Our ground field agents will assist you at education boards and ministry offices to collect and attest these documents smoothly.</span>
               </span>
             </div>
           </motion.div>
@@ -454,10 +456,10 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
         <div className="text-center max-w-xl mx-auto space-y-2">
           <div className="inline-flex items-center space-x-1.5 rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold-dark border border-brand-gold/30">
             <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
-            <span>ইউরোপিয়ান ক্যাম্পাস ও শিক্ষার্থী জীবন</span>
+            <span>European Campus & Student Life</span>
           </div>
-          <h2 className="font-display text-2xl font-bold text-slate-800">বুলগেরিয়ার ক্যাম্পাস ও ছাত্রজীবনের এক ঝলক</h2>
-          <p className="text-xs text-slate-500">বিশ্বমানের সুযোগ-সুবিধা এবং সমৃদ্ধ প্রাকৃতিক সৌন্দর্যময় আধুনিক জীবনযাত্রা</p>
+          <h2 className="font-display text-2xl font-bold text-slate-800">Glimpse of Bulgaria Campus & Student Life</h2>
+          <p className="text-xs text-slate-500">World-class facilities and modern lifestyle amidst rich natural beauty</p>
         </div>
 
         <div className="mx-auto max-w-4xl relative rounded-2xl overflow-hidden border-2 border-brand-gold/30 shadow-2xl bg-slate-950 group h-64 sm:h-80 lg:h-96">
@@ -468,16 +470,16 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 1 }}
-              className="absolute inset-0 bg-contain bg-no-repeat bg-center bg-slate-950" // Showing full photo by using contain and slate dark frame as requested
+              className="absolute inset-0 bg-contain bg-no-repeat bg-center bg-slate-950"
               style={{ backgroundImage: `url(${campusSlides[currentSlide % campusSlides.length].url})` }}
             >
               {/* Overlay gradient to keep slide captions perfectly clear */}
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-90"></div>
               
-              {/* Captain text banner */}
+              {/* Caption text banner */}
               <div className="absolute inset-x-0 bottom-0 p-6 text-left bg-slate-950/70 backdrop-blur-md">
                 <span className="inline-block bg-brand-gold text-slate-950 text-[10px] font-extrabold px-2.5 py-1 rounded-md mb-1.5 uppercase tracking-wider">
-                  বুলগেরিয়া লাইভ ক্যাম্পাস ও স্টুডেন্ট লাইফ
+                  Bulgaria Live Campus & Student Life
                 </span>
                 <p className="text-sm sm:text-base font-bold text-white leading-snug drop-shadow-md">
                   {campusSlides[currentSlide % campusSlides.length].title}
@@ -509,22 +511,22 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
           <div className="flex flex-col items-center">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
               calcStep >= 1 ? 'bg-brand-sky text-white ring-4 ring-brand-sky/25' : 'bg-slate-100 text-slate-400'
-            }`}>১</div>
-            <span className={`text-[10px] font-bold mt-1 ${calcStep >= 1 ? 'text-brand-sky-dark font-extrabold' : 'text-slate-400'}`}>বিশ্ববিদ্যালয় ও কোর্স</span>
+            }`}>1</div>
+            <span className={`text-[10px] font-bold mt-1 ${calcStep >= 1 ? 'text-brand-sky-dark font-extrabold' : 'text-slate-400'}`}>University & Course</span>
           </div>
           <div className={`flex-1 h-0.5 mx-2 transition-all duration-500 ${calcStep >= 2 ? 'bg-brand-sky' : 'bg-slate-100'}`}></div>
           <div className="flex flex-col items-center">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
               calcStep >= 2 ? 'bg-brand-sky text-white ring-4 ring-brand-sky/25' : 'bg-slate-100 text-slate-400'
-            }`}>২</div>
-            <span className={`text-[10px] font-bold mt-1 ${calcStep >= 2 ? 'text-brand-sky-dark font-extrabold' : 'text-slate-400'}`}>অতিরিক্ত সার্ভিস</span>
+            }`}>2</div>
+            <span className={`text-[10px] font-bold mt-1 ${calcStep >= 2 ? 'text-brand-sky-dark font-extrabold' : 'text-slate-400'}`}>Additional Services</span>
           </div>
           <div className={`flex-1 h-0.5 mx-2 transition-all duration-500 ${calcStep >= 3 ? 'bg-brand-sky' : 'bg-slate-100'}`}></div>
           <div className="flex flex-col items-center">
             <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black transition-all ${
               calcStep >= 3 ? 'bg-brand-sky text-white ring-4 ring-brand-sky/25' : 'bg-slate-100 text-slate-400'
-            }`}>৩</div>
-            <span className={`text-[10px] font-bold mt-1 ${calcStep >= 3 ? 'text-brand-sky-dark font-extrabold' : 'text-slate-400'}`}>সর্বমোট বাজেট</span>
+            }`}>3</div>
+            <span className={`text-[10px] font-bold mt-1 ${calcStep >= 3 ? 'text-brand-sky-dark font-extrabold' : 'text-slate-400'}`}>Total Budget</span>
           </div>
         </div>
 
@@ -534,17 +536,17 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
             <div className="text-center">
               <div className="inline-flex items-center space-x-1.5 rounded-full bg-brand-sky-light px-3 py-1 text-xs font-bold text-brand-sky-dark border border-brand-sky/20">
                 <Calculator className="h-3.5 w-3.5 text-brand-sky" />
-                <span>ধাপ ১: শিক্ষাপ্রতিষ্ঠান ও প্রোগ্রাম নির্বাচন করুন</span>
+                <span>Step 1: Select Institution & Program</span>
               </div>
-              <h3 className="mt-2 font-display text-xl font-bold text-slate-800">আপনার পছন্দের বিশ্ববিদ্যালয় ও কোর্স</h3>
-              <p className="text-xs text-slate-500 mt-1">প্রথমে একটি বিশ্ববিদ্যালয় নির্বাচন করুন, এরপর আপনার কাঙ্ক্ষিত প্রোগ্রামটি সিলেক্ট করুন</p>
+              <h3 className="mt-2 font-display text-xl font-bold text-slate-800">Your Preferred University & Course</h3>
+              <p className="text-xs text-slate-500 mt-1">Select a university first, then choose your desired study program</p>
             </div>
 
             {/* University Dropdown */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 block flex items-center space-x-1.5">
                 <span className="text-brand-gold">★</span>
-                <span>বিশ্ববিদ্যালয় নির্বাচন করুন (Select University):</span>
+                <span>Select University:</span>
               </label>
               <select
                 id="university-selector"
@@ -555,7 +557,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 }}
                 className="w-full rounded-xl border-2 border-slate-200 p-3.5 text-xs bg-white focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold text-slate-800 transition-all"
               >
-                <option value="">-- একটি বিশ্ববিদ্যালয় নির্বাচন করুন --</option>
+                <option value="">-- Select a University --</option>
                 {universities.map(u => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
@@ -572,7 +574,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
               >
                 <label className="text-xs font-bold text-slate-700 block flex items-center space-x-1.5">
                   <span className="text-brand-gold">★</span>
-                  <span>প্রোগ্রাম/কোর্স নির্বাচন করুন (Select Program):</span>
+                  <span>Select Program:</span>
                 </label>
                 <select
                   id="program-selector"
@@ -582,7 +584,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   }}
                   className="w-full rounded-xl border-2 border-slate-200 p-3.5 text-xs bg-white focus:border-brand-sky focus:outline-none focus:ring-1 focus:ring-brand-sky font-semibold text-slate-800 transition-all"
                 >
-                  <option value="">-- কোর্স প্রোগ্রাম নির্বাচন করুন --</option>
+                  <option value="">-- Select Course Program --</option>
                   {selectedUni?.programs.map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -590,7 +592,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
               </motion.div>
             )}
 
-            {/* Tuition fee display (Only shows when university & program both are selected) */}
+            {/* Tuition fee display */}
             {selectedUniId && selectedProgramId && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -598,15 +600,15 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 className="bg-brand-sky/10 border border-brand-sky/20 rounded-2xl p-5 mt-4 text-center space-y-1.5"
                 id="tuition-fee-display"
               >
-                <span className="text-[10px] text-brand-sky-dark uppercase tracking-wider font-extrabold block">বার্ষিক অফিশিয়াল টিউশন ফি</span>
+                <span className="text-[10px] text-brand-sky-dark uppercase tracking-wider font-extrabold block">Annual Official Tuition Fee</span>
                 <span className="text-3xl font-black text-slate-900 font-mono block">
                   € {tuitionFee.toLocaleString()} EUR
                 </span>
                 <span className="text-xs font-bold text-slate-500 block">
-                  (বাংলাদেশি টাকায় আনুমানিক: ৳{(tuitionFee * BDT_RATE).toLocaleString()} BDT)
+                  (Approx. in BDT: ৳{(tuitionFee * BDT_RATE).toLocaleString()} BDT)
                 </span>
                 <p className="text-[10px] text-slate-400 max-w-md mx-auto pt-1 leading-relaxed">
-                  বুলগেরিয়া আসার পর এই বাৎসরিক টিউশন ফি সরাসরি বিশ্ববিদালয়ের অ্যাকাউন্টে পরিশোধ করতে হবে।
+                  Annual tuition fee is paid directly to the university account upon arrival in Bulgaria.
                 </p>
 
                 {/* Next Step Button */}
@@ -615,7 +617,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   className="w-full mt-4 flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold py-3.5 text-xs font-bold text-white hover:scale-[1.01] active:scale-[0.99] transition-all shadow-md shadow-brand-sky/25"
                   id="calc-step-1-next"
                 >
-                  <span>পরবর্তী ধাপে যান (অন্যান্য সার্ভিস দেখুন)</span>
+                  <span>Proceed to Next Step (Additional Services)</span>
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </motion.div>
@@ -629,10 +631,10 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
             <div className="text-center">
               <div className="inline-flex items-center space-x-1.5 rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold-dark border border-brand-gold/30">
                 <Calculator className="h-3.5 w-3.5 text-brand-gold" />
-                <span>ধাপ ২: অতিরিক্ত গ্রাউন্ড সার্ভিস সমূহ যুক্ত করুন</span>
+                <span>Step 2: Add Additional Ground Services</span>
               </div>
-              <h3 className="mt-2 font-display text-xl font-bold text-slate-800">অন্যান্য আবশ্যক সেবা ও সরকারি ফি</h3>
-              <p className="text-xs text-slate-500 mt-1">ভিসা প্রসেসিং ও দিল্লী দূতাবাসের জন্য প্রয়োজনীয় সেবাগুলো পছন্দমতো যুক্ত করুন</p>
+              <h3 className="mt-2 font-display text-xl font-bold text-slate-800">Essential Services & Official Fees</h3>
+              <p className="text-xs text-slate-500 mt-1">Select necessary visa processing and embassy submission services</p>
             </div>
 
             <div className="grid gap-3.5 sm:grid-cols-2">
@@ -645,8 +647,8 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-sky focus:ring-brand-sky accent-brand-sky"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-700 block">মেডিকেল ইন্স্যুরেন্স ফি</span>
-                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">€ ১৫০ (বাৎসরিক বাধ্যতামূলক)</span>
+                  <span className="text-xs font-bold text-slate-700 block">Medical Insurance Fee</span>
+                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">€ 150 (Annual Mandatory)</span>
                 </div>
               </label>
 
@@ -659,8 +661,8 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-sky focus:ring-brand-sky accent-brand-sky"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-700 block">অনুবাদ ও মিনিস্ট্রি সত্যায়ন</span>
-                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">৳ ১২,০০০ BDT (আনুমানিক)</span>
+                  <span className="text-xs font-bold text-slate-700 block">Translation & Ministry Attestation</span>
+                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">৳ 12,000 BDT (Approx.)</span>
                 </div>
               </label>
 
@@ -673,12 +675,12 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-sky focus:ring-brand-sky accent-brand-sky"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-700 block">দিল্লী ইন্টারভিউ ট্রাভেলিং</span>
-                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">৳ ২০,০০০ BDT (যাতায়াতসহ)</span>
+                  <span className="text-xs font-bold text-slate-700 block">Delhi Interview Travel Logistics</span>
+                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">৳ 20,000 BDT (Incl. Travel)</span>
                 </div>
               </label>
 
-              {/* Agency Fee (Indian processing) */}
+              {/* Agency Fee */}
               <label className="flex items-start space-x-3 rounded-xl border-2 border-slate-100 hover:border-brand-sky/35 p-4 hover:bg-slate-50 cursor-pointer transition-all duration-200">
                 <input
                   type="checkbox"
@@ -687,8 +689,8 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-brand-sky focus:ring-brand-sky accent-brand-sky"
                 />
                 <div>
-                  <span className="text-xs font-bold text-slate-700 block">গ্রাউন্ড প্রসেসিং ও সাপোর্ট</span>
-                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">৳ ১৫,০০০ BDT (ওয়ান-স্টপ)</span>
+                  <span className="text-xs font-bold text-slate-700 block">Ground Processing & Assistance</span>
+                  <span className="text-[11px] text-slate-500 font-semibold text-brand-gold-dark">৳ 15,000 BDT (One-Stop)</span>
                 </div>
               </label>
             </div>
@@ -699,13 +701,13 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 onClick={() => setCalcStep(1)}
                 className="flex-1 rounded-xl bg-slate-100 text-slate-700 py-3 text-center text-xs font-bold hover:bg-slate-200 transition-all"
               >
-                পূর্ববর্তী ধাপে যান (Back)
+                Back to Step 1
               </button>
               <button
                 onClick={() => setCalcStep(3)}
                 className="flex-1 rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold py-3 text-center text-xs font-bold text-white hover:scale-105 transition-all shadow-md shadow-brand-sky/20"
               >
-                ফাইনাল বাজেট ক্যালকুলেট করুন
+                Calculate Final Budget
               </button>
             </div>
           </div>
@@ -717,53 +719,53 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
             <div className="text-center">
               <div className="inline-flex items-center space-x-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 border border-emerald-200">
                 <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 animate-pulse" />
-                <span>ধাপ ৩: আপনার ফাইনাল বাজেট সারসংক্ষেপ</span>
+                <span>Step 3: Your Final Budget Summary</span>
               </div>
-              <h3 className="mt-2 font-display text-2xl font-bold text-slate-800">সর্বমোট প্রসেসিং ও প্রথম বছরের বাজেট</h3>
-              <p className="text-xs text-slate-500 mt-1">নির্বাচিত শিক্ষাপ্রতিষ্ঠান ও আনুষঙ্গিক অন্যান্য সেবাসমূহের চূড়ান্ত হিসাব বিবরণী</p>
+              <h3 className="mt-2 font-display text-2xl font-bold text-slate-800">Total Processing & First Year Budget</h3>
+              <p className="text-xs text-slate-500 mt-1">Final itemized breakdown of selected institution and ground services</p>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Detailed Breakdown Panel */}
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4 shadow-sm">
-                <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">খরচের বিস্তারিত বিবরণী (Detailed Items)</h4>
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-wider">Cost Breakdown (Detailed Items)</h4>
                 <div className="space-y-3 text-xs text-slate-700">
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="font-semibold text-slate-500">নির্বাচিত বিশ্ববিদ্যালয়:</span>
-                    <span className="font-bold text-right text-slate-800">{selectedUni?.name.split('(')[0].trim()}</span>
+                    <span className="font-semibold text-slate-500">Selected University:</span>
+                    <span className="font-bold text-right text-slate-800">{selectedUni?.name}</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="font-semibold text-slate-500">কোর্স প্রোগ্রাম:</span>
+                    <span className="font-semibold text-slate-500">Course Program:</span>
                     <span className="font-bold text-slate-800">{selectedProgram?.name}</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="text-slate-600">বার্ষিক বিশ্ববিদ্যালয় টিউশন ফি:</span>
+                    <span className="text-slate-600">Annual Tuition Fee:</span>
                     <span className="font-mono font-bold text-slate-900">€ {tuitionFee.toLocaleString()} EUR</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="text-slate-600">এমব্যাসি স্লট ডিক্লেয়ারেশন ও ইন্স্যুরেন্স ফি:</span>
-                    <span className="font-mono font-bold text-slate-900">€ {includeInsurance ? '২৫০' : '১০০'} EUR</span>
+                    <span className="text-slate-600">Embassy Slot Declaration & Insurance:</span>
+                    <span className="font-mono font-bold text-slate-900">€ {includeInsurance ? '250' : '100'} EUR</span>
                   </div>
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="text-slate-600">অনুবাদ, সত্যায়ন ও মিনিস্ট্রি খরচ (BDT):</span>
+                    <span className="text-slate-600">Translation & Attestation (BDT):</span>
                     <span className="font-mono font-bold text-slate-900">
-                      {includeTranslation ? '৳ ১২,০০০' : '৳ ০'} BDT
+                      {includeTranslation ? '৳ 12,000' : '৳ 0'} BDT
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="text-slate-600">দিল্লী ট্রাভেলিং ও ইন্টারভিউ খরচ (BDT):</span>
+                    <span className="text-slate-600">Delhi Travel & Interview Logistics (BDT):</span>
                     <span className="font-mono font-bold text-slate-900">
-                      {includeTravel ? '৳ ২০,০০০' : '৳ ০'} BDT
+                      {includeTravel ? '৳ 20,000' : '৳ 0'} BDT
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-slate-200 pb-2">
-                    <span className="text-slate-600">গ্রাউন্ড প্রসেসিং ও ওয়ান-স্টপ সাপোর্ট (BDT):</span>
+                    <span className="text-slate-600">Ground Processing & One-Stop Support (BDT):</span>
                     <span className="font-mono font-bold text-slate-900">
-                      {includeAgencyFee ? '৳ ১৫,০০০' : '৳ ০'} BDT
+                      {includeAgencyFee ? '৳ 15,000' : '৳ 0'} BDT
                     </span>
                   </div>
                   <div className="flex justify-between text-slate-400 text-[10px]">
-                    <span>বাজেট কারেন্সি রেট (Sodi Euro standard):</span>
+                    <span>Budget Exchange Rate (NOVENTRA Standard):</span>
                     <span className="font-mono">1 EUR = {BDT_RATE} BDT</span>
                   </div>
                 </div>
@@ -774,11 +776,11 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 <div className="space-y-6">
                   <h4 className="font-display text-sm font-bold text-brand-gold-accent border-b border-white/10 pb-3 flex items-center space-x-2">
                     <Coins className="h-4 w-4 text-brand-gold animate-bounce" />
-                    <span>চূড়ান্ত বাজেটের সারসংক্ষেপ (Cost Summary)</span>
+                    <span>Final Budget Summary</span>
                   </h4>
                   
                   <div>
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">সর্বমোট আনুমানিক প্রসেস বাজেট:</span>
+                    <span className="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Total Estimated Budget:</span>
                     <div className="flex items-baseline space-x-2 mt-1">
                       <span className="font-display text-3xl font-black bg-gradient-to-r from-brand-sky via-brand-gold-accent to-brand-gold bg-clip-text text-transparent">
                         ৳ {costs.grandTotalBDT.toLocaleString()}
@@ -786,7 +788,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                       <span className="text-xs text-brand-gold font-bold">BDT</span>
                     </div>
                     <div className="text-xs text-slate-400 mt-1">
-                      ইউরো সমপরিমাণ: <span className="font-mono text-white font-bold">€ {costs.grandTotalEUR.toLocaleString()} EUR</span>
+                      EUR Equivalent: <span className="font-mono text-white font-bold">€ {costs.grandTotalEUR.toLocaleString()} EUR</span>
                     </div>
                   </div>
                 </div>
@@ -797,7 +799,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                     onClick={onGoToApply}
                     className="w-full rounded-xl bg-gradient-to-r from-brand-sky to-brand-sky-dark border-b-2 border-brand-gold py-3 text-center text-xs font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-md shadow-brand-sky/20"
                   >
-                    ভিসা আবেদনের ড্যাশবোর্ডে প্রবেশ করুন
+                    Go to Visa Application Dashboard
                   </button>
 
                   <div className="flex space-x-2">
@@ -805,7 +807,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                       onClick={() => setCalcStep(2)}
                       className="flex-1 rounded-xl bg-white/10 border border-white/10 py-2 text-center text-[11px] font-semibold text-slate-300 hover:bg-white/20 hover:text-white transition-all"
                     >
-                      সার্ভিস পরিবর্তন করুন
+                      Modify Services
                     </button>
                     <button
                       onClick={() => {
@@ -815,12 +817,12 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                       }}
                       className="flex-1 rounded-xl bg-red-950/40 border border-red-500/25 py-2 text-center text-[11px] font-semibold text-red-200 hover:bg-red-950/60 hover:text-red-100 transition-all"
                     >
-                      নতুন করে শুরু করুন
+                      Start Over
                     </button>
                   </div>
                   
                   <span className="block text-[10px] text-slate-400 text-center font-medium mt-1">
-                    ※ এটি একটি আনুমানিক বাজেট ক্যালকুলেটর। এখানে পেমেন্ট করার কোনো সুযোগ নেই।
+                    ※ This is an estimated budget calculator for guidance purposes only.
                   </span>
                 </div>
               </div>
@@ -839,10 +841,10 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
         <div className="text-center max-w-xl mx-auto space-y-2">
           <div className="inline-flex items-center space-x-1.5 rounded-full bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold-dark border border-brand-gold/35 shadow-sm">
             <GraduationCap className="h-3.5 w-3.5 text-brand-gold" />
-            <span>সফল শিক্ষার্থীদের গল্প (Success Stories)</span>
+            <span>Success Stories</span>
           </div>
-          <h2 className="font-display text-2xl font-bold text-slate-800">যারা বুলগেরিয়া পৌঁছেছেন সোডি ইউরোর হাত ধরে</h2>
-          <p className="text-xs text-slate-500">আমাদের মাধ্যমে সফলভাবে ভিসা পেয়ে বুলগেরিয়ায় অধ্যয়নরত কয়েকজন শিক্ষার্থীর বাস্তব অভিজ্ঞতা</p>
+          <h2 className="font-display text-2xl font-bold text-slate-800">Students Who Reached Europe with NOVENTRA</h2>
+          <p className="text-xs text-slate-500">Real experiences of students currently studying in Bulgaria through our guidance</p>
         </div>
 
         <div className="relative mx-auto max-w-4xl px-4">
@@ -874,7 +876,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                       className="relative h-24 w-24 rounded-full object-cover border-4 border-white shadow-md"
                     />
                     {/* Verified stamp/badge */}
-                    <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg border-2 border-white" title="ভিসা অনুমোদিত ও সফলভাবে বুলগেরিয়া পৌছেছেন">
+                    <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg border-2 border-white" title="Visa Approved & Arrived in Bulgaria">
                       <CheckCircle2 className="h-5 w-5" />
                     </span>
                   </div>
@@ -885,7 +887,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   
                   <p className="text-[11px] font-bold text-brand-sky-dark flex items-center mt-1">
                     <MapPin className="h-3 w-3 mr-1 shrink-0" />
-                    {testimonials[activeTestimonial].home} থেকে
+                    From {testimonials[activeTestimonial].home}
                   </p>
 
                   {/* Stars */}
@@ -897,7 +899,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
 
                   {/* University & Program Tag */}
                   <div className="mt-4 w-full bg-white/80 rounded-xl p-3 border border-slate-100 shadow-sm space-y-1 text-left">
-                    <span className="text-[9px] font-extrabold text-slate-400 block uppercase tracking-wider">শিক্ষাপ্রতিষ্ঠান ও কোর্স</span>
+                    <span className="text-[9px] font-extrabold text-slate-400 block uppercase tracking-wider">Institution & Program</span>
                     <span className="text-xs font-bold text-slate-800 block leading-tight">
                       {testimonials[activeTestimonial].university}
                     </span>
@@ -912,7 +914,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   <div className="space-y-4">
                     <div className="inline-flex items-center space-x-1.5 rounded-md bg-emerald-50 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-700 border border-emerald-200">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      <span>ভিসা প্রাপ্তি: {testimonials[activeTestimonial].visaDate}</span>
+                      <span>Visa Granted: {testimonials[activeTestimonial].visaDate}</span>
                     </div>
 
                     <div className="relative">
@@ -926,13 +928,13 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                   {/* Footer Action Inside Testimonial */}
                   <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                     <div className="text-[10px] text-slate-400 font-semibold">
-                      ※ সোডি ইউরো ভেরিফাইড ভিসা স্টোরি
+                      ※ NOVENTRA Verified Visa Story
                     </div>
                     <button
                       onClick={onGoToApply}
                       className="inline-flex items-center space-x-1 text-xs font-black text-brand-sky hover:text-brand-sky-dark transition-colors"
                     >
-                      <span>আপনার প্রসেসিং শুরু করুন</span>
+                      <span>Start Your Application</span>
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -948,7 +950,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 setActiveTestimonial((prev) => (prev - 1 + testimonials.length) % testimonials.length);
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 shadow-md border border-slate-100 hover:text-brand-sky hover:border-brand-sky transition-all hover:scale-105 active:scale-95"
-              title="পূর্ববর্তী"
+              title="Previous"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -959,7 +961,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                 setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
               }}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-600 shadow-md border border-slate-100 hover:text-brand-sky hover:border-brand-sky transition-all hover:scale-105 active:scale-95"
-              title="পরবর্তী"
+              title="Next"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -978,7 +980,7 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
                     ? 'w-6 bg-brand-sky' 
                     : 'w-2 bg-slate-300 hover:bg-slate-400'
                 }`}
-                title={`স্লাইড ${index + 1}`}
+                title={`Slide ${index + 1}`}
               />
             ))}
           </div>
@@ -988,27 +990,27 @@ export default function Lobby({ onGoToApply }: { onGoToApply: () => void }) {
       {/* 5. FAQs Section with dynamic folding accordion */}
       <section className="space-y-6" id="faq-section">
         <div className="text-center max-w-xl mx-auto space-y-2">
-          <h2 className="font-display text-2xl font-bold text-slate-800">সাধারণ জিজ্ঞাসা (FAQ)</h2>
-          <p className="text-xs text-slate-500">ইউরোপ ও বুলগেরিয়া স্টুডেন্ট ভিসা সংক্রান্ত সাধারণ প্রশ্নোত্তর</p>
+          <h2 className="font-display text-2xl font-bold text-slate-800">Frequently Asked Questions (FAQ)</h2>
+          <p className="text-xs text-slate-500">Common questions & answers about European & Bulgaria student visa process</p>
         </div>
 
         <div className="mx-auto max-w-3xl grid gap-4" id="faq-list">
           {[
             {
-              q: 'বাংলাদেশে কি বুলগেরিয়ার বা ইউরোপের এই দূতাবাসটি আছে?',
-              a: 'না, বর্তমানে বাংলাদেশে বুলগেরিয়ার কোনো সক্রিয় দূতাবাস নেই। বাংলাদেশী শিক্ষার্থীদের ভারতের নতুন দিল্লিতে অবস্থিত বুলগেরিয়া দূতাবাসে গিয়ে সশরীরে ফাইল জমা দিতে হয় এবং ইন্টারভিউ দিতে হয়। Sodi Euro আপনাকে এই যাতায়াত ও বুকিংয়ের সব সাপোর্ট দেয়।'
+              q: 'Is there a direct European embassy for Bulgaria in Bangladesh?',
+              a: 'No, currently for certain European destinations without a local embassy in Bangladesh, students submit their files at the European Embassy located in New Delhi. NOVENTRA provides full travel coordination and file preparation support.'
             },
             {
-              q: 'দিল্লী ভ্রমণের জন্য ইন্ডিয়ান ভিসা পেতে Sodi Euro কি সহায়তা করে?',
-              a: 'হ্যাঁ! আমাদের পোর্টালের মাধ্যমে অ্যাপ্লিকেশন শুরু করার পর আমাদের দিল্লী ও ঢাকা টিম আপনার জন্য ভারতীয় ডাবল এন্ট্রি বা ট্রানজিট ভিসার ই-টোকেন বুকিং, ফরম পূরণ এবং ফাইল রেডি করে দেয় যাতে আপনি দিল্লী গিয়ে নির্বিঘ্নে ইন্টারভিউ দিতে পারেন।'
+              q: 'Does NOVENTRA assist with transit/Indian double-entry visas?',
+              a: 'Yes! Once you initiate your application on our portal, our team assists with e-token booking, form filling, and file readiness for required transit or travel visas.'
             },
             {
-              q: 'বুলগেরিয়া স্টুডেন্ট ভিসায় পড়াশোনার পাশাপাশি পার্ট-টাইম কাজের সুযোগ কেমন?',
-              a: 'আন্তর্জাতিক শিক্ষার্থী হিসেবে আপনি সপ্তাহে সর্বোচ্চ ২০ ঘন্টা পার্ট-টাইম কাজ করার আইনি অধিকার পাবেন। সেমিস্টার বিরতি বা ছুটির সময় ফুল-টাইম কাজ করতে পারবেন। তাছাড়া সেনজেনভুক্ত দেশ হওয়ায় বর্তমানে এটি আরও আকর্ষণীয়।'
+              q: 'What are the part-time work opportunities for international students in Bulgaria?',
+              a: 'As an international student, you are legally permitted to work up to 20 hours per week part-time during semester terms, and full-time during semester breaks. Being part of the Schengen area makes it even more attractive.'
             },
             {
-              q: 'সার্টিফিকেট ও পুলিশ ক্লিয়ারেন্স সত্যায়নের সঠিক নিয়ম কি?',
-              a: 'প্রথমে বোর্ড ভেরিফিকেশন, তারপর শিক্ষা মন্ত্রণালয় থেকে সত্যায়ন এবং সবশেষে পররাষ্ট্র মন্ত্রণালয় থেকে লাল সিল নিয়ে সত্যায়িত করতে হয়। Sodi Euro আপনার হয়ে বোর্ডের দীর্ঘ লাইন ও মন্ত্রণালয়ের সত্যায়ন প্রক্রিয়া ওয়ান-স্টপ সলিউশনে করে দেবে।'
+              q: 'What is the correct procedure for certificate and police clearance attestation?',
+              a: 'First, obtain Board verification, followed by attestation from the Ministry of Education, and finally legalization from the Ministry of Foreign Affairs. NOVENTRA provides end-to-end ground assistance for this process.'
             }
           ].map((faq, index) => (
             <div 

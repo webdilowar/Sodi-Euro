@@ -10,7 +10,7 @@ const resources = {
   },
   bn: {
     translation: {
-      "Welcome": "স্বাগতম",
+      "Welcome": "Welcome",
       // Add more as needed
     }
   }

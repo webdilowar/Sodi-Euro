@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { useLanguage } from '../context/LanguageContext';
 import { 
   Phone, 
   Mail, 
@@ -23,17 +24,17 @@ export const initialSupportMembers: SupportMember[] = [
   {
     id: "dilowar_hosen",
     name: "Dilowar Hosen",
-    role: "ওনার (Owner & Founder)",
+    role: "Owner & Founder",
     email: "dilowarhosen1@gmail.com",
     phone: "+880 1712-345678",
     whatsapp: "8801712345678",
-    location: "ঢাকা অফিস, বাংলাদেশ",
-    bio: "বুলগেরিয়ায় উচ্চশিক্ষায় পাড়ি জমানোর স্বপ্নকে বাস্তব রূপ দিতে 'Sodi Euro' প্ল্যাটফর্মের সূচনা করেন। তিনি বাংলাদেশি শিক্ষার্থীদের ফাইল প্রস্তুতকরণ, আইনি কাগজপত্র যাচাই এবং ফাইল সাবমিশন প্রক্রিয়ার প্রতিটি ধাপে স্বচ্ছতা নিশ্চিত করেন। এছাড়া বুলগেরিয়াতে পৌঁছানোর পর শিক্ষার্থীদের বিমানবন্দর থেকে রিসিভ করা, আবাসন সুবিধা নিশ্চিত করা এবং স্থানীয় গাইডেন্স প্রদানে তিনি সরাসরি নেতৃত্ব দেন।",
+    location: "Dhaka Office, Bangladesh",
+    bio: "Founded the NOVENTRA platform to turn study abroad dreams into reality. He ensures full transparency across document preparation, verification, and file submission steps. He also leads post-arrival support including airport reception, accommodation setup, and local student orientation.",
     badge: "Founder & Visionary",
     colorClass: "from-brand-sky via-brand-sky-dark to-slate-950",
     accentBorder: "border-brand-sky/30",
-    btnText: "ওনারের সাথে সরাসরি যোগাযোগ করুন",
-    btnUrl: "https://wa.me/8801712345678?text=Hello%20Dilowar%20Hosen,%20I%20need%20support%20with%20my%20Bulgaria%20Student%20Visa%20Application.",
+    btnText: "Contact Founder Directly",
+    btnUrl: "https://wa.me/8801712345678?text=Hello%20Dilowar%20Hosen,%20I%20need%20support%20with%20my%20Student%20Visa%20Application.",
     createdAt: "2026-07-10 00:00",
     username: "dilowar",
     password: "dilowar123",
@@ -42,16 +43,16 @@ export const initialSupportMembers: SupportMember[] = [
   {
     id: "sohel_rana",
     name: "Sohel Rana",
-    role: "ব্যবস্থাপনা পরিচালক (Managing Director)",
-    email: "sohel.rana@sodieuro.com",
+    role: "Managing Director",
+    email: "sohel.rana@noventra.com",
     phone: "+880 1987-654321",
     whatsapp: "8801987654321",
-    location: "সোফিয়া, বুলগেরিয়া ও ঢাকা অফিস",
-    bio: "বুলগেরিয়ান বিশ্ববিদ্যালয়সমূহের সাথে সরাসরি প্রাতিষ্ঠানিক যোগাযোগ রক্ষা এবং ডক্যুমেন্ট প্রসেসিং-এর মূল দায়িত্বে নিয়োজিত আছেন। তার নিবিড় তত্ত্বাবধানে শিক্ষার্থীদের অফার লেটার এবং মিনিস্ট্রি of এডুকেশন (D-Visa) অনুমোদন প্রক্রিয়া দ্রুত সম্পন্ন হয়। দীর্ঘ ৪ বছরের অভিজ্ঞতাসম্পন্ন সোহেল রানা আইনি ও প্রশাসনিক জটিলতা সমাধানে পারদর্শী।",
+    location: "Sofia & Dhaka Offices",
+    bio: "Responsible for institutional communication with international universities and document processing. Under his supervision, offer letters and visa file submissions are processed efficiently. With over 4 years of specialized experience, Sohel Rana excels in resolving administrative and legal procedures.",
     badge: "University Liaison & Operations",
     colorClass: "from-brand-gold via-brand-gold-dark to-slate-900",
     accentBorder: "border-brand-gold/30",
-    btnText: "পরিচালকের সাথে সরাসরি যোগাযোগ করুন",
+    btnText: "Contact Director Directly",
     btnUrl: "https://wa.me/8801987654321?text=Hello%20Sohel%20Rana,%20I%20need%20support%20with%20my%20university%20admission%20status.",
     createdAt: "2026-07-10 00:00",
     username: "sohel",
@@ -61,6 +62,7 @@ export const initialSupportMembers: SupportMember[] = [
 ];
 
 export default function SupportPage() {
+  const { language, t } = useLanguage();
   const [supportMembers, setSupportMembers] = useState<SupportMember[]>(initialSupportMembers);
   const [loading, setLoading] = useState(true);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -110,10 +112,10 @@ export default function SupportPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-black text-slate-700 shadow-sm transition-all active:scale-95"
             >
               <ArrowLeft className="h-4 w-4 text-brand-sky" />
-              <span>পেছনে ফিরে যান (Go Back)</span>
+              <span>Go Back</span>
             </button>
             <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-3 py-1.5 rounded-lg">
-              সদস্য প্রোফাইল
+              Member Profile
             </span>
           </div>
 
@@ -184,7 +186,7 @@ export default function SupportPage() {
                 <div className="md:col-span-3 space-y-4">
                   <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                     <User className="h-4 w-4 text-brand-sky" />
-                    ভূমিকা ও বিস্তারিত পরিচিতি
+                    Overview & Biography
                   </h4>
                   <p className="text-xs md:text-sm text-slate-600 leading-relaxed bg-slate-50/50 rounded-2xl p-5 border border-slate-100 whitespace-pre-line font-medium shadow-inner">
                     {selectedMember.bio}
@@ -195,7 +197,7 @@ export default function SupportPage() {
                 <div className="md:col-span-2 space-y-4">
                   <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
                     <Clock className="h-4 w-4 text-brand-gold" />
-                    সরাসরি যোগাযোগ ও সহায়তা
+                    Direct Contact & Assistance
                   </h4>
                   
                   <div className="space-y-2 text-xs">
@@ -204,13 +206,13 @@ export default function SupportPage() {
                       <a 
                         href={`tel:${selectedMember.phone.replace(/[\s-]/g, '')}`}
                         className="flex items-center gap-3.5 p-3.5 bg-white rounded-2xl border border-slate-100 hover:border-brand-sky/40 hover:bg-brand-sky-light/10 transition-all text-slate-700 shadow-sm"
-                        title="ফোন কল করুন"
+                        title="Call Phone"
                       >
                         <div className="h-9 w-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                           <Phone className="h-4.5 w-4.5" />
                         </div>
                         <div className="text-left">
-                          <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-1">সরাসরি ফোন করুন</span>
+                          <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-1">Direct Call</span>
                           <span className="font-semibold font-mono text-slate-800 text-[11px]">{selectedMember.phone}</span>
                         </div>
                         <ExternalLink className="h-3.5 w-3.5 text-slate-300 ml-auto shrink-0" />
@@ -222,13 +224,13 @@ export default function SupportPage() {
                       <a 
                         href={`mailto:${selectedMember.email}`}
                         className="flex items-center gap-3.5 p-3.5 bg-white rounded-2xl border border-slate-100 hover:border-brand-sky/40 hover:bg-brand-sky-light/10 transition-all text-slate-700 shadow-sm"
-                        title="ইমেল করুন"
+                        title="Send Email"
                       >
                         <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                           <Mail className="h-4.5 w-4.5" />
                         </div>
                         <div className="text-left truncate max-w-[75%]">
-                          <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-1">অফিসিয়াল ইমেইল</span>
+                          <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-1">Official Email</span>
                           <span className="font-semibold text-slate-800 text-[11px] truncate block">{selectedMember.email}</span>
                         </div>
                         <ExternalLink className="h-3.5 w-3.5 text-slate-300 ml-auto shrink-0" />
@@ -242,7 +244,7 @@ export default function SupportPage() {
                           <MapPin className="h-4.5 w-4.5" />
                         </div>
                         <div className="text-left">
-                          <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-1">অবস্থান ও শাখা</span>
+                          <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mb-1">Location & Office</span>
                           <span className="font-semibold text-slate-700 text-[11px]">{selectedMember.location}</span>
                         </div>
                       </div>
@@ -255,7 +257,7 @@ export default function SupportPage() {
               <div className="pt-4 border-t border-slate-100">
                 <a
                   href={selectedMember.whatsapp && !selectedMember.btnUrl.startsWith('http') 
-                    ? `https://wa.me/${selectedMember.whatsapp}?text=Hello%20${encodeURIComponent(selectedMember.name)},%20I%20need%20support%20with%20my%20Bulgaria%20Student%20Visa%20Application.`
+                    ? `https://wa.me/${selectedMember.whatsapp}?text=Hello%20${encodeURIComponent(selectedMember.name)},%20I%20need%20support%20with%20my%20Student%20Visa%20Application.`
                     : selectedMember.btnUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -263,7 +265,7 @@ export default function SupportPage() {
                   className="w-full flex items-center justify-center gap-2.5 rounded-2xl py-4 text-sm font-black text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-md active:scale-[0.99]"
                 >
                   <MessageSquare className="h-5 w-5 text-brand-gold shrink-0 animate-pulse" />
-                  <span>{selectedMember.btnText || 'সরাসরি যোগাযোগ করুন'}</span>
+                  <span>{selectedMember.btnText || 'Contact Directly'}</span>
                 </a>
               </div>
             </div>
@@ -276,20 +278,20 @@ export default function SupportPage() {
           <div className="text-center space-y-3 max-w-2xl mx-auto">
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-gold/10 border border-brand-gold/20 text-xs text-brand-gold-dark font-black">
               <Sparkles className="h-3.5 w-3.5 text-brand-gold animate-pulse" />
-              ২৪/৭ সার্বিক সহায়তা ও যোগাযোগ
+              {t('nav_support')}
             </span>
             <h2 className="text-2xl md:text-3xl font-display font-black text-slate-800 tracking-tight leading-tight">
-              আমাদের <span className="bg-gradient-to-r from-brand-sky to-brand-gold bg-clip-text text-transparent">নেতৃত্ব ও সাপোর্ট</span> টিম
+              {t('support_title')}
             </h2>
             <p className="text-xs md:text-sm text-slate-500 leading-relaxed">
-              Sodi Euro-র সম্মানিত ওনার এবং ব্যবস্থাপনা পরিচালক সরাসরি শিক্ষার্থীদের সকল ফাইল মনিটর করেন। যে কোনো তথ্যের জন্য তাদের সাথে সরাসরি যোগাযোগ করুন।
+              {t('support_subtitle')}
             </p>
           </div>
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 space-y-3" id="support-loading">
               <div className="h-8 w-8 border-4 border-brand-sky border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs font-bold text-slate-400">সাপোর্ট টিম তথ্য লোড করা হচ্ছে...</p>
+              <p className="text-xs font-bold text-slate-400">Loading support team profile...</p>
             </div>
           ) : (
             /* Support Members Grid (Compact Simple Cards) */
@@ -373,7 +375,7 @@ export default function SupportPage() {
 
                       {/* Click trigger action button */}
                       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-brand-sky font-bold text-xs">
-                        <span>বিস্তারিত প্রোফাইল ও যোগাযোগ</span>
+                        <span>View Profile & Contact</span>
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </div>
                     </div>
@@ -383,7 +385,7 @@ export default function SupportPage() {
             </div>
           )}
 
-          {/* Sodi Euro Trust Badges Section */}
+          {/* NOVENTRA Trust Badges Section */}
           <div className="bg-gradient-to-r from-slate-900 to-slate-950 text-white rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xl" id="support-trust-block">
             {/* Abstract graphics */}
             <div className="absolute top-0 right-0 w-80 h-80 bg-brand-sky/5 rounded-full blur-3xl"></div>
@@ -395,9 +397,9 @@ export default function SupportPage() {
                 <div className="h-10 w-10 rounded-xl bg-brand-sky/10 border border-brand-sky/20 flex items-center justify-center">
                   <ShieldCheck className="h-5 w-5 text-brand-sky" />
                 </div>
-                <h4 className="text-xs font-black text-slate-200">শতভাগ বিশ্বস্ততা ও স্বচ্ছতা</h4>
+                <h4 className="text-xs font-black text-slate-200">100% Trust & Transparency</h4>
                 <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                  আপনার ফাইল প্রসেসিং এবং আর্থিক লেনদেনের প্রতিটি ধাপে রিয়েল-টাইম ট্র্যাকিং সুবিধা নিশ্চিত করা হয়।
+                  Real-time file tracking and full visibility provided at every stage of student application processing.
                 </p>
               </div>
 
@@ -406,9 +408,9 @@ export default function SupportPage() {
                 <div className="h-10 w-10 rounded-xl bg-brand-gold/10 border border-brand-gold/20 flex items-center justify-center">
                   <Award className="h-5 w-5 text-brand-gold" />
                 </div>
-                <h4 className="text-xs font-black text-slate-200">বিশেষজ্ঞ ভিসা কনসালট্যান্টস</h4>
+                <h4 className="text-xs font-black text-slate-200">Expert Visa Consultants</h4>
                 <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                  বুলগেরিয়ার শিক্ষা মন্ত্রনালয় এবং বিশ্ববিদ্যালয়ের আইন ও নিয়মকানুন সম্পর্কে দীর্ঘ ৪ বছরের অভিজ্ঞ টিম।
+                  Over 4 years of expertise in university admissions, education ministry regulations, and student visa files.
                 </p>
               </div>
 
@@ -417,9 +419,9 @@ export default function SupportPage() {
                 <div className="h-10 w-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
                   <Globe className="h-5 w-5 text-indigo-400" />
                 </div>
-                <h4 className="text-xs font-black text-slate-200">ইউরোপিয়ান লোকাল গাইডেন্স</h4>
+                <h4 className="text-xs font-black text-slate-200">Local European Support</h4>
                 <p className="text-[10px] text-slate-400 max-w-xs leading-relaxed">
-                  বুলগেরিয়াতে নামার পর এয়ারপোর্ট রিসিভ, বাসস্থান খোঁজা এবং টিআরসি কার্ড (TRC Card) প্রসেসিং-এ সরাসরি সহায়তা।
+                  On-ground assistance including airport pickup, accommodation assistance, and residence permit guidance.
                 </p>
               </div>
             </div>
